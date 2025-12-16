@@ -985,7 +985,8 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
         }
         
         const wine = await response.json();
-        const searchQuery = `${wine.name}${wine.producer ? ' ' + wine.producer : ''}`;
+        // Usa solo il nome del vino per la ricerca (non produttore/cantina)
+        const searchQuery = wine.name || '';
         
         console.log('[VIEWER] Impostazione ricerca per:', searchQuery);
         
