@@ -158,7 +158,7 @@
                     </div>
                     <div class="viewer-header-actions">
                         <a href="#" id="viewer-download-csv" class="viewer-download-btn" title="Download CSV">Download CSV</a>
-                        <button id="viewer-fullscreen-btn" class="viewer-fullscreen-btn" title="Apri a tutto schermo (solo desktop)">
+                        <button id="viewer-fullscreen-btn" class="viewer-fullscreen-btn" title="Apri a tutto schermo (solo desktop)" onclick="if(typeof toggleViewerFullscreen === 'function') { toggleViewerFullscreen(); } else { console.error('toggleViewerFullscreen non definita'); }">
                             <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                                 <path d="M3 3h5v2H5v3H3V3zm12 0h-5v2h3v3h2V3zm-5 14h5v-5h-2v3h-3v2zm-7 0v-5h2v3h3v2H3z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>

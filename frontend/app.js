@@ -282,14 +282,7 @@ function setupEventListeners() {
     setupViewerFilters();
     
     // Viewer Fullscreen - sempre disponibile, ma funziona solo su desktop
-    const viewerFullscreenBtn = document.getElementById('viewer-fullscreen-btn');
-    if (viewerFullscreenBtn) {
-        addUniversalEventListener(viewerFullscreenBtn, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleViewerFullscreen();
-        });
-    }
+    setupViewerFullscreenListeners();
     
     const viewerDownloadBtn = document.getElementById('viewer-download-csv');
     if (viewerDownloadBtn) {
@@ -1000,6 +993,36 @@ window.viewerGoToPage = viewerGoToPage;
 // VIEWER FULLSCREEN FUNCTIONS
 // ============================================
 
+function setupViewerFullscreenListeners() {
+    const viewerFullscreenBtn = document.getElementById('viewer-fullscreen-btn');
+    console.log('[VIEWER] setupViewerFullscreenListeners - pulsante trovato:', !!viewerFullscreenBtn);
+    console.log('[VIEWER] Window width:', window.innerWidth, 'Is desktop:', window.innerWidth > 768);
+    
+    if (viewerFullscreenBtn) {
+        // Rimuovi listener esistenti per evitare duplicati
+        const newBtn = viewerFullscreenBtn.cloneNode(true);
+        viewerFullscreenBtn.parentNode.replaceChild(newBtn, viewerFullscreenBtn);
+        
+        // Prova anche con addEventListener diretto come fallback
+        newBtn.addEventListener('click', (e) => {
+            console.log('[VIEWER] Click diretto su pulsante fullscreen rilevato!');
+            e.preventDefault();
+            e.stopPropagation();
+            toggleViewerFullscreen();
+        });
+        
+        addUniversalEventListener(newBtn, (e) => {
+            console.log('[VIEWER] Click universale su pulsante fullscreen rilevato!');
+            e.preventDefault();
+            e.stopPropagation();
+            toggleViewerFullscreen();
+        });
+        console.log('[VIEWER] Event listener collegato al pulsante fullscreen');
+    } else {
+        console.warn('[VIEWER] Pulsante fullscreen non trovato!');
+    }
+}
+
 function toggleViewerFullscreen() {
     console.log('[VIEWER] toggleViewerFullscreen chiamato');
     
@@ -1339,6 +1362,7 @@ function closeMovementsModal() {
 
 // Make functions available globally
 window.showMovementsChart = showMovementsChart;
+window.toggleViewerFullscreen = toggleViewerFullscreen;
 
 // ============================================
 // CONVERSATIONS MANAGEMENT
