@@ -682,10 +682,22 @@ function setupWineCardBookmarks(messageEl) {
     const wineId = wineCard.dataset.wineId;
     if (!wineId) return;
     
-    // Controlla se i bookmarks sono già stati aggiunti
-    if (wineCard.querySelector('.wine-card-bookmarks')) return;
+    // Controlla se il wrapper esiste già (significa che i bookmarks sono già stati aggiunti)
+    if (wineCard.parentElement && wineCard.parentElement.classList.contains('wine-card-wrapper')) {
+        return; // Già configurato
+    }
     
-    // Crea container bookmarks
+    // SOLUZIONE: Crea un wrapper esterno che contiene sia la card che i segnalibri
+    // Questo permette ai segnalibri di essere nel layer sotto la card
+    const wrapper = document.createElement('div');
+    wrapper.className = 'wine-card-wrapper';
+    
+    // Sposta la card nel wrapper
+    const parent = wineCard.parentElement;
+    parent.insertBefore(wrapper, wineCard);
+    wrapper.appendChild(wineCard);
+    
+    // Crea container bookmarks (ora fuori dalla card, dentro il wrapper)
     const bookmarksContainer = document.createElement('div');
     bookmarksContainer.className = 'wine-card-bookmarks';
     
@@ -718,20 +730,29 @@ function setupWineCardBookmarks(messageEl) {
     
     bookmarksContainer.appendChild(editBookmark);
     bookmarksContainer.appendChild(inventoryBookmark);
-    wineCard.appendChild(bookmarksContainer);
+    
+    // Aggiungi i segnalibri al wrapper (non alla card)
+    wrapper.appendChild(bookmarksContainer);
 }
 
 async function handleWineCardEdit(wineCard, wineId) {
+    // Trova il wrapper (se esiste)
+    const wrapper = wineCard.parentElement?.classList.contains('wine-card-wrapper') 
+        ? wineCard.parentElement 
+        : null;
+    
     // Se già espansa, chiudi
     if (wineCard.classList.contains('expanded')) {
         wineCard.classList.remove('expanded');
+        if (wrapper) wrapper.classList.remove('expanded');
         const editForm = wineCard.querySelector('.wine-card-edit-form');
         if (editForm) editForm.remove();
         return;
     }
     
-    // Espandi la card
+    // Espandi la card e il wrapper
     wineCard.classList.add('expanded');
+    if (wrapper) wrapper.classList.add('expanded');
     
     // Carica dati vino dal backend
     try {
@@ -919,6 +940,10 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
         
         // Chiudi form e ricarica card
         wineCard.classList.remove('expanded');
+        const wrapper = wineCard.parentElement?.classList.contains('wine-card-wrapper') 
+            ? wineCard.parentElement 
+            : null;
+        if (wrapper) wrapper.classList.remove('expanded');
         editForm.remove();
         
         // Ricarica la card con i nuovi dati (opzionale: ricarica da backend)
