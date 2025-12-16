@@ -63,24 +63,42 @@ async def send_message(
     logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}, telegram_id={telegram_id}: {chat_message.message[:50]}...")
     
     try:
-        # Recupera storia conversazione (ultimi 10 messaggi)
+        # Gestione conversation_id: crea nuova conversazione se non specificata
+        conversation_id = chat_message.conversation_id
+        if not conversation_id:
+            # Crea nuova conversazione
+            conversation_id = await db_manager.create_conversation(
+                user_id=user_id,
+                telegram_id=telegram_id,
+                title=chat_message.message[:50] + "..." if len(chat_message.message) > 50 else chat_message.message
+            )
+            if not conversation_id:
+                logger.warning(f"[CHAT] Errore creando nuova conversazione per user_id={user_id}")
+                # Continua comunque senza conversation_id (retrocompatibilità)
+                conversation_id = None
+        
+        # Recupera storia conversazione (ultimi 10 messaggi) per questa conversazione
         conversation_history = None
         try:
-            conversation_history = await db_manager.get_recent_chat_messages(ai_telegram_id, limit=10)
+            conversation_history = await db_manager.get_recent_chat_messages(
+                ai_telegram_id, 
+                limit=10, 
+                conversation_id=conversation_id
+            )
             if conversation_history:
                 # Converti in formato OpenAI (solo role e content)
                 conversation_history = [
                     {"role": msg["role"], "content": msg["content"]}
                     for msg in conversation_history
                 ]
-                logger.info(f"[CHAT] Recuperati {len(conversation_history)} messaggi dalla storia conversazione")
+                logger.info(f"[CHAT] Recuperati {len(conversation_history)} messaggi dalla conversazione id={conversation_id}")
         except Exception as e:
             logger.warning(f"[CHAT] Errore recupero storia conversazione: {e}")
             conversation_history = None
         
         # Salva messaggio utente PRIMA di processare
         try:
-            await db_manager.log_chat_message(ai_telegram_id, "user", chat_message.message)
+            await db_manager.log_chat_message(ai_telegram_id, "user", chat_message.message, conversation_id=conversation_id)
         except Exception as e:
             logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
         
