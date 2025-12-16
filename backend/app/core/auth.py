@@ -34,17 +34,26 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
             logger.warning("[AUTH] Password vuota")
             return False
         
+        # Pulisci entrambi i valori
+        plain_password_clean = plain_password.strip()
+        hashed_password_clean = hashed_password.strip()
+        
         # Verifica che l'hash sia nel formato corretto (deve iniziare con $2b$)
-        if not hashed_password.startswith('$2b$'):
-            logger.error(f"[AUTH] Hash password formato non valido: inizia con '{hashed_password[:10]}' invece di '$2b$'")
+        if not hashed_password_clean.startswith('$2b$'):
+            logger.error(f"[AUTH] Hash password formato non valido: inizia con '{hashed_password_clean[:20]}' invece di '$2b$'")
+            return False
+        
+        # Verifica lunghezza hash (bcrypt hash dovrebbe essere ~60 caratteri)
+        if len(hashed_password_clean) < 60:
+            logger.error(f"[AUTH] Hash password troppo corto: {len(hashed_password_clean)} caratteri invece di ~60")
             return False
         
         result = bcrypt.checkpw(
-            plain_password.encode('utf-8'),
-            hashed_password.encode('utf-8')
+            plain_password_clean.encode('utf-8'),
+            hashed_password_clean.encode('utf-8')
         )
         
-        logger.debug(f"[AUTH] Verifica password: result={result}, hash_length={len(hashed_password)}")
+        logger.debug(f"[AUTH] Verifica password: result={result}, password_len={len(plain_password_clean)}, hash_len={len(hashed_password_clean)}")
         return result
     except Exception as e:
         logger.error(f"[AUTH] Errore verifica password: {e}", exc_info=True)

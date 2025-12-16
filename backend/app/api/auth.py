@@ -221,15 +221,32 @@ async def login(login_request: LoginRequest):
     
     # Verifica password
     if not user.password_hash:
+        logger.warning(f"[AUTH] Utente {user.id} non ha password_hash")
         raise HTTPException(
             status_code=401,
             detail="Account non configurato. Completa la registrazione."
         )
     
     # Verifica password con logging dettagliato
-    logger.info(f"[AUTH] Verifica password: password_hash_length={len(user.password_hash) if user.password_hash else 0}, hash_prefix={user.password_hash[:10] if user.password_hash else 'None'}...")
+    password_hash_clean = user.password_hash.strip() if user.password_hash else None
+    password_clean = password.strip()
     
-    password_valid = verify_password(password, user.password_hash)
+    logger.info(f"[AUTH] Verifica password:")
+    logger.info(f"  - password_hash_length={len(password_hash_clean) if password_hash_clean else 0}")
+    logger.info(f"  - hash_prefix={password_hash_clean[:15] if password_hash_clean else 'None'}...")
+    logger.info(f"  - hash_suffix=...{password_hash_clean[-10:] if password_hash_clean and len(password_hash_clean) > 10 else 'None'}")
+    logger.info(f"  - password_length={len(password_clean)}")
+    logger.info(f"  - password_starts_with={password_clean[:3] if len(password_clean) >= 3 else 'N/A'}...")
+    
+    # Verifica formato hash
+    if password_hash_clean and not password_hash_clean.startswith('$2b$'):
+        logger.error(f"[AUTH] Hash password formato non valido! Inizia con: '{password_hash_clean[:20]}'")
+        raise HTTPException(
+            status_code=500,
+            detail="Errore configurazione password. Contatta l'amministratore."
+        )
+    
+    password_valid = verify_password(password_clean, password_hash_clean)
     logger.info(f"[AUTH] Risultato verifica password: {password_valid}")
     
     if not password_valid:
