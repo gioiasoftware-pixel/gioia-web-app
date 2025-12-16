@@ -1309,6 +1309,26 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 
                 movement_type = "consumo" if tool_name == "register_consumption" else "rifornimento"
                 
+                # ✅ FUZZY MATCHING: Cerca il vino nel database PRIMA di chiamare il processor
+                # Usa cascading retry search per trovare il nome esatto del vino
+                logger.info(f"[TOOLS] {tool_name}: Ricerca fuzzy matching per '{wine_name}'")
+                wines, retry_query_used, level_used = await self._cascading_retry_search(
+                    telegram_id=telegram_id,
+                    original_query=wine_name,
+                    search_func=db_manager.search_wines,
+                    search_func_args={"telegram_id": telegram_id, "search_term": wine_name, "limit": 10},
+                    original_filters=None
+                )
+                
+                # Se trovato, usa il nome esatto del primo match
+                if wines and len(wines) > 0:
+                    matched_wine_name = wines[0].name
+                    logger.info(f"[TOOLS] {tool_name}: Fuzzy matching '{wine_name}' → '{matched_wine_name}' (livello: {level_used})")
+                    wine_name = matched_wine_name  # Usa nome esatto trovato nel database
+                else:
+                    # Se non trovato, prova comunque con il nome originale (potrebbe essere un nuovo vino)
+                    logger.warning(f"[TOOLS] {tool_name}: Nessun vino trovato per '{wine_name}', uso nome originale")
+                
                 # Processa movimento via Processor
                 try:
                     user = await db_manager.get_user_by_telegram_id(telegram_id)
@@ -1318,7 +1338,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     result = await processor_client.process_movement(
                         telegram_id=telegram_id,
                         business_name=user.business_name,
-                        wine_name=wine_name,
+                        wine_name=wine_name,  # Usa nome esatto trovato (o originale se non trovato)
                         movement_type=movement_type,
                         quantity=quantity
                     )
