@@ -1580,34 +1580,23 @@ async function handleNewChat() {
     if (!authToken) return;
     
     try {
-        const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`,
-            },
-            body: JSON.stringify({ title: null }),  // Titolo generato dal primo messaggio
-        });
-        
-        if (!response.ok) {
-            throw new Error('Errore creazione nuova chat');
-        }
-        
-        const data = await response.json();
-        currentConversationId = data.conversation_id;
-        localStorage.setItem('current_conversation_id', currentConversationId.toString());
+        // NON creare subito una nuova conversazione - aspetta il primo messaggio
+        // Questo evita di creare conversazioni vuote
+        currentConversationId = null;
+        localStorage.removeItem('current_conversation_id');
         
         // Pulisci chat corrente
         clearChatMessages();
         
-        // Ricarica lista conversazioni
+        // Aggiorna UI sidebar (rimuovi selezione)
+        document.querySelectorAll('.chat-sidebar-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Ricarica lista conversazioni per aggiornare UI
         await loadConversations();
         
-        // Scrolla alla nuova conversazione
-        const newItem = document.querySelector(`[data-conversation-id="${currentConversationId}"]`);
-        if (newItem) {
-            newItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
+        console.log('[CHAT] Nuova chat - conversation_id resettato, verrà creata al primo messaggio');
     } catch (error) {
         console.error('Errore creazione nuova chat:', error);
         alert('Errore creazione nuova chat');
