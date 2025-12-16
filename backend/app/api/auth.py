@@ -139,7 +139,7 @@ async def signup(signup_request: SignupRequest):
                     if user_to_update:
                         if not user_to_update.business_name:
                             user_to_update.business_name = business_name
-                        user_to_update.email = email
+                        user_to_update.email = email.lower().strip()  # Normalizza email
                         user_to_update.password_hash = password_hash
                         user_to_update.updated_at = datetime.utcnow()
                         session.add(user_to_update)

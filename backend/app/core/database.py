@@ -368,13 +368,7 @@ class DatabaseManager:
                 logger.error(f"[DB] Errore ricerca vini da tabella dinamica {table_name}: {e}", exc_info=True)
                 return []
     
-    async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Trova utente per email"""
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(User).where(User.email == email)
-            )
-            return result.scalar_one_or_none()
+    # get_user_by_email già definito sopra (riga 122), questa è una duplicazione - rimossa
     
     async def create_user(
         self,
@@ -385,8 +379,10 @@ class DatabaseManager:
     ) -> User:
         """Crea nuovo utente"""
         async with AsyncSessionLocal() as session:
+            # Normalizza email in lowercase per consistenza
+            email_normalized = email.lower().strip()
             user = User(
-                email=email,
+                email=email_normalized,
                 password_hash=password_hash,
                 business_name=business_name,
                 telegram_id=telegram_id,
@@ -395,7 +391,7 @@ class DatabaseManager:
             session.add(user)
             await session.commit()
             await session.refresh(user)
-            logger.info(f"Utente creato: email={email}, telegram_id={telegram_id}")
+            logger.info(f"[DB] Utente creato: email={email_normalized}, telegram_id={telegram_id}, user_id={user.id}")
             return user
     
     async def update_user_password(
