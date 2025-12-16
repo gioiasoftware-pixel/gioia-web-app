@@ -590,18 +590,15 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         let contentHtml;
         if (isHtml) {
             // Se è HTML, inserisci direttamente senza escape
-            // Ma assicurati che non sia già escapato
+            // Se contiene HTML escapato (&lt; &gt;), decodificalo
             if (content.includes('&lt;') || content.includes('&gt;')) {
-                // Decodifica HTML escapato
+                // Decodifica HTML escapato: crea un elemento temporaneo e usa innerHTML per decodificare
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = content;
-                contentHtml = tempDiv.textContent || content;
-                // Se dopo la decodifica non inizia con <div, prova a parsare come HTML
-                if (!contentHtml.trim().startsWith('<')) {
-                    contentHtml = content; // Usa originale se decodifica non funziona
-                }
+                tempDiv.innerHTML = content; // Questo decodifica automaticamente &lt; in <
+                contentHtml = tempDiv.innerHTML; // Usa innerHTML, non textContent!
             } else {
-                contentHtml = content; // Usa direttamente se non escapato
+                // Usa direttamente se non escapato
+                contentHtml = content;
             }
             console.log('[CHAT] Rendering HTML card, content length:', content.length, 'starts with <div:', contentHtml.trim().startsWith('<div'));
         } else {
