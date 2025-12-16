@@ -338,13 +338,27 @@ class DatabaseManager:
                 search_pattern = f"%{search_term_clean}%"
                 search_pattern_unaccent = f"%{search_term_unaccent}%"
                 
+                # Ricerca estesa su tutti i campi rilevanti
                 query_conditions = [
+                    # Campi principali (priorità alta)
                     "name ILIKE :search_pattern",
                     "producer ILIKE :search_pattern",
                     "grape_variety ILIKE :search_pattern",
+                    # Campi secondari (regione, tipo, paese, fornitore)
+                    "region ILIKE :search_pattern",
+                    "wine_type ILIKE :search_pattern",
+                    "country ILIKE :search_pattern",
+                    "supplier ILIKE :search_pattern",
+                    "classification ILIKE :search_pattern",
+                    # Versioni senza accenti per tutti i campi
                     "translate(lower(name), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
                     "translate(lower(producer), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
-                    "translate(lower(grape_variety), :accent_from, :accent_to) ILIKE :search_pattern_unaccent"
+                    "translate(lower(grape_variety), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
+                    "translate(lower(region), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
+                    "translate(lower(wine_type), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
+                    "translate(lower(country), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
+                    "translate(lower(supplier), :accent_from, :accent_to) ILIKE :search_pattern_unaccent",
+                    "translate(lower(classification), :accent_from, :accent_to) ILIKE :search_pattern_unaccent"
                 ]
                 
                 variant_params = {}
@@ -354,9 +368,17 @@ class DatabaseManager:
                     variant_pattern_unaccent = f"%{variant_unaccent}%"
                     query_conditions.extend([
                         f"name ILIKE :search_variant_{idx}",
+                        f"producer ILIKE :search_variant_{idx}",
                         f"grape_variety ILIKE :search_variant_{idx}",
+                        f"region ILIKE :search_variant_{idx}",
+                        f"wine_type ILIKE :search_variant_{idx}",
+                        f"supplier ILIKE :search_variant_{idx}",
                         f"translate(lower(name), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}",
-                        f"translate(lower(grape_variety), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}"
+                        f"translate(lower(producer), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}",
+                        f"translate(lower(grape_variety), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}",
+                        f"translate(lower(region), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}",
+                        f"translate(lower(wine_type), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}",
+                        f"translate(lower(supplier), :accent_from, :accent_to) ILIKE :search_variant_unaccent_{idx}"
                     ])
                     variant_params[f"search_variant_{idx}"] = variant_pattern
                     variant_params[f"search_variant_unaccent_{idx}"] = variant_pattern_unaccent
@@ -370,8 +392,25 @@ class DatabaseManager:
                     "limit": limit * 2
                 }
                 
+                # Aggiungi ricerca per parole singole anche su campi secondari
                 for i, word in enumerate(search_words):
-                    query_params[f"word_{i}"] = f"%{word}%"
+                    word_pattern = f"%{word}%"
+                    word_unaccent = strip_accents(word)
+                    word_pattern_unaccent = f"%{word_unaccent}%"
+                    query_conditions.extend([
+                        f"region ILIKE :word_{i}",
+                        f"wine_type ILIKE :word_{i}",
+                        f"country ILIKE :word_{i}",
+                        f"supplier ILIKE :word_{i}",
+                        f"classification ILIKE :word_{i}",
+                        f"translate(lower(region), :accent_from, :accent_to) ILIKE :word_unaccent_{i}",
+                        f"translate(lower(wine_type), :accent_from, :accent_to) ILIKE :word_unaccent_{i}",
+                        f"translate(lower(country), :accent_from, :accent_to) ILIKE :word_unaccent_{i}",
+                        f"translate(lower(supplier), :accent_from, :accent_to) ILIKE :word_unaccent_{i}",
+                        f"translate(lower(classification), :accent_from, :accent_to) ILIKE :word_unaccent_{i}"
+                    ])
+                    query_params[f"word_{i}"] = word_pattern
+                    query_params[f"word_unaccent_{i}"] = word_pattern_unaccent
                     word_variants = normalize_plural_for_search(word)
                     for j, variant in enumerate(word_variants[1:], start=1):
                         param_key = f"word_{i}_var_{j}"
