@@ -274,25 +274,49 @@ INFORMAZIONI UTENTE:
                 
                 # Cerca vini se termine trovato
                 if wine_search_term:
-                    found_wines = await db_manager.search_wines(telegram_id, wine_search_term, limit=50)
-                    if found_wines:
-                        logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}'")
-                        specific_wine_info = self._format_wines_response(found_wines)
-                    else:
-                        logger.info(f"[FALLBACK] Nessun vino trovato per '{wine_search_term}', provo ricerca diretta")
-                        # Retry: ricerca diretta con tutto il prompt pulito
-                        broad_term = re.sub(r"[^\w\s'']", " ", user_message.lower()).strip()
-                        broad_term_clean = self._clean_wine_search_term(broad_term)
-                        if broad_term_clean and len(broad_term_clean) > 2 and broad_term_clean != wine_search_term:
-                            logger.info(f"[FALLBACK] Retry con termine: '{broad_term_clean}'")
-                            found_wines = await db_manager.search_wines(telegram_id, broad_term_clean, limit=50)
-                            if found_wines:
-                                logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini con ricerca diretta")
-                                specific_wine_info = self._format_wines_response(found_wines)
+                    try:
+                        found_wines = await db_manager.search_wines(telegram_id, wine_search_term, limit=50)
+                        if found_wines:
+                            logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}'")
+                            specific_wine_info = self._format_wines_response(found_wines)
+                        else:
+                            logger.info(f"[FALLBACK] Nessun vino trovato per '{wine_search_term}', provo ricerca diretta")
+                            # Retry: ricerca diretta con tutto il prompt pulito
+                            broad_term = re.sub(r"[^\w\s'']", " ", user_message.lower()).strip()
+                            broad_term_clean = self._clean_wine_search_term(broad_term)
+                            if broad_term_clean and len(broad_term_clean) > 2 and broad_term_clean != wine_search_term:
+                                logger.info(f"[FALLBACK] Retry con termine: '{broad_term_clean}'")
+                                try:
+                                    found_wines = await db_manager.search_wines(telegram_id, broad_term_clean, limit=50)
+                                    if found_wines:
+                                        logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini con ricerca diretta")
+                                        specific_wine_info = self._format_wines_response(found_wines)
+                                    else:
+                                        specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                                except Exception as e:
+                                    logger.error(f"[FALLBACK] Errore ricerca diretta: {e}", exc_info=True)
+                                    specific_wine_info = f"❌ Errore nella ricerca. Riprova con un termine diverso."
                             else:
                                 specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
-                        else:
-                            specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                    except Exception as e:
+                        logger.error(f"[FALLBACK] Errore ricerca vini: {e}", exc_info=True)
+                        # Prova ricerca diretta anche in caso di errore
+                        try:
+                            broad_term = re.sub(r"[^\w\s'']", " ", user_message.lower()).strip()
+                            broad_term_clean = self._clean_wine_search_term(broad_term)
+                            if broad_term_clean and len(broad_term_clean) > 2:
+                                logger.info(f"[FALLBACK] Retry dopo errore con termine: '{broad_term_clean}'")
+                                found_wines = await db_manager.search_wines(telegram_id, broad_term_clean, limit=50)
+                                if found_wines:
+                                    logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini con ricerca diretta dopo errore")
+                                    specific_wine_info = self._format_wines_response(found_wines)
+                                else:
+                                    specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                            else:
+                                specific_wine_info = f"❌ Errore nella ricerca. Riprova con un termine diverso."
+                        except Exception as e2:
+                            logger.error(f"[FALLBACK] Errore anche nel retry: {e2}", exc_info=True)
+                            specific_wine_info = f"❌ Errore temporaneo nella ricerca. Riprova tra qualche minuto."
                 
                 # Statistiche inventario (solo se non abbiamo già trovato vini specifici)
                 if not specific_wine_info:
@@ -369,7 +393,7 @@ INFORMAZIONI UTENTE:
         return response
         
         # Se abbiamo già una risposta formattata con vini trovati, restituiscila direttamente
-        if specific_wine_info and found_wines:
+        if specific_wine_info and found_wines and len(found_wines) > 0:
             buttons = None
             if 2 <= len(found_wines) <= 10:
                 buttons = [
@@ -388,6 +412,18 @@ INFORMAZIONI UTENTE:
                     "wines_found": len(found_wines)
                 },
                 "buttons": buttons
+            }
+        
+        # Se abbiamo un messaggio di errore ma non vini, restituiscilo comunque
+        if specific_wine_info and not found_wines:
+            return {
+                "message": specific_wine_info,
+                "metadata": {
+                    "type": "fallback_ai_response",
+                    "model": self.openai_model,
+                    "wines_found": 0
+                },
+                "buttons": None
             }
         
         # Altrimenti usa AI per generare risposta

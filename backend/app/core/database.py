@@ -211,15 +211,11 @@ class DatabaseManager:
                 accent_to = "aaaaeeeeiiiioooouuuuAAAAEEEEIIIIOOOOUUUU"
                 
                 def strip_accents(s: str) -> str:
-                    trans = str.maketrans({
-                        'à':'a','á':'a','â':'a','ä':'a','è':'e','é':'e','ê':'e','ë':'e',
-                        'ì':'i','í':'i','î':'i','ï':'i','ò':'o','ó':'o','ô':'o','ö':'o',
-                        'ù':'u','ú':'u','û':'u','ü':'u',
-                        'À':'A','Á':'A','Â':'A','Ä':'A','È':'E','É':'E','Ê':'E','Ë':'E',
-                        'Ì':'I','Í':'I','Î':'I','Ï':'I','Ò':'O','Ó':'O','Ô':'O','Ö':'O',
-                        'Ù':'U','Ú':'U','Û':'U','Ü':'U',
-                        ''':'',''':'','\'':'','`':'','´':''
-                    })
+                    # str.maketrans() richiede che tutte le chiavi siano di lunghezza 1
+                    # Usa due stringhe invece di un dict
+                    accent_chars = 'àáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜ\'\'`´'
+                    ascii_chars = 'aaaaeeeeiiiioooouuuuAAAAEEEEIIIIOOOOUUUU\'\'`\''
+                    trans = str.maketrans(accent_chars, ascii_chars)
                     return s.translate(trans)
                 
                 search_term_unaccent = strip_accents(search_term_clean)
