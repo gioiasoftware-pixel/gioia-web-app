@@ -254,14 +254,14 @@ async function handleChatSubmit(e) {
 
         // Remove loading and add AI response
         removeChatMessage(loadingId);
-        addChatMessage('ai', data.response || data.message || 'Nessuna risposta');
+        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons);
     } catch (error) {
         removeChatMessage(loadingId);
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
     }
 }
 
-function addChatMessage(role, content, isLoading = false, isError = false) {
+function addChatMessage(role, content, isLoading = false, isError = false, buttons = null) {
     const messagesContainer = document.getElementById('chat-messages');
     const messageId = `msg-${Date.now()}-${Math.random()}`;
     const messageEl = document.createElement('div');
@@ -281,10 +281,37 @@ function addChatMessage(role, content, isLoading = false, isError = false) {
         `;
     } else {
         const avatar = role === 'user' ? (currentUser?.email?.[0]?.toUpperCase() || 'U') : 'AI';
+        
+        // Renderizza pulsanti se presenti
+        let buttonsHtml = '';
+        if (buttons && Array.isArray(buttons) && buttons.length > 0) {
+            buttonsHtml = '<div class="chat-buttons">';
+            buttons.forEach(button => {
+                buttonsHtml += `<button class="chat-button" data-wine-id="${button.id}" data-wine-text="${escapeHtml(button.text)}">${escapeHtml(button.text)}</button>`;
+            });
+            buttonsHtml += '</div>';
+        }
+        
         messageEl.innerHTML = `
             <div class="chat-message-avatar">${avatar}</div>
-            <div class="chat-message-content" style="${isError ? 'color: var(--color-granaccia);' : ''}">${escapeHtml(content)}</div>
+            <div class="chat-message-content" style="${isError ? 'color: var(--color-granaccia);' : ''}">${escapeHtml(content)}${buttonsHtml}</div>
         `;
+        
+        // Aggiungi event listeners ai pulsanti
+        if (buttons && buttons.length > 0) {
+            const buttonElements = messageEl.querySelectorAll('.chat-button');
+            buttonElements.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const wineId = btn.dataset.wineId;
+                    const wineText = btn.dataset.wineText;
+                    // Invia messaggio per richiedere dettagli vino
+                    const input = document.getElementById('chat-input');
+                    input.value = `dimmi tutto su ${wineText}`;
+                    input.dispatchEvent(new Event('input')); // Trigger resize
+                    document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+                });
+            });
+        }
     }
 
     messagesContainer.appendChild(messageEl);

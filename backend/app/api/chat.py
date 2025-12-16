@@ -4,7 +4,7 @@ Reuse logica telegram bot senza componente Telegram
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 import logging
 
 from app.services.ai_service import ai_service
@@ -25,6 +25,7 @@ class ChatResponse(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     metadata: dict
+    buttons: Optional[List[Dict[str, Any]]] = None  # Pulsanti interattivi per selezione vini
 
 
 @router.post("/message", response_model=ChatResponse)
@@ -59,7 +60,8 @@ async def send_message(
     return ChatResponse(
         message=result["message"],
         conversation_id=chat_message.conversation_id,
-        metadata=result.get("metadata", {})
+        metadata=result.get("metadata", {}),
+        buttons=result.get("buttons")  # Includi pulsanti se presenti
     )
 
 
