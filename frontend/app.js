@@ -321,7 +321,20 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         if (buttons && Array.isArray(buttons) && buttons.length > 0) {
             buttonsHtml = '<div class="chat-buttons">';
             buttons.forEach(button => {
-                buttonsHtml += `<button class="chat-button" data-wine-id="${button.id}" data-wine-text="${escapeHtml(button.text)}">${escapeHtml(button.text)}</button>`;
+                // Controlla se è un pulsante di conferma movimento
+                const isMovementConfirmation = button.data && button.data.movement_type && button.data.wine_id && button.data.quantity;
+                
+                if (isMovementConfirmation) {
+                    // Pulsante di conferma movimento
+                    buttonsHtml += `<button class="chat-button" 
+                        data-wine-id="${button.data.wine_id}" 
+                        data-wine-text="${escapeHtml(button.text)}"
+                        data-movement-type="${button.data.movement_type}"
+                        data-quantity="${button.data.quantity}">${escapeHtml(button.text)}</button>`;
+                } else {
+                    // Pulsante normale (ricerca vino)
+                    buttonsHtml += `<button class="chat-button" data-wine-id="${button.id}" data-wine-text="${escapeHtml(button.text)}">${escapeHtml(button.text)}</button>`;
+                }
             });
             buttonsHtml += '</div>';
         }
@@ -348,10 +361,17 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                 btn.addEventListener('click', () => {
                     const wineId = btn.dataset.wineId;
                     const wineText = btn.dataset.wineText;
-                    // Se c'è un wine_id, invia anche quello per ricerca diretta
+                    const movementType = btn.dataset.movementType;
+                    const quantity = btn.dataset.quantity;
+                    
                     const input = document.getElementById('chat-input');
-                    if (wineId) {
-                        // Invia messaggio con ID per ricerca diretta
+                    
+                    // Se è un pulsante di conferma movimento, invia messaggio con formato speciale
+                    if (movementType && quantity && wineId) {
+                        // Formato: [movement:consumo/rifornimento] [wine_id:123] [quantity:3]
+                        input.value = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
+                    } else if (wineId) {
+                        // Pulsante normale: ricerca vino con ID
                         input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
                     } else {
                         // Fallback: solo testo

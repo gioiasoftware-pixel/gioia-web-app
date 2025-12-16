@@ -84,11 +84,95 @@ class AIService:
             }
         
         try:
+            # ========== CHECK PER MOVEMENT CON CONFERMA ==========
+            # Se il messaggio contiene [movement:consumo/rifornimento] [wine_id:123] [quantity:3],
+            # processa direttamente il movimento senza passare per l'AI
+            import re
+            movement_match = re.search(r'\[movement:(consumo|rifornimento)\]', user_message)
+            wine_id_match = re.search(r'\[wine_id:(\d+)\]', user_message)
+            quantity_match = re.search(r'\[quantity:(\d+)\]', user_message)
+            
+            if movement_match and wine_id_match and quantity_match:
+                movement_type = movement_match.group(1)
+                wine_id = int(wine_id_match.group(1))
+                quantity = int(quantity_match.group(1))
+                
+                logger.info(f"[AI_SERVICE] Rilevato movimento con conferma: type={movement_type}, wine_id={wine_id}, quantity={quantity}")
+                
+                # Recupera vino per ID
+                wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+                if not wine:
+                    error_html = self._generate_error_message_html(f"Vino con ID {wine_id} non trovato.")
+                    return {
+                        "message": error_html,
+                        "metadata": {"type": "movement_confirmation_error"},
+                        "buttons": None,
+                        "is_html": True
+                    }
+                
+                # Processa movimento direttamente
+                try:
+                    user = await db_manager.get_user_by_telegram_id(telegram_id)
+                    if not user or not user.business_name:
+                        error_html = self._generate_error_message_html("Nome locale non trovato. Completa prima l'onboarding.")
+                        return {
+                            "message": error_html,
+                            "metadata": {"type": "movement_confirmation_error"},
+                            "buttons": None,
+                            "is_html": True
+                        }
+                    
+                    result = await processor_client.process_movement(
+                        telegram_id=telegram_id,
+                        business_name=user.business_name,
+                        wine_name=wine.name,
+                        movement_type=movement_type,
+                        quantity=quantity
+                    )
+                    
+                    if result.get('status') == 'success':
+                        qty_before = result.get('quantity_before', 0)
+                        qty_after = result.get('quantity_after', 0)
+                        
+                        html_card = self._generate_movement_card_html(
+                            movement_type=movement_type,
+                            wine_name=wine.name,
+                            quantity=quantity,
+                            qty_before=qty_before,
+                            qty_after=qty_after
+                        )
+                        return {
+                            "message": html_card,
+                            "metadata": {
+                                "type": "movement_confirmed",
+                                "movement_type": movement_type,
+                                "wine_id": wine_id
+                            },
+                            "buttons": None,
+                            "is_html": True
+                        }
+                    else:
+                        error_msg = result.get('error', 'Errore sconosciuto')
+                        error_html = self._generate_error_message_html(f"Errore: {error_msg}")
+                        return {
+                            "message": error_html,
+                            "metadata": {"type": "movement_confirmation_error"},
+                            "buttons": None,
+                            "is_html": True
+                        }
+                except Exception as e:
+                    logger.error(f"[AI_SERVICE] Errore processamento movimento con conferma: {e}", exc_info=True)
+                    error_html = self._generate_error_message_html(f"Errore durante il processamento: {str(e)[:200]}")
+                    return {
+                        "message": error_html,
+                        "metadata": {"type": "movement_confirmation_error"},
+                        "buttons": None,
+                        "is_html": True
+                    }
+            
             # ========== CHECK PER WINE_ID NEL MESSAGGIO ==========
             # Se il messaggio contiene [wine_id:123], recupera direttamente il vino per ID
-            import re
-            wine_id_match = re.search(r'\[wine_id:(\d+)\]', user_message)
-            if wine_id_match:
+            if wine_id_match and not movement_match:
                 wine_id = int(wine_id_match.group(1))
                 logger.info(f"[AI_SERVICE] Rilevato wine_id={wine_id} nel messaggio, recupero diretto")
                 
@@ -631,6 +715,44 @@ INFORMAZIONI UTENTE:
         html += '<h3 class="error-card-title">Errore</h3>'
         html += '</div>'
         html += f'<div class="error-card-message">{self._escape_html(error_message)}</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _generate_wine_confirmation_html(self, wine_query: str, wines: list, movement_type: str, quantity: int) -> str:
+        """
+        Genera HTML per card di conferma vino quando ci sono ambiguità.
+        Chiede all'utente di selezionare quale vino intendeva.
+        Stile gio-ia: card con lista vini e pulsanti.
+        """
+        movement_label = "consumo" if movement_type == "consumo" else "rifornimento"
+        
+        html = '<div class="wines-list-card">'
+        html += '<div class="wines-list-header">'
+        html += f'<h3 class="wines-list-title">Quale vino intendevi?</h3>'
+        html += f'<span class="wines-list-query">per "{self._escape_html(wine_query)}" ({quantity} bottiglie - {movement_label})</span>'
+        html += '</div>'
+        
+        html += '<div class="wines-list-body">'
+        
+        # Mostra fino a 10 vini nella lista
+        display_wines = wines[:10]
+        for wine in display_wines:
+            html += '<div class="wines-list-item">'
+            html += f'<span class="wines-list-item-name">{self._escape_html(wine.name)}</span>'
+            if wine.producer:
+                html += f'<span class="wines-list-item-producer">{self._escape_html(wine.producer)}</span>'
+            if wine.vintage:
+                html += f'<span class="wines-list-item-vintage">{wine.vintage}</span>'
+            if wine.quantity is not None:
+                html += f'<span class="wines-list-item-qty">{wine.quantity} bott.</span>'
+            html += '</div>'
+        
+        html += '</div>'
+        
+        # Footer con istruzioni
+        html += '<div class="wines-list-footer">💡 Seleziona quale vino vuoi registrare per questo movimento.</div>'
+        
         html += '</div>'
         
         return html
@@ -1630,8 +1752,39 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     original_filters=None
                 )
                 
-                # Se trovato, usa il nome esatto del primo match
-                if wines and len(wines) > 0:
+                # Se trovato più di un vino, chiedi conferma all'utente con pulsanti
+                if wines and len(wines) > 1:
+                    logger.info(f"[TOOLS] {tool_name}: Trovati {len(wines)} vini possibili per '{wine_name}', richiedo conferma")
+                    # Genera card HTML per chiedere conferma
+                    confirmation_html = self._generate_wine_confirmation_html(
+                        wine_query=wine_name,
+                        wines=wines,
+                        movement_type=movement_type,
+                        quantity=quantity
+                    )
+                    # Genera buttons per la selezione
+                    buttons = [
+                        {
+                            "id": wine.id,
+                            "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else ""),
+                            "data": {
+                                "wine_id": wine.id,
+                                "wine_name": wine.name,
+                                "movement_type": movement_type,
+                                "quantity": quantity
+                            }
+                        }
+                        for wine in wines[:10]
+                    ]
+                    return {
+                        "success": False,
+                        "error": confirmation_html,
+                        "is_html": True,
+                        "buttons": buttons,
+                        "needs_confirmation": True
+                    }
+                elif wines and len(wines) == 1:
+                    # Un solo vino trovato: usa direttamente
                     matched_wine_name = wines[0].name
                     logger.info(f"[TOOLS] {tool_name}: Fuzzy matching '{wine_name}' → '{matched_wine_name}' (livello: {level_used})")
                     wine_name = matched_wine_name  # Usa nome esatto trovato nel database
@@ -1722,6 +1875,7 @@ ISTRUZIONI IMPORTANTI:
 - Usa sempre i dati dell'inventario e dei movimenti quando disponibili
 - Sii specifico e pratico nei consigli
 - Se l'utente comunica consumi/rifornimenti, usa register_consumption o register_replenishment
+- IMPORTANTE: Se l'utente comunica MULTIPLI movimenti in un singolo messaggio (es: "ho ricevuto 3 bottiglie X e 2 bottiglie Y"), chiama register_consumption o register_replenishment MULTIPLE VOLTE, una per ogni vino/quantità
 - Se l'inventario ha scorte basse, avvisa proattivamente
 
 REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMPRE il database usando i tools disponibili."""
@@ -1757,7 +1911,59 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
             tool_calls = getattr(message, "tool_calls", None)
             
             if tool_calls:
-                # Esegui la prima tool call (una risposta deterministica e rapida)
+                # Gestisci multiple tool calls per movimenti multipli
+                movement_tools = ("register_consumption", "register_replenishment")
+                movement_calls = [call for call in tool_calls if getattr(call.function, "name", "") in movement_tools]
+                
+                # Se ci sono multiple chiamate per movimenti, eseguile tutte
+                if len(movement_calls) > 1:
+                    logger.info(f"[FUNCTION_CALLING] Rilevati {len(movement_calls)} movimenti multipli, esecuzione sequenziale")
+                    results_html = []
+                    errors = []
+                    
+                    for call in movement_calls:
+                        fn = call.function
+                        tool_name = getattr(fn, "name", "")
+                        tool_args = {}
+                        try:
+                            tool_args = json.loads(getattr(fn, "arguments", "{}") or "{}")
+                        except Exception as e:
+                            logger.error(f"[FUNCTION_CALLING] Errore parsing tool arguments: {e}")
+                            errors.append(f"Errore parsing argomenti per {tool_name}")
+                            continue
+                        
+                        logger.info(f"[FUNCTION_CALLING] Tool chiamato: {tool_name} con args: {tool_args}")
+                        tool_result = await self._execute_tool(tool_name, tool_args, telegram_id)
+                        
+                        if tool_result.get("success"):
+                            # Se il risultato è HTML, aggiungilo alla lista
+                            if tool_result.get("is_html"):
+                                results_html.append(tool_result.get("message", ""))
+                            else:
+                                results_html.append(f"✅ {tool_result.get('message', 'Operazione completata')}")
+                        else:
+                            error_msg = tool_result.get("error", "Errore sconosciuto")
+                            errors.append(f"{tool_name}: {error_msg}")
+                    
+                    # Combina tutti i risultati HTML
+                    combined_html = "".join(results_html)
+                    if errors:
+                        error_html = self._generate_error_message_html("Alcuni movimenti non sono stati registrati: " + "; ".join(errors))
+                        combined_html += error_html
+                    
+                    return {
+                        "message": combined_html,
+                        "metadata": {
+                            "type": "function_call",
+                            "tool": "multiple_movements",
+                            "count": len(movement_calls),
+                            "model": self.openai_model
+                        },
+                        "buttons": None,
+                        "is_html": True
+                    }
+                
+                # Altrimenti esegui solo la prima tool call (comportamento normale)
                 call = tool_calls[0]
                 fn = call.function
                 tool_name = getattr(fn, "name", "")
