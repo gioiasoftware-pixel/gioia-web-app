@@ -75,44 +75,19 @@ function setupEventListeners() {
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
 
     // Chat sidebar
-    document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
-    // Setup pulsante hamburger con supporto Safari mobile
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        addUniversalEventListener(newChatBtn, handleNewChat);
+    }
+    
+    // Setup pulsante hamburger con supporto universale mobile
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        console.log('[DEBUG] Sidebar toggle button trovato:', sidebarToggle);
-        
-        // Flag per prevenire doppio trigger su Safari
-        let touchHandled = false;
-        
-        // Handler unificato per click/touch
-        const handleToggle = (e) => {
+        console.log('[DEBUG] Sidebar toggle button trovato, touch device:', isTouchDevice());
+        addUniversalEventListener(sidebarToggle, (e) => {
             console.log('[DEBUG] Toggle chiamato, tipo evento:', e.type);
-            // Se è un touch, previeni il click successivo
-            if (e.type === 'touchend' || e.type === 'touchstart') {
-                touchHandled = true;
-                e.preventDefault();
-                e.stopPropagation();
-                toggleSidebar();
-                // Reset flag dopo breve delay
-                setTimeout(() => { touchHandled = false; }, 300);
-            } else if (e.type === 'click') {
-                // Se è un click e non abbiamo già gestito un touch, procedi
-                if (!touchHandled) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleSidebar();
-                } else {
-                    // Ignora click se abbiamo già gestito touch
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-            }
-        };
-        
-        // Safari mobile: usa touchend (più affidabile di touchstart)
-        sidebarToggle.addEventListener('touchend', handleToggle, { passive: false });
-        // Fallback per desktop e browser non-touch
-        sidebarToggle.addEventListener('click', handleToggle);
+            toggleSidebar();
+        });
     } else {
         console.error('[DEBUG] Sidebar toggle button NON trovato!');
     }
@@ -121,9 +96,15 @@ function setupEventListeners() {
     // Gestisci resize window per mobile/desktop
     window.addEventListener('resize', handleWindowResize);
 
-    // Viewer
-    document.getElementById('viewer-toggle')?.addEventListener('click', toggleViewer);
-    document.getElementById('viewer-close')?.addEventListener('click', closeViewer);
+    // Viewer - usa listener universale per mobile
+    const viewerToggle = document.getElementById('viewer-toggle');
+    if (viewerToggle) {
+        addUniversalEventListener(viewerToggle, toggleViewer);
+    }
+    const viewerClose = document.getElementById('viewer-close');
+    if (viewerClose) {
+        addUniversalEventListener(viewerClose, closeViewer);
+    }
     document.getElementById('viewer-search')?.addEventListener('input', handleViewerSearch);
     setupViewerFilters();
 }
@@ -549,7 +530,7 @@ function populateFilters(facets) {
 function setupFilterItems() {
     const filterItems = document.querySelectorAll('.filter-item');
     filterItems.forEach(item => {
-        item.addEventListener('click', () => {
+        addUniversalEventListener(item, () => {
             const filterType = item.closest('.filter-content').id.replace('filter-', '');
             const value = item.dataset.value;
 
@@ -729,9 +710,9 @@ function renderConversationsList() {
         </div>
     `).join('');
     
-    // Aggiungi event listeners
+    // Aggiungi event listeners con supporto universale mobile
     sidebarList.querySelectorAll('.chat-sidebar-item').forEach(item => {
-        item.addEventListener('click', () => {
+        addUniversalEventListener(item, () => {
             const conversationId = parseInt(item.dataset.conversationId);
             selectConversation(conversationId);
         });
@@ -939,36 +920,13 @@ function loadSidebarState() {
 function closeSidebarOnOverlayClick() {
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
-        let touchHandled = false;
-        
-        const closeSidebar = (e) => {
-            if (e.type === 'touchend') {
-                touchHandled = true;
-                e.preventDefault();
-                e.stopPropagation();
-                const sidebar = document.getElementById('chat-sidebar');
-                if (sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                    overlay.classList.remove('active');
-                }
-                setTimeout(() => { touchHandled = false; }, 300);
-            } else if (e.type === 'click' && !touchHandled) {
-                e.preventDefault();
-                e.stopPropagation();
-                const sidebar = document.getElementById('chat-sidebar');
-                if (sidebar.classList.contains('open')) {
-                    sidebar.classList.remove('open');
-                    overlay.classList.remove('active');
-                }
-            } else if (e.type === 'click') {
-                e.preventDefault();
-                e.stopPropagation();
+        addUniversalEventListener(overlay, (e) => {
+            const sidebar = document.getElementById('chat-sidebar');
+            if (sidebar && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
             }
-        };
-        
-        // Safari: touchend è più affidabile
-        overlay.addEventListener('touchend', closeSidebar, { passive: false });
-        overlay.addEventListener('click', closeSidebar);
+        });
     }
 }
 
