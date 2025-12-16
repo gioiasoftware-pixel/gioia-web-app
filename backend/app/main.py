@@ -28,8 +28,19 @@ app.add_middleware(
 )
 
 # Serve static files from frontend directory
-# Path: backend/app/main.py -> backend -> gioia-web-app -> frontend
-frontend_path = Path(__file__).parent.parent.parent.parent / "frontend"
+# On Railway: working dir is /app, so frontend is at /app/frontend
+# From backend/app/main.py: go up to /app, then to frontend
+base_path = Path(__file__).parent.parent.parent.parent  # /app
+frontend_path = base_path / "frontend"
+
+# Also try relative to current working directory (Railway uses /app)
+if not frontend_path.exists():
+    cwd = Path.cwd()  # Should be /app/backend when running
+    if cwd.name == "backend":
+        frontend_path = cwd.parent / "frontend"
+    else:
+        frontend_path = cwd / "frontend"
+
 if frontend_path.exists():
     app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
     
@@ -40,7 +51,7 @@ if frontend_path.exists():
         index_file = frontend_path / "index.html"
         if index_file.exists():
             return FileResponse(str(index_file))
-        return {"message": "Gio.ia Web App API", "version": "1.0.0", "docs": "/docs"}
+        return {"message": "Gio.ia Web App API", "version": "1.0.0", "docs": "/docs", "frontend_path": str(frontend_path), "exists": frontend_path.exists()}
 else:
     # Fallback if frontend not found
     @app.get("/")
@@ -49,7 +60,13 @@ else:
         return {
             "message": "Gio.ia Web App API",
             "version": "1.0.0",
-            "docs": "/docs"
+            "docs": "/docs",
+            "debug": {
+                "cwd": str(Path.cwd()),
+                "base_path": str(base_path),
+                "frontend_path": str(frontend_path),
+                "exists": frontend_path.exists() if frontend_path else False
+            }
         }
 
 # Health check endpoint
