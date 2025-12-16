@@ -88,6 +88,7 @@ async def signup(signup_request: SignupRequest):
     
     # Hash password
     password_hash = hash_password(password)
+    logger.info(f"[AUTH] Password hashata durante signup: hash_length={len(password_hash)}, hash_prefix={password_hash[:10]}...")
     
     # Caso speciale: telegram_id fornito e utente Telegram esiste già con onboarding completato
     if telegram_id:
@@ -225,7 +226,14 @@ async def login(login_request: LoginRequest):
             detail="Account non configurato. Completa la registrazione."
         )
     
-    if not verify_password(password, user.password_hash):
+    # Verifica password con logging dettagliato
+    logger.info(f"[AUTH] Verifica password: password_hash_length={len(user.password_hash) if user.password_hash else 0}, hash_prefix={user.password_hash[:10] if user.password_hash else 'None'}...")
+    
+    password_valid = verify_password(password, user.password_hash)
+    logger.info(f"[AUTH] Risultato verifica password: {password_valid}")
+    
+    if not password_valid:
+        logger.warning(f"[AUTH] Login fallito: password non corretta per email={email}, user_id={user.id}")
         raise HTTPException(
             status_code=401,
             detail="Email o password non corretti"

@@ -26,12 +26,28 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica password contro hash"""
     try:
-        return bcrypt.checkpw(
+        if not hashed_password:
+            logger.warning("[AUTH] Hash password vuoto")
+            return False
+        
+        if not plain_password:
+            logger.warning("[AUTH] Password vuota")
+            return False
+        
+        # Verifica che l'hash sia nel formato corretto (deve iniziare con $2b$)
+        if not hashed_password.startswith('$2b$'):
+            logger.error(f"[AUTH] Hash password formato non valido: inizia con '{hashed_password[:10]}' invece di '$2b$'")
+            return False
+        
+        result = bcrypt.checkpw(
             plain_password.encode('utf-8'),
             hashed_password.encode('utf-8')
         )
+        
+        logger.debug(f"[AUTH] Verifica password: result={result}, hash_length={len(hashed_password)}")
+        return result
     except Exception as e:
-        logger.error(f"[AUTH] Errore verifica password: {e}")
+        logger.error(f"[AUTH] Errore verifica password: {e}", exc_info=True)
         return False
 
 security = HTTPBearer()
