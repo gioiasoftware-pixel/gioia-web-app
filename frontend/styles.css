@@ -1509,6 +1509,17 @@ body {
     width: 100%;
 }
 
+/* Nascondi la sezione di visualizzazione quando in modalità modifica */
+.wine-card.expanded .wine-card-body {
+    display: none;
+}
+
+/* Nascondi anche l'header quando in modalità modifica (opzionale, per più spazio) */
+.wine-card.expanded .wine-card-header {
+    margin-bottom: 0;
+    padding-bottom: 12px;
+}
+
 .wine-card-header {
     display: flex;
     align-items: flex-start;
