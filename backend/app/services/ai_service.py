@@ -1584,6 +1584,9 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                 if tool_result.get("success"):
                     message_text = tool_result.get("message", "✅ Operazione completata")
                     buttons = tool_result.get("buttons")
+                    is_html = tool_result.get("is_html", False)
+                    
+                    logger.info(f"[FUNCTION_CALLING] Tool '{tool_name}' completato con successo, is_html={is_html}")
                     
                     return {
                         "message": message_text,
@@ -1592,7 +1595,8 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                             "tool": tool_name,
                             "model": self.openai_model
                         },
-                        "buttons": buttons
+                        "buttons": buttons,
+                        "is_html": is_html
                     }
                 else:
                     error_msg = tool_result.get("error", "Errore sconosciuto")
