@@ -88,6 +88,28 @@ app.include_router(chat.router)
 app.include_router(processor.router)
 app.include_router(viewer.router)
 
+# Esegui migrazioni all'avvio
+@app.on_event("startup")
+async def startup_migrations():
+    """
+    Esegue migrazioni database automaticamente all'avvio.
+    Verifica se le tabelle/colonne esistono prima di crearle/modificarle.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info("[STARTUP] ⚙️ Avvio esecuzione migrazioni database...")
+    
+    try:
+        from app.core.migrations import run_migrations
+        logger.info("[STARTUP] Importato modulo migrations, esecuzione run_migrations()...")
+        await run_migrations()
+        logger.info("[STARTUP] ✅ Migrazioni completate con successo")
+    except Exception as e:
+        logger.error(f"[STARTUP] ❌ Errore durante migrazioni all'avvio: {e}", exc_info=True)
+        # Non bloccare l'avvio se le migrazioni falliscono (potrebbe essere un problema temporaneo)
+        logger.warning("[STARTUP] ⚠️ Continuo l'avvio dell'applicazione nonostante errori migrazioni...")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
