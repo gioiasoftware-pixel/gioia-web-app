@@ -84,6 +84,33 @@ class AIService:
             }
         
         try:
+            # ========== CHECK PER WINE_ID NEL MESSAGGIO ==========
+            # Se il messaggio contiene [wine_id:123], recupera direttamente il vino per ID
+            import re
+            wine_id_match = re.search(r'\[wine_id:(\d+)\]', user_message)
+            if wine_id_match:
+                wine_id = int(wine_id_match.group(1))
+                logger.info(f"[AI_SERVICE] Rilevato wine_id={wine_id} nel messaggio, recupero diretto")
+                
+                wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+                if wine:
+                    # Genera HTML card per il vino trovato
+                    html_card = self._generate_wine_card_html(wine)
+                    return {
+                        "message": html_card,
+                        "metadata": {
+                            "type": "wine_by_id",
+                            "wine_id": wine_id
+                        },
+                        "buttons": None,
+                        "is_html": True
+                    }
+                else:
+                    # Vino non trovato per ID, procedi con ricerca normale
+                    logger.warning(f"[AI_SERVICE] Vino id={wine_id} non trovato, procedo con ricerca normale")
+                    # Rimuovi [wine_id:123] dal messaggio per procedere con ricerca normale
+                    user_message = re.sub(r'\s*\[wine_id:\d+\]', '', user_message).strip()
+            
             # ========== NUOVO FLUSSO: Function Calling prima di tutto ==========
             
             # 1. Prepara contesto utente per function calling

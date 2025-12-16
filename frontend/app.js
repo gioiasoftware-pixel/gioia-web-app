@@ -345,9 +345,15 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                 btn.addEventListener('click', () => {
                     const wineId = btn.dataset.wineId;
                     const wineText = btn.dataset.wineText;
-                    // Invia messaggio per richiedere dettagli vino
+                    // Se c'è un wine_id, invia anche quello per ricerca diretta
                     const input = document.getElementById('chat-input');
-                    input.value = `dimmi tutto su ${wineText}`;
+                    if (wineId) {
+                        // Invia messaggio con ID per ricerca diretta
+                        input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
+                    } else {
+                        // Fallback: solo testo
+                        input.value = `dimmi tutto su ${wineText}`;
+                    }
                     input.dispatchEvent(new Event('input')); // Trigger resize
                     document.getElementById('chat-form').dispatchEvent(new Event('submit'));
                 });

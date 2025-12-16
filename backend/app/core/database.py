@@ -198,6 +198,66 @@ class DatabaseManager:
                     logger.error(f"Errore anche nel fallback vecchia tabella wines: {fallback_error}", exc_info=True)
                     return []
     
+    async def get_wine_by_id(self, telegram_id: int, wine_id: int) -> Optional[Wine]:
+        """
+        Recupera un vino specifico per ID dalla tabella dinamica.
+        """
+        async with AsyncSessionLocal() as session:
+            user = await self.get_user_by_telegram_id(telegram_id)
+            if not user or not user.business_name:
+                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
+                return None
+            
+            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            
+            try:
+                query = sql_text(f"""
+                    SELECT * FROM {table_name} 
+                    WHERE id = :wine_id AND user_id = :user_id
+                    LIMIT 1
+                """)
+                
+                result = await session.execute(query, {"wine_id": wine_id, "user_id": user.id})
+                row = result.fetchone()
+                
+                if not row:
+                    logger.warning(f"[DB] Vino id={wine_id} non trovato per telegram_id={telegram_id}")
+                    return None
+                
+                # Converti la riga in oggetto Wine
+                wine_dict = {
+                    'id': row.id,
+                    'user_id': row.user_id,
+                    'name': row.name,
+                    'producer': row.producer,
+                    'vintage': row.vintage,
+                    'grape_variety': row.grape_variety,
+                    'region': row.region,
+                    'country': row.country,
+                    'wine_type': row.wine_type,
+                    'classification': row.classification,
+                    'quantity': row.quantity,
+                    'min_quantity': row.min_quantity if hasattr(row, 'min_quantity') else 0,
+                    'cost_price': row.cost_price,
+                    'selling_price': row.selling_price,
+                    'alcohol_content': row.alcohol_content,
+                    'description': row.description,
+                    'notes': row.notes,
+                    'created_at': row.created_at,
+                    'updated_at': row.updated_at
+                }
+                
+                wine = Wine()
+                for key, value in wine_dict.items():
+                    setattr(wine, key, value)
+                
+                logger.info(f"[DB] Recuperato vino id={wine_id} per telegram_id={telegram_id}: {wine.name}")
+                return wine
+                
+            except Exception as e:
+                logger.error(f"[DB] Errore recuperando vino id={wine_id} da tabella dinamica {table_name}: {e}", exc_info=True)
+                return None
+    
     async def search_wines(self, telegram_id: int, search_term: str, limit: int = 10) -> List[Wine]:
         """
         Cerca vini con ricerca fuzzy avanzata (async).
