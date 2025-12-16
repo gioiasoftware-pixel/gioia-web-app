@@ -647,6 +647,13 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
     messagesContainer.appendChild(messageEl);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
+    // Se è una card vino, aggiungi i segnalibri
+    if (isHtml && role === 'ai') {
+        setTimeout(() => {
+            setupWineCardBookmarks(messageEl);
+        }, 100);
+    }
+
     return messageId;
 }
 
@@ -661,6 +668,312 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// ============================================
+// WINE CARD BOOKMARKS
+// ============================================
+
+function setupWineCardBookmarks(messageEl) {
+    // Cerca la card vino dentro il messaggio
+    const wineCard = messageEl.querySelector('.wine-card[data-wine-id]');
+    if (!wineCard) return;
+    
+    const wineId = wineCard.dataset.wineId;
+    if (!wineId) return;
+    
+    // Controlla se i bookmarks sono già stati aggiunti
+    if (wineCard.querySelector('.wine-card-bookmarks')) return;
+    
+    // Crea container bookmarks
+    const bookmarksContainer = document.createElement('div');
+    bookmarksContainer.className = 'wine-card-bookmarks';
+    
+    // Bookmark "Modifica"
+    const editBookmark = document.createElement('button');
+    editBookmark.className = 'wine-card-bookmark';
+    editBookmark.textContent = '✏️';
+    editBookmark.title = 'Modifica';
+    editBookmark.dataset.action = 'edit';
+    editBookmark.dataset.wineId = wineId;
+    
+    // Bookmark "Mostra in inventario"
+    const inventoryBookmark = document.createElement('button');
+    inventoryBookmark.className = 'wine-card-bookmark';
+    inventoryBookmark.textContent = '📋';
+    inventoryBookmark.title = 'Mostra in inventario';
+    inventoryBookmark.dataset.action = 'inventory';
+    inventoryBookmark.dataset.wineId = wineId;
+    
+    // Aggiungi event listeners
+    addUniversalEventListener(editBookmark, (e) => {
+        e.stopPropagation();
+        handleWineCardEdit(wineCard, wineId);
+    });
+    
+    addUniversalEventListener(inventoryBookmark, (e) => {
+        e.stopPropagation();
+        handleWineCardShowInInventory(wineCard, wineId);
+    });
+    
+    bookmarksContainer.appendChild(editBookmark);
+    bookmarksContainer.appendChild(inventoryBookmark);
+    wineCard.appendChild(bookmarksContainer);
+}
+
+async function handleWineCardEdit(wineCard, wineId) {
+    // Se già espansa, chiudi
+    if (wineCard.classList.contains('expanded')) {
+        wineCard.classList.remove('expanded');
+        const editForm = wineCard.querySelector('.wine-card-edit-form');
+        if (editForm) editForm.remove();
+        return;
+    }
+    
+    // Espandi la card
+    wineCard.classList.add('expanded');
+    
+    // Carica dati vino dal backend
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines/${wineId}`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore caricamento dati vino');
+        }
+        
+        const wine = await response.json();
+        
+        // Crea form di modifica
+        const editForm = document.createElement('div');
+        editForm.className = 'wine-card-edit-form';
+        
+        // Estrai valori esistenti dalla card
+        const cardBody = wineCard.querySelector('.wine-card-body');
+        const fields = {};
+        cardBody.querySelectorAll('.wine-card-field').forEach(field => {
+            const label = field.querySelector('.wine-card-field-label')?.textContent.trim();
+            const value = field.querySelector('.wine-card-field-value')?.textContent.trim();
+            
+            if (label === 'Quantità') {
+                fields.quantity = parseInt(value) || null;
+            } else if (label === 'Prezzo Vendita') {
+                fields.selling_price = parseFloat(value.replace('€', '').trim()) || null;
+            } else if (label === 'Prezzo Acquisto') {
+                fields.cost_price = parseFloat(value.replace('€', '').trim()) || null;
+            } else if (label === 'Annata') {
+                fields.vintage = value || null;
+            } else if (label === 'Regione') {
+                fields.region = value || null;
+            } else if (label === 'Paese') {
+                fields.country = value || null;
+            } else if (label === 'Tipo') {
+                fields.wine_type = value || null;
+            }
+        });
+        
+        // Usa dati dal backend se disponibili, altrimenti usa quelli dalla card
+        const wineData = {
+            name: wine.name || wineCard.querySelector('.wine-card-title')?.textContent.trim() || '',
+            producer: wine.producer || wineCard.querySelector('.wine-card-producer')?.textContent.trim() || '',
+            quantity: wine.quantity !== undefined ? wine.quantity : fields.quantity,
+            selling_price: wine.selling_price !== undefined ? wine.selling_price : fields.selling_price,
+            cost_price: wine.cost_price !== undefined ? wine.cost_price : fields.cost_price,
+            vintage: wine.vintage || fields.vintage || '',
+            region: wine.region || fields.region || '',
+            country: wine.country || fields.country || '',
+            wine_type: wine.wine_type || fields.wine_type || '',
+            supplier: wine.supplier || '',
+            grape_variety: wine.grape_variety || '',
+            classification: wine.classification || '',
+            alcohol_content: wine.alcohol_content || '',
+            description: wine.description || '',
+            notes: wine.notes || '',
+        };
+        
+        editForm.innerHTML = `
+            <div class="wine-card-edit-form-grid">
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Nome</label>
+                    <input type="text" class="wine-card-edit-input" name="name" value="${escapeHtml(String(wineData.name))}" required>
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Produttore</label>
+                    <input type="text" class="wine-card-edit-input" name="producer" value="${escapeHtml(String(wineData.producer))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Quantità</label>
+                    <input type="number" class="wine-card-edit-input" name="quantity" value="${wineData.quantity !== null && wineData.quantity !== undefined ? wineData.quantity : ''}" min="0">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Prezzo Vendita (€)</label>
+                    <input type="number" class="wine-card-edit-input" name="selling_price" value="${wineData.selling_price !== null && wineData.selling_price !== undefined ? wineData.selling_price : ''}" step="0.01" min="0">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Prezzo Acquisto (€)</label>
+                    <input type="number" class="wine-card-edit-input" name="cost_price" value="${wineData.cost_price !== null && wineData.cost_price !== undefined ? wineData.cost_price : ''}" step="0.01" min="0">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Annata</label>
+                    <input type="text" class="wine-card-edit-input" name="vintage" value="${escapeHtml(String(wineData.vintage))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Regione</label>
+                    <input type="text" class="wine-card-edit-input" name="region" value="${escapeHtml(String(wineData.region))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Paese</label>
+                    <input type="text" class="wine-card-edit-input" name="country" value="${escapeHtml(String(wineData.country))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Tipo</label>
+                    <input type="text" class="wine-card-edit-input" name="wine_type" value="${escapeHtml(String(wineData.wine_type))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Fornitore</label>
+                    <input type="text" class="wine-card-edit-input" name="supplier" value="${escapeHtml(String(wineData.supplier))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Vitigno</label>
+                    <input type="text" class="wine-card-edit-input" name="grape_variety" value="${escapeHtml(String(wineData.grape_variety))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Classificazione</label>
+                    <input type="text" class="wine-card-edit-input" name="classification" value="${escapeHtml(String(wineData.classification))}">
+                </div>
+                <div class="wine-card-edit-field">
+                    <label class="wine-card-edit-label">Gradazione (% vol)</label>
+                    <input type="text" class="wine-card-edit-input" name="alcohol_content" value="${escapeHtml(String(wineData.alcohol_content))}">
+                </div>
+                <div class="wine-card-edit-field full-width">
+                    <label class="wine-card-edit-label">Descrizione</label>
+                    <textarea class="wine-card-edit-textarea" name="description">${escapeHtml(String(wineData.description))}</textarea>
+                </div>
+                <div class="wine-card-edit-field full-width">
+                    <label class="wine-card-edit-label">Note</label>
+                    <textarea class="wine-card-edit-textarea" name="notes">${escapeHtml(String(wineData.notes))}</textarea>
+                </div>
+            </div>
+            <div class="wine-card-edit-actions">
+                <button class="wine-card-edit-btn cancel" type="button">Annulla</button>
+                <button class="wine-card-edit-btn save" type="button">Salva</button>
+            </div>
+        `;
+        
+        wineCard.appendChild(editForm);
+        
+        // Event listeners per i pulsanti
+        const cancelBtn = editForm.querySelector('.wine-card-edit-btn.cancel');
+        const saveBtn = editForm.querySelector('.wine-card-edit-btn.save');
+        
+        addUniversalEventListener(cancelBtn, () => {
+            wineCard.classList.remove('expanded');
+            editForm.remove();
+        });
+        
+        addUniversalEventListener(saveBtn, () => {
+            saveWineCardEdit(wineId, editForm, wineCard);
+        });
+        
+    } catch (error) {
+        console.error('Errore caricamento dati vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
+}
+
+async function saveWineCardEdit(wineId, editForm, wineCard) {
+    const formData = new FormData(editForm);
+    const data = {};
+    
+    // Raccogli tutti i valori dal form
+    editForm.querySelectorAll('input, textarea').forEach(input => {
+        const name = input.name;
+        const value = input.value.trim();
+        
+        if (name === 'quantity') {
+            data[name] = value === '' ? null : parseInt(value);
+        } else if (name === 'selling_price' || name === 'cost_price') {
+            data[name] = value === '' ? null : parseFloat(value);
+        } else {
+            data[name] = value === '' ? null : value;
+        }
+    });
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines/${wineId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore salvataggio' }));
+            throw new Error(errorData.detail || 'Errore salvataggio');
+        }
+        
+        // Chiudi form e ricarica card
+        wineCard.classList.remove('expanded');
+        editForm.remove();
+        
+        // Ricarica la card con i nuovi dati (opzionale: ricarica da backend)
+        addChatMessage('ai', 'Vino aggiornato con successo!', false, false);
+        
+    } catch (error) {
+        console.error('Errore salvataggio vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
+}
+
+async function handleWineCardShowInInventory(wineCard, wineId) {
+    // Apri il viewer se non è già aperto
+    const panel = document.getElementById('viewer-panel');
+    if (!panel.classList.contains('open')) {
+        toggleViewer();
+    }
+    
+    // Attendi che il viewer sia aperto e i dati caricati
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Carica dati vino per ottenere nome e produttore
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines/${wineId}`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore caricamento dati vino');
+        }
+        
+        const wine = await response.json();
+        const searchQuery = `${wine.name}${wine.producer ? ' ' + wine.producer : ''}`;
+        
+        // Imposta ricerca nel viewer
+        const searchInput = document.getElementById('viewer-search');
+        if (searchInput) {
+            searchInput.value = searchQuery;
+            viewerSearchQuery = searchQuery;
+            applyViewerFilters();
+        }
+        
+        // Apri fullscreen se siamo su desktop
+        if (window.innerWidth > 768) {
+            if (!panel.classList.contains('fullscreen')) {
+                toggleViewerFullscreen();
+            }
+        }
+        
+    } catch (error) {
+        console.error('Errore caricamento dati vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
 }
 
 // ============================================
@@ -1667,7 +1980,17 @@ async function loadConversationMessages(conversationId) {
                 finalContent = tempDiv.textContent || content;
             }
             
-            addChatMessage(msg.role, finalContent, false, false, null, isHtml);
+            const messageId = addChatMessage(msg.role, finalContent, false, false, null, isHtml);
+            
+            // Setup bookmarks per card vino dopo il rendering
+            if (isHtml && msg.role === 'ai') {
+                setTimeout(() => {
+                    const messageEl = document.getElementById(messageId);
+                    if (messageEl) {
+                        setupWineCardBookmarks(messageEl);
+                    }
+                }, 100);
+            }
         });
         
         // Scrolla in fondo

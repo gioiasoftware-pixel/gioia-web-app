@@ -428,7 +428,9 @@ INFORMAZIONI UTENTE:
         Genera HTML per card informazioni vino.
         Stile gio-ia: bianco con accenti granaccia.
         """
-        html = '<div class="wine-card">'
+        wine_id = getattr(wine, 'id', None)
+        wine_id_attr = f' data-wine-id="{wine_id}"' if wine_id else ''
+        html = f'<div class="wine-card"{wine_id_attr}>'
         html += '<div class="wine-card-header">'
         html += f'<div><h3 class="wine-card-title">{self._escape_html(wine.name)}</h3>'
         if wine.producer:

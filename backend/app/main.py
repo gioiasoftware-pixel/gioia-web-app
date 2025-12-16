@@ -80,13 +80,14 @@ async def health_check():
     return {"status": "healthy", "service": "gioia-web-app-backend"}
 
 # Import routers
-from app.api import auth, chat, processor, viewer
+from app.api import auth, chat, processor, viewer, wines
 
 # Include routers
 app.include_router(auth.router)
 app.include_router(chat.router)
 app.include_router(processor.router)
 app.include_router(viewer.router)
+app.include_router(wines.router)
 
 # Esegui migrazioni all'avvio
 @app.on_event("startup")
