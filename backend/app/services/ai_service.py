@@ -181,6 +181,7 @@ INFORMAZIONI UTENTE:
                             break
                 
                 # Cerca vini se termine trovato
+                found_wines = []
                 if wine_search_term:
                     found_wines = await db_manager.search_wines(telegram_id, wine_search_term, limit=50)
                     if found_wines:
@@ -272,7 +273,7 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
                 "metadata": {
                     "type": "fallback_ai_response",
                     "model": self.openai_model,
-                    "wines_found": len(found_wines) if 'found_wines' in locals() else 0
+                    "wines_found": len(found_wines) if found_wines else 0
                 }
             }
         except Exception as e:
