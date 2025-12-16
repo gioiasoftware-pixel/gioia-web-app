@@ -254,14 +254,14 @@ async function handleChatSubmit(e) {
 
         // Remove loading and add AI response
         removeChatMessage(loadingId);
-        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons);
+        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons, data.is_html);
     } catch (error) {
         removeChatMessage(loadingId);
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
     }
 }
 
-function addChatMessage(role, content, isLoading = false, isError = false, buttons = null) {
+function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
     const messagesContainer = document.getElementById('chat-messages');
     const messageId = `msg-${Date.now()}-${Math.random()}`;
     const messageEl = document.createElement('div');
@@ -292,9 +292,14 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             buttonsHtml += '</div>';
         }
         
+        // Se isHtml è true, renderizza HTML direttamente (per card)
+        // Altrimenti escape HTML per sicurezza
+        const contentHtml = isHtml ? content : escapeHtml(content);
+        const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
+        
         messageEl.innerHTML = `
             <div class="chat-message-avatar">${avatar}</div>
-            <div class="chat-message-content" style="${isError ? 'color: var(--color-granaccia);' : ''}">${escapeHtml(content)}${buttonsHtml}</div>
+            <div class="${contentClass}" style="${isError ? 'color: var(--color-granaccia);' : ''}">${contentHtml}${buttonsHtml}</div>
         `;
         
         // Aggiungi event listeners ai pulsanti

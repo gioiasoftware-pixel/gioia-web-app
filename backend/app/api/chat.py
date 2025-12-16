@@ -98,7 +98,8 @@ async def send_message(
             message=result.get("message", "⚠️ Nessuna risposta disponibile"),
             conversation_id=chat_message.conversation_id,
             metadata=result.get("metadata", {}),
-            buttons=result.get("buttons")  # Includi pulsanti se presenti
+            buttons=result.get("buttons"),  # Includi pulsanti se presenti
+            is_html=result.get("is_html", False)  # Indica se contiene HTML
         )
     except Exception as e:
         logger.error(f"[CHAT] Errore processamento messaggio: {e}", exc_info=True)

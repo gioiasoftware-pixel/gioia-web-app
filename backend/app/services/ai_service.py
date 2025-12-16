@@ -308,6 +308,128 @@ INFORMAZIONI UTENTE:
         
         return result if result else term  # Se rimane vuoto, ritorna il termine originale
     
+    # ========== HTML CARD GENERATORS ==========
+    
+    def _generate_wine_card_html(self, wine) -> str:
+        """
+        Genera HTML per card informazioni vino.
+        Stile gio-ia: bianco con accenti granaccia.
+        """
+        html = '<div class="wine-card">'
+        html += '<div class="wine-card-header">'
+        html += f'<div><h3 class="wine-card-title">{self._escape_html(wine.name)}</h3>'
+        if wine.producer:
+            html += f'<div class="wine-card-producer">{self._escape_html(wine.producer)}</div>'
+        html += '</div>'
+        html += '</div>'
+        
+        html += '<div class="wine-card-body">'
+        
+        # Quantità
+        if wine.quantity is not None:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Quantità</span>'
+            html += f'<span class="wine-card-field-value quantity">{wine.quantity} bottiglie</span>'
+            html += '</div>'
+        
+        # Prezzo vendita
+        if wine.selling_price:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Prezzo Vendita</span>'
+            html += f'<span class="wine-card-field-value price">€{wine.selling_price:.2f}</span>'
+            html += '</div>'
+        
+        # Prezzo acquisto
+        if wine.cost_price:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Prezzo Acquisto</span>'
+            html += f'<span class="wine-card-field-value">€{wine.cost_price:.2f}</span>'
+            html += '</div>'
+        
+        # Annata
+        if wine.vintage:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Annata</span>'
+            html += f'<span class="wine-card-field-value">{wine.vintage}</span>'
+            html += '</div>'
+        
+        # Regione
+        if wine.region:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Regione</span>'
+            html += f'<span class="wine-card-field-value">{self._escape_html(wine.region)}</span>'
+            html += '</div>'
+        
+        # Paese
+        if wine.country:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Paese</span>'
+            html += f'<span class="wine-card-field-value">{self._escape_html(wine.country)}</span>'
+            html += '</div>'
+        
+        # Tipo
+        if wine.wine_type:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Tipo</span>'
+            html += f'<span class="wine-card-field-value">{self._escape_html(wine.wine_type)}</span>'
+            html += '</div>'
+        
+        html += '</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _generate_movement_card_html(self, movement_type: str, wine_name: str, quantity: int, qty_before: int, qty_after: int) -> str:
+        """
+        Genera HTML per card conferma movimento (consumo/rifornimento).
+        Stile gio-ia: bianco con bordo granaccia.
+        """
+        movement_label = "Consumo" if movement_type == "consumo" else "Rifornimento"
+        icon_text = "−" if movement_type == "consumo" else "+"
+        
+        html = '<div class="movement-card">'
+        html += '<div class="movement-card-header">'
+        html += f'<div class="movement-card-icon">{icon_text}</div>'
+        html += f'<h3 class="movement-card-title">{movement_label} registrato</h3>'
+        html += '</div>'
+        
+        html += '<div class="movement-card-body">'
+        
+        # Vino
+        html += '<div class="movement-card-row">'
+        html += '<span class="movement-card-row-label">Vino</span>'
+        html += f'<span class="movement-card-row-value wine-name">{self._escape_html(wine_name)}</span>'
+        html += '</div>'
+        
+        # Quantità
+        html += '<div class="movement-card-row">'
+        html += '<span class="movement-card-row-label">Quantità</span>'
+        html += f'<span class="movement-card-row-value">{quantity} bottiglie</span>'
+        html += '</div>'
+        
+        # Statistiche Prima/Dopo
+        html += '<div class="movement-card-stats">'
+        html += '<div class="movement-card-stat">'
+        html += '<span class="movement-card-stat-label">Prima</span>'
+        html += f'<span class="movement-card-stat-value">{qty_before}</span>'
+        html += '</div>'
+        html += '<div class="movement-card-stat">'
+        html += '<span class="movement-card-stat-label">Dopo</span>'
+        html += f'<span class="movement-card-stat-value after">{qty_after}</span>'
+        html += '</div>'
+        html += '</div>'
+        
+        html += '</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _escape_html(self, text: str) -> str:
+        """Escape HTML per sicurezza."""
+        if not text:
+            return ""
+        return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#x27;")
+    
     # ========== RILEVAMENTO RICHIESTE SPECIFICHE ==========
     
     def _is_inventory_list_request(self, prompt: str) -> bool:
@@ -602,7 +724,12 @@ INFORMAZIONI UTENTE:
                         setattr(wine, key, value)
                     wines.append(wine)
                 
-                # Formatta risposta usando _format_wines_response
+                # Se un solo vino, usa card HTML
+                if len(wines) == 1:
+                    html_card = self._generate_wine_card_html(wines[0])
+                    return html_card
+                
+                # Più vini: formatta come testo
                 return self._format_wines_response(wines)
                 
         except Exception as e:
@@ -1147,26 +1274,9 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     logger.info(f"[TOOLS] ✅ Trovati {len(wines)} vini (livello: {level_used})")
                     if len(wines) == 1:
                         wine = wines[0]
-                        response = f"🍷 **{wine.name}**"
-                        if wine.producer:
-                            response += f" ({wine.producer})"
-                        response += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        if wine.vintage:
-                            response += f"📅 **Annata:** {wine.vintage}\n"
-                        if wine.quantity is not None:
-                            response += f"📦 **Quantità:** {wine.quantity} bottiglie\n"
-                        if wine.selling_price:
-                            response += f"💰 **Prezzo vendita:** €{wine.selling_price:.2f}\n"
-                        if wine.cost_price:
-                            response += f"💵 **Prezzo acquisto:** €{wine.cost_price:.2f}\n"
-                        if wine.region:
-                            response += f"📍 **Regione:** {wine.region}\n"
-                        if wine.country:
-                            response += f"🌍 **Paese:** {wine.country}\n"
-                        if wine.wine_type:
-                            response += f"🔴/⚪ **Tipo:** {wine.wine_type}\n"
-                        response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        return {"success": True, "message": response, "use_template": False, "buttons": None}
+                        # Genera HTML card invece di testo markdown
+                        html_card = self._generate_wine_card_html(wine)
+                        return {"success": True, "message": html_card, "use_template": False, "buttons": None, "is_html": True}
                     else:
                         # Più vini: genera buttons
                         buttons = [
@@ -1202,24 +1312,27 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 )
                 
                 if wines:
-                    response_parts = []
-                    for wine in wines[:5]:  # Max 5 vini per prezzo
-                        wine_info = f"🍷 **{wine.name}**"
-                        if wine.producer:
-                            wine_info += f" ({wine.producer})"
-                        wine_info += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        if wine.selling_price:
-                            wine_info += f"💰 **Prezzo vendita:** €{wine.selling_price:.2f}\n"
-                        if wine.cost_price:
-                            wine_info += f"💵 **Prezzo acquisto:** €{wine.cost_price:.2f}\n"
-                            if wine.selling_price and wine.cost_price:
-                                margin = wine.selling_price - wine.cost_price
-                                margin_pct = (margin / wine.cost_price) * 100 if wine.cost_price > 0 else 0
-                                wine_info += f"📊 **Margine:** €{margin:.2f} ({margin_pct:.1f}%)\n"
-                        wine_info += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        response_parts.append(wine_info)
-                    
-                    return {"success": True, "message": "\n\n".join(response_parts), "use_template": False}
+                    # Se un solo vino, usa card HTML
+                    if len(wines) == 1:
+                        html_card = self._generate_wine_card_html(wines[0])
+                        return {"success": True, "message": html_card, "use_template": False, "is_html": True}
+                    else:
+                        # Più vini: lista con buttons
+                        buttons = [
+                            {
+                                "id": wine.id,
+                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "")
+                            }
+                            for wine in wines[:10]
+                        ]
+                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
+                        for wine in wines[:10]:
+                            response += f"• **{wine.name}**"
+                            if wine.producer:
+                                response += f" ({wine.producer})"
+                            response += "\n"
+                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
+                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
                 
                 return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
             
@@ -1238,20 +1351,27 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 )
                 
                 if wines:
-                    response_parts = []
-                    for wine in wines[:5]:  # Max 5 vini per quantità
-                        wine_info = f"🍷 **{wine.name}**"
-                        if wine.producer:
-                            wine_info += f" ({wine.producer})"
-                        wine_info += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        if wine.quantity is not None:
-                            wine_info += f"📦 **In cantina hai:** {wine.quantity} bottiglie\n"
-                        else:
-                            wine_info += "📦 **Quantità:** Non specificata\n"
-                        wine_info += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        response_parts.append(wine_info)
-                    
-                    return {"success": True, "message": "\n\n".join(response_parts), "use_template": False}
+                    # Se un solo vino, usa card HTML
+                    if len(wines) == 1:
+                        html_card = self._generate_wine_card_html(wines[0])
+                        return {"success": True, "message": html_card, "use_template": False, "is_html": True}
+                    else:
+                        # Più vini: lista con buttons
+                        buttons = [
+                            {
+                                "id": wine.id,
+                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "")
+                            }
+                            for wine in wines[:10]
+                        ]
+                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
+                        for wine in wines[:10]:
+                            response += f"• **{wine.name}**"
+                            if wine.producer:
+                                response += f" ({wine.producer})"
+                            response += "\n"
+                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
+                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
                 
                 return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
             
@@ -1265,7 +1385,9 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 logger.info(f"[TOOLS] get_wine_by_criteria: {query_type} {field}")
                 informational_response = await self._handle_informational_query(telegram_id, query_type, field)
                 if informational_response:
-                    return {"success": True, "message": informational_response, "use_template": False}
+                    # Controlla se è HTML (inizia con <div class="wine-card">)
+                    is_html = informational_response.strip().startswith('<div class="wine-card">')
+                    return {"success": True, "message": informational_response, "use_template": False, "is_html": is_html}
                 return {"success": False, "error": "Non ho trovato vini che corrispondono ai criteri richiesti."}
             
             # search_wines
@@ -1348,13 +1470,15 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         qty_before = result.get('quantity_before', 0)
                         qty_after = result.get('quantity_after', 0)
                         
-                        response = f"✅ **{movement_type.capitalize()} registrato**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        response += f"🍷 **Vino:** {wine_name_result}\n"
-                        response += f"📦 **Quantità:** {quantity} bottiglie\n"
-                        response += f"📊 **Prima:** {qty_before} bottiglie\n"
-                        response += f"📊 **Dopo:** {qty_after} bottiglie\n"
-                        response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                        return {"success": True, "message": response, "use_template": False}
+                        # Genera HTML card invece di testo markdown
+                        html_card = self._generate_movement_card_html(
+                            movement_type=movement_type,
+                            wine_name=wine_name_result,
+                            quantity=quantity,
+                            qty_before=qty_before,
+                            qty_after=qty_after
+                        )
+                        return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
                         error_msg = result.get('error', 'Errore sconosciuto')
                         return {"success": False, "error": f"❌ Errore: {error_msg}"}
