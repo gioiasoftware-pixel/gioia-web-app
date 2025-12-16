@@ -1574,8 +1574,8 @@ body {
     position: absolute;
     /* Posiziona i segnalibri usando left per controllare la visibilità */
     /* left: calc(100% - Xpx) fa spuntare Xpx del segnalibro (48px totali) */
-    /* 20px fa spuntare 20px su 48px, sufficiente per mostrare il testo verticale */
-    left: calc(100% - 20px);
+    /* 10px fa spuntare 10px su 48px, sufficiente per mostrare il testo verticale */
+    left: calc(100% - 10px);
     bottom: 0;
     display: flex;
     flex-direction: column;
