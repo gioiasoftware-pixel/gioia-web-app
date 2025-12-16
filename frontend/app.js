@@ -19,6 +19,116 @@ let viewerPageSize = 20;
 let currentConversationId = null;
 let conversations = [];
 
+// ============================================
+// UTILITY FUNCTIONS - Mobile Browser Support
+// ============================================
+
+/**
+ * Rileva se il dispositivo supporta touch
+ * Compatibile con tutti i browser mobile principali
+ */
+function isTouchDevice() {
+    return 'ontouchstart' in window || 
+           navigator.maxTouchPoints > 0 || 
+           navigator.msMaxTouchPoints > 0 ||
+           (window.DocumentTouch && document instanceof window.DocumentTouch);
+}
+
+/**
+ * Aggiunge event listener universale per click/touch che funziona su tutti i browser mobile
+ * Compatibile con: Safari iOS, Chrome Android, Firefox Mobile, Edge Mobile, Opera Mobile
+ * Previene doppio trigger su Safari e altri browser che generano sia touch che click
+ */
+function addUniversalEventListener(element, handler, options = {}) {
+    if (!element) return;
+    
+    // Usa un WeakMap per tracciare lo stato per ogni elemento (evita conflitti)
+    if (!window._touchStateMap) {
+        window._touchStateMap = new WeakMap();
+    }
+    
+    const getTouchState = () => {
+        if (!window._touchStateMap.has(element)) {
+            window._touchStateMap.set(element, {
+                touchHandled: false,
+                touchStartTime: 0
+            });
+        }
+        return window._touchStateMap.get(element);
+    };
+    
+    const TOUCH_DELAY = 400; // ms - tempo massimo per considerare un tap valido
+    
+    const unifiedHandler = (e) => {
+        const eventType = e.type;
+        const now = Date.now();
+        const state = getTouchState();
+        
+        // Se è un evento touchstart
+        if (eventType === 'touchstart') {
+            state.touchStartTime = now;
+            state.touchHandled = false;
+            // Non chiamare handler su touchstart, aspetta touchend
+            return;
+        }
+        
+        // Se è un evento touchend
+        if (eventType === 'touchend') {
+            const touchDuration = now - state.touchStartTime;
+            
+            // Gestisci solo se è un tap veloce (non long press o swipe)
+            if (touchDuration < TOUCH_DELAY && touchDuration > 0) {
+                state.touchHandled = true;
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Chiama handler
+                try {
+                    handler(e);
+                } catch (error) {
+                    console.error('[UNIVERSAL_EVENT] Errore in handler:', error);
+                }
+                
+                // Reset flag dopo delay per permettere click successivi
+                setTimeout(() => {
+                    state.touchHandled = false;
+                }, TOUCH_DELAY);
+            }
+            return;
+        }
+        
+        // Se è un evento click
+        if (eventType === 'click') {
+            // Se abbiamo già gestito un touch, previeni il click (Safari genera entrambi)
+            if (state.touchHandled) {
+                e.preventDefault();
+                e.stopPropagation();
+                return;
+            }
+            
+            // Altrimenti gestisci il click normalmente (desktop o browser che non genera touch)
+            try {
+                handler(e);
+            } catch (error) {
+                console.error('[UNIVERSAL_EVENT] Errore in handler:', error);
+            }
+        }
+    };
+    
+    // Su dispositivi touch, ascolta entrambi touch e click
+    if (isTouchDevice()) {
+        // Touch events per mobile
+        element.addEventListener('touchstart', unifiedHandler, { passive: false, ...options });
+        element.addEventListener('touchend', unifiedHandler, { passive: false, ...options });
+        // Click come fallback per browser che non supportano touch events correttamente
+        // o per dispositivi touch che emulano mouse
+        element.addEventListener('click', unifiedHandler, { passive: true, ...options });
+    } else {
+        // Su desktop, solo click
+        element.addEventListener('click', unifiedHandler, options);
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is already logged in
