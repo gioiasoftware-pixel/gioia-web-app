@@ -597,38 +597,6 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         
         // Se isHtml è true, renderizza HTML direttamente (per card)
         // Altrimenti escape HTML per sicurezza
-        let contentHtml;
-        if (isHtml) {
-            // Se è HTML, inserisci direttamente senza escape
-            // Se contiene HTML escapato (&lt; &gt;), decodificalo
-            if (content.includes('&lt;') || content.includes('&gt;')) {
-                // Decodifica HTML escapato: crea un elemento temporaneo e usa innerHTML per decodificare
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = content; // Questo decodifica automaticamente &lt; in <
-                contentHtml = tempDiv.innerHTML; // Usa innerHTML, non textContent!
-            } else if (content.trim().startsWith('<')) {
-                // Se inizia con <, è già HTML non escapato, usa direttamente
-                contentHtml = content;
-            } else {
-                // Se non inizia con < e non contiene &lt;, potrebbe essere HTML che inizia con spazio/newline
-                // Prova a decodificare comunque, poi usa direttamente
-                const tempDiv = document.createElement('div');
-                tempDiv.textContent = content; // Prima prova come testo
-                // Se dopo textContent il contenuto è diverso, significa che c'erano entità HTML
-                if (tempDiv.textContent !== content) {
-                    // C'erano entità, decodifica
-                    tempDiv.innerHTML = content;
-                    contentHtml = tempDiv.innerHTML;
-                } else {
-                    // Nessuna entità, usa direttamente
-                    contentHtml = content;
-                }
-            }
-            console.log('[CHAT] Rendering HTML card, content length:', content.length, 'starts with <div:', contentHtml.trim().startsWith('<div'), 'contentHtml preview:', contentHtml.substring(0, 100));
-        } else {
-            contentHtml = escapeHtml(content);
-        }
-        
         const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
         
         // Crea struttura base
@@ -641,20 +609,83 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             contentDiv.style.color = 'var(--color-granaccia)';
         }
         
-        // Inserisci contenuto: se è HTML, inserisci direttamente; se è testo, è già escapato
-        contentDiv.innerHTML = contentHtml;
+        if (isHtml) {
+            // SOLUZIONE ALTERNATIVA: Usa un approccio più robusto per inserire HTML
+            // Prima aggiungi l'elemento al DOM, poi inserisci l'HTML
+            messageEl.appendChild(contentDiv);
+            
+            // Usa requestAnimationFrame per assicurarsi che il rendering avvenga correttamente
+            requestAnimationFrame(() => {
+                try {
+                    // Prima decodifica eventuale HTML escapato usando un elemento temporaneo
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = content; // Decodifica automaticamente &lt; in <
+                    const decodedHtml = tempDiv.innerHTML;
+                    
+                    // Inserisci l'HTML decodificato direttamente
+                    contentDiv.innerHTML = decodedHtml;
+                    
+                    console.log('[CHAT] HTML inserito, length:', decodedHtml.length, 'starts with <div:', decodedHtml.trim().startsWith('<div'));
+                } catch (error) {
+                    console.error('[CHAT] Errore inserimento HTML:', error);
+                    // Fallback: prova a inserire direttamente
+                    contentDiv.innerHTML = content;
+                }
+            });
+        } else {
+            // Testo normale: escape per sicurezza
+            contentDiv.textContent = content;
+            messageEl.appendChild(contentDiv);
+        }
         
-        // Aggiungi pulsanti se presenti
-        if (buttonsHtml) {
+        // Aggiungi pulsanti se presenti (solo se non è HTML, perché per HTML lo facciamo dopo)
+        if (buttonsHtml && !isHtml) {
             const buttonsDiv = document.createElement('div');
             buttonsDiv.innerHTML = buttonsHtml;
             contentDiv.appendChild(buttonsDiv);
+        } else if (buttonsHtml && isHtml) {
+            // Per HTML, aggiungi i pulsanti dopo che l'HTML è stato inserito
+            requestAnimationFrame(() => {
+                const buttonsDiv = document.createElement('div');
+                buttonsDiv.innerHTML = buttonsHtml;
+                contentDiv.appendChild(buttonsDiv);
+                
+                // Aggiungi event listeners ai pulsanti dopo che sono stati inseriti
+                if (buttons && buttons.length > 0) {
+                    const buttonElements = messageEl.querySelectorAll('.chat-button');
+                    buttonElements.forEach(btn => {
+                        btn.addEventListener('click', async () => {
+                            const wineId = btn.dataset.wineId;
+                            const wineText = btn.dataset.wineText;
+                            const movementType = btn.dataset.movementType;
+                            const quantity = btn.dataset.quantity;
+                            
+                            // Se è un pulsante di conferma movimento, processa direttamente senza mostrare messaggio
+                            if (movementType && quantity && wineId) {
+                                // Invia direttamente all'API senza mostrare il messaggio nella chat
+                                const message = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
+                                await sendChatMessage(message, false); // false = non mostrare messaggio utente
+                                return;
+                            }
+                            
+                            // Pulsante normale: ricerca vino con ID
+                            const input = document.getElementById('chat-input');
+                            if (wineId) {
+                                input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
+                            } else {
+                                // Fallback: solo testo
+                                input.value = `dimmi tutto su ${wineText}`;
+                            }
+                            input.dispatchEvent(new Event('input')); // Trigger resize
+                            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
+                        });
+                    });
+                }
+            });
         }
         
-        messageEl.appendChild(contentDiv);
-        
-        // Aggiungi event listeners ai pulsanti
-        if (buttons && buttons.length > 0) {
+        // Aggiungi event listeners ai pulsanti (solo se non è HTML, perché per HTML lo facciamo dopo)
+        if (buttons && buttons.length > 0 && !isHtml) {
             const buttonElements = messageEl.querySelectorAll('.chat-button');
             buttonElements.forEach(btn => {
                 btn.addEventListener('click', async () => {
