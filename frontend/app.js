@@ -1020,12 +1020,7 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
             }
         }
         
-        // Apri fullscreen se siamo su desktop
-        if (window.innerWidth > 768) {
-            if (!panel.classList.contains('fullscreen')) {
-                toggleViewerFullscreen();
-            }
-        }
+        // Non aprire fullscreen automaticamente - solo aprire il viewer laterale
         
     } catch (error) {
         console.error('Errore caricamento dati vino:', error);
