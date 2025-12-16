@@ -810,17 +810,16 @@ body {
     }
 
     .viewer-panel.fullscreen .viewer-filters {
-        max-height: 220px; /* Più compatto anche in fullscreen */
         flex: 0 0 auto;
-        padding: 12px 24px; /* Padding ridotto */
+        padding: 16px 24px;
     }
     
-    .viewer-panel.fullscreen .filter-section {
-        margin-bottom: 6px; /* Spaziatura ridotta */
+    .viewer-panel.fullscreen .filters-buttons-row {
+        gap: 16px;
     }
     
-    .viewer-panel.fullscreen .filter-content {
-        max-height: 180px; /* Altezza massima ridotta */
+    .viewer-panel.fullscreen .filter-dropdown-wrapper {
+        min-width: 160px;
     }
 
     .viewer-panel.fullscreen .viewer-table-container {

@@ -653,31 +653,55 @@ function closeViewer() {
 
 
 function setupViewerFilters() {
-    const filterHeaders = document.querySelectorAll('.filter-header');
-    filterHeaders.forEach(header => {
-        addUniversalEventListener(header, () => {
-            const filterType = header.dataset.filter;
-            const content = document.getElementById(`filter-${filterType}`);
-            const icon = header.querySelector('.filter-icon');
+    // Setup dropdown buttons
+    const filterButtons = document.querySelectorAll('.filter-dropdown-btn');
+    console.log('[FILTERS] Trovati', filterButtons.length, 'pulsanti dropdown');
+    
+    filterButtons.forEach(btn => {
+        addUniversalEventListener(btn, (e) => {
+            e.stopPropagation();
+            const filterType = btn.dataset.filter;
+            const dropdown = document.getElementById(`filter-dropdown-${filterType}`);
             
-            if (content.classList.contains('hidden')) {
-                // Chiudi tutti gli altri filtri prima di aprire questo
-                document.querySelectorAll('.filter-content').forEach(c => {
-                    c.classList.add('hidden');
-                });
-                document.querySelectorAll('.filter-icon').forEach(i => {
-                    i.classList.remove('expanded');
-                });
-                
-                // Apri questo filtro
-                content.classList.remove('hidden');
-                icon.classList.add('expanded');
+            console.log('[FILTERS] Click su pulsante', filterType, 'dropdown:', !!dropdown);
+            
+            if (!dropdown) {
+                console.error('[FILTERS] Dropdown non trovato per', filterType);
+                return;
+            }
+            
+            // Toggle dropdown
+            const isOpen = !dropdown.classList.contains('hidden');
+            
+            // Chiudi tutti gli altri dropdown
+            document.querySelectorAll('.filter-dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+            document.querySelectorAll('.filter-dropdown-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            
+            if (!isOpen) {
+                // Apri questo dropdown
+                dropdown.classList.remove('hidden');
+                btn.classList.add('active');
+                console.log('[FILTERS] Dropdown aperto per', filterType);
             } else {
-                // Chiudi questo filtro
-                content.classList.add('hidden');
-                icon.classList.remove('expanded');
+                console.log('[FILTERS] Dropdown chiuso per', filterType);
             }
         });
+    });
+    
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-dropdown-wrapper')) {
+            document.querySelectorAll('.filter-dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+            document.querySelectorAll('.filter-dropdown-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+        }
     });
     
     // Setup reset filters button
@@ -705,13 +729,24 @@ function resetViewerFilters() {
         item.classList.remove('active');
     });
     
-    // Chiudi tutti gli accordion
-    document.querySelectorAll('.filter-content').forEach(content => {
-        content.classList.add('hidden');
+    // Chiudi tutti i dropdown
+    document.querySelectorAll('.filter-dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
     });
-    document.querySelectorAll('.filter-icon').forEach(icon => {
-        icon.classList.remove('expanded');
+    document.querySelectorAll('.filter-dropdown-btn').forEach(btn => {
+        btn.classList.remove('active');
     });
+    
+    // Reset valori visualizzati sui pulsanti
+    const valueType = document.getElementById('filter-value-type');
+    const valueVintage = document.getElementById('filter-value-vintage');
+    const valueWinery = document.getElementById('filter-value-winery');
+    const valueSupplier = document.getElementById('filter-value-supplier');
+    
+    if (valueType) valueType.textContent = 'Tutte';
+    if (valueVintage) valueVintage.textContent = 'Tutte';
+    if (valueWinery) valueWinery.textContent = 'Tutte';
+    if (valueSupplier) valueSupplier.textContent = 'Tutti';
     
     // Riapplica filtri (che ora sono vuoti)
     applyViewerFilters();
@@ -784,20 +819,43 @@ function populateFilters(facets) {
 
 function setupFilterItems() {
     const filterItems = document.querySelectorAll('.filter-item');
+    console.log('[FILTERS] Setup', filterItems.length, 'filter items');
+    
     filterItems.forEach(item => {
-        addUniversalEventListener(item, () => {
-            const filterType = item.closest('.filter-content').id.replace('filter-', '');
+        addUniversalEventListener(item, (e) => {
+            e.stopPropagation();
+            const dropdownContent = item.closest('.filter-dropdown-content');
+            if (!dropdownContent) {
+                console.error('[FILTERS] filter-dropdown-content non trovato');
+                return;
+            }
+            
+            const filterType = dropdownContent.id.replace('filter-', '');
             const value = item.dataset.value;
+            const dropdown = item.closest('.filter-dropdown-menu');
+            const btn = document.getElementById(`filter-btn-${filterType}`);
+            const valueDisplay = document.getElementById(`filter-value-${filterType}`);
 
-            // Toggle filter
-            if (viewerFilters[filterType] === value) {
-                viewerFilters[filterType] = null;
-                item.classList.remove('active');
-            } else {
-                viewerFilters[filterType] = value;
-                // Remove active from siblings
-                item.parentElement.querySelectorAll('.filter-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
+            console.log('[FILTERS] Selezione filtro', filterType, '=', value);
+
+            // Imposta filtro
+            viewerFilters[filterType] = value;
+            
+            // Remove active from siblings
+            item.parentElement.querySelectorAll('.filter-item').forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            // Aggiorna valore visualizzato sul pulsante
+            if (valueDisplay) {
+                valueDisplay.textContent = value;
+            }
+            if (btn) {
+                btn.classList.add('active');
+            }
+            
+            // Chiudi dropdown
+            if (dropdown) {
+                dropdown.classList.add('hidden');
             }
 
             // Apply filters and re-render
