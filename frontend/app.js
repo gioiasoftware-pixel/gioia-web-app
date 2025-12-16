@@ -16,6 +16,20 @@ let viewerFilters = {
 let viewerSearchQuery = '';
 let viewerCurrentPage = 1;
 let viewerPageSize = 20;
+
+// Viewer Fullscreen state
+let viewerFullscreenData = null;
+let viewerFullscreenFilters = {
+    type: null,
+    vintage: null,
+    winery: null,
+    supplier: null
+};
+let viewerFullscreenSearchQuery = '';
+let viewerFullscreenCurrentPage = 1;
+let viewerFullscreenPageSize = 50;
+let viewerFullscreenSearchTimeout = null;
+let movementsChart = null;
 let currentConversationId = null;
 let conversations = [];
 
@@ -266,6 +280,46 @@ function setupEventListeners() {
     }
     document.getElementById('viewer-search')?.addEventListener('input', handleViewerSearch);
     setupViewerFilters();
+    
+    // Viewer Fullscreen (solo desktop)
+    if (window.innerWidth > 768) {
+        const viewerFullscreenBtn = document.getElementById('viewer-fullscreen-btn');
+        if (viewerFullscreenBtn) {
+            addUniversalEventListener(viewerFullscreenBtn, openViewerFullscreen);
+        }
+        const viewerFullscreenClose = document.getElementById('viewer-fullscreen-close');
+        if (viewerFullscreenClose) {
+            addUniversalEventListener(viewerFullscreenClose, closeViewerFullscreen);
+        }
+        const viewerFullscreenSearch = document.getElementById('viewer-fullscreen-search');
+        if (viewerFullscreenSearch) {
+            viewerFullscreenSearch.addEventListener('input', handleViewerFullscreenSearch);
+        }
+        const viewerFullscreenDownload = document.getElementById('viewer-fullscreen-download-csv');
+        if (viewerFullscreenDownload) {
+            addUniversalEventListener(viewerFullscreenDownload, handleViewerFullscreenDownloadCSV);
+        }
+        setupViewerFullscreenFilters();
+        
+        // Modal movimenti
+        const movementsModalClose = document.getElementById('viewer-movements-modal-close');
+        if (movementsModalClose) {
+            addUniversalEventListener(movementsModalClose, closeMovementsModal);
+        }
+        const movementsModal = document.getElementById('viewer-movements-modal');
+        if (movementsModal) {
+            addUniversalEventListener(movementsModal, (e) => {
+                if (e.target === movementsModal) {
+                    closeMovementsModal();
+                }
+            });
+        }
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && movementsModal && !movementsModal.classList.contains('hidden')) {
+                closeMovementsModal();
+            }
+        });
+    }
 }
 
 function switchToSignup() {
@@ -653,6 +707,9 @@ async function loadViewerData() {
         // Populate filters
         populateFilters(data.facets || {});
         
+        // Update meta info se in fullscreen
+        updateViewerMeta(data.meta || {});
+        
         // Render table
         renderViewerTable(data.rows || []);
         
@@ -673,7 +730,10 @@ function populateFilters(facets) {
         const items = facets[filterType];
         content.innerHTML = '';
 
-        Object.entries(items).forEach(([value, count]) => {
+        // Ordina per frequenza (count desc) - solo se ci sono items
+        const sortedItems = Object.entries(items).sort((a, b) => b[1] - a[1]);
+
+        sortedItems.forEach(([value, count]) => {
             const item = document.createElement('div');
             item.className = 'filter-item';
             item.dataset.value = value;
@@ -738,16 +798,25 @@ function applyViewerFilters() {
     renderViewerTable(filtered);
 }
 
+let viewerSearchTimeout = null;
+
 function handleViewerSearch(e) {
-    viewerSearchQuery = e.target.value;
-    applyViewerFilters();
+    // Debounce ricerca (300ms)
+    clearTimeout(viewerSearchTimeout);
+    viewerSearchTimeout = setTimeout(() => {
+        viewerSearchQuery = e.target.value;
+        applyViewerFilters();
+    }, 300);
 }
 
 function renderViewerTable(rows) {
     const tableBody = document.getElementById('viewer-table-body');
+    const panel = document.getElementById('viewer-panel');
+    const isFullscreen = panel && panel.classList.contains('fullscreen');
     
     if (rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">Nessun inventario disponibile. Carica un file CSV per iniziare.</td></tr>';
+        const colspan = isFullscreen ? 7 : 6;
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">Nessun inventario disponibile. Carica un file CSV per iniziare.</td></tr>`;
         return;
     }
 
@@ -757,16 +826,122 @@ function renderViewerTable(rows) {
     const paginatedRows = rows.slice(start, end);
     const totalPages = Math.ceil(rows.length / viewerPageSize);
 
-    tableBody.innerHTML = paginatedRows.map(row => `
-        <tr>
-            <td>${escapeHtml(row.name || row.Nome || '')}</td>
+    // Genera HTML righe
+    let html = '';
+    paginatedRows.forEach((row, index) => {
+        const wineId = `wine-${index}-${Date.now()}`;
+        const wineName = escapeHtml(row.name || row.Nome || '');
+        const isExpanded = false; // Stato iniziale
+        
+        // Riga principale
+        html += `
+        <tr class="viewer-wine-row" data-wine-id="${wineId}" data-expanded="false">
+            <td class="viewer-wine-name-cell">${wineName}</td>
             <td>${escapeHtml(row.winery || row.Cantina || '')}</td>
             <td>${row.qty || row.Quantità || row.quantità || 0}</td>
-            <td>${(row.price || row.Prezzo || row.prezzo || 0).toFixed(2)}</td>
+            <td>€${(row.price || row.Prezzo || row.prezzo || 0).toFixed(2)}</td>
             <td>${escapeHtml(row.supplier || row.Fornitore || row.fornitore || '')}</td>
             <td>${(row.critical || row['Scorta critica'] || false) ? '<span class="critical-badge">Critica</span>' : ''}</td>
+            ${isFullscreen ? `
+            <td class="viewer-chart-action-cell">
+                <button class="viewer-chart-btn" data-wine-name="${wineName}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart('${wineName}');">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M21 10V4H15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </td>
+            ` : ''}
         </tr>
-    `).join('');
+        `;
+        
+        // Riga dettagli (solo in fullscreen)
+        if (isFullscreen) {
+            html += `
+        <tr class="viewer-wine-details-row" data-wine-id="${wineId}" style="display: none;">
+            <td colspan="7" class="viewer-wine-details-cell">
+                <div class="viewer-wine-details-content">
+                    <h3>Dettagli Vino: ${wineName}</h3>
+                    <div class="viewer-wine-details-grid">
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Nome:</span>
+                            <span class="viewer-detail-value">${wineName}</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Cantina:</span>
+                            <span class="viewer-detail-value">${escapeHtml(row.winery || '-')}</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Annata:</span>
+                            <span class="viewer-detail-value">${row.vintage || '-'}</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Quantità:</span>
+                            <span class="viewer-detail-value">${row.qty || 0} bottiglie</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Prezzo vendita:</span>
+                            <span class="viewer-detail-value">€${(row.price || 0).toFixed(2)}</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Fornitore:</span>
+                            <span class="viewer-detail-value">${escapeHtml(row.supplier || '-')}</span>
+                        </div>
+                        <div class="viewer-detail-item">
+                            <span class="viewer-detail-label">Tipologia:</span>
+                            <span class="viewer-detail-value">${escapeHtml(row.type || '-')}</span>
+                        </div>
+                    </div>
+                </div>
+            </td>
+        </tr>
+        `;
+        }
+    });
+
+    tableBody.innerHTML = html;
+
+    // Setup click su righe per espansione (solo fullscreen)
+    if (isFullscreen) {
+        document.querySelectorAll('.viewer-wine-row').forEach(row => {
+            addUniversalEventListener(row, (e) => {
+                // Non espandere se il click è sul pulsante grafico
+                if (e.target.closest('.viewer-chart-btn')) {
+                    return;
+                }
+                
+                const wineId = row.dataset.wineId;
+                const isExpanded = row.dataset.expanded === 'true';
+                const detailsRow = document.querySelector(`.viewer-wine-details-row[data-wine-id="${wineId}"]`);
+                
+                if (detailsRow) {
+                    if (isExpanded) {
+                        // Chiudi
+                        detailsRow.style.display = 'none';
+                        row.dataset.expanded = 'false';
+                        row.classList.remove('expanded');
+                    } else {
+                        // Chiudi tutte le altre righe espanse
+                        document.querySelectorAll('.viewer-wine-row[data-expanded="true"]').forEach(expRow => {
+                            const expWineId = expRow.dataset.wineId;
+                            const expDetailsRow = document.querySelector(`.viewer-wine-details-row[data-wine-id="${expWineId}"]`);
+                            if (expDetailsRow) {
+                                expDetailsRow.style.display = 'none';
+                                expRow.dataset.expanded = 'false';
+                                expRow.classList.remove('expanded');
+                            }
+                        });
+                        
+                        // Apri questa riga
+                        detailsRow.style.display = 'table-row';
+                        row.dataset.expanded = 'true';
+                        row.classList.add('expanded');
+                    }
+                }
+            });
+        });
+    }
 
     // Render pagination
     renderViewerPagination(totalPages);
@@ -823,6 +998,296 @@ function viewerGoToPage(page) {
 
 // Make function available globally for onclick handlers
 window.viewerGoToPage = viewerGoToPage;
+
+// ============================================
+// VIEWER FULLSCREEN FUNCTIONS
+// ============================================
+
+function toggleViewerFullscreen() {
+    // Solo desktop
+    if (window.innerWidth <= 768) return;
+    
+    const panel = document.getElementById('viewer-panel');
+    const chartColumn = document.querySelector('.viewer-chart-column');
+    const metaEl = document.getElementById('viewer-meta');
+    const downloadBtn = document.getElementById('viewer-download-csv');
+    
+    if (!panel) return;
+    
+    const isFullscreen = panel.classList.contains('fullscreen');
+    
+    if (isFullscreen) {
+        // Esci da fullscreen
+        panel.classList.remove('fullscreen');
+        if (chartColumn) chartColumn.classList.add('hidden');
+        if (metaEl) metaEl.classList.add('hidden');
+        if (downloadBtn) downloadBtn.classList.add('hidden');
+        
+        // Ricarica tabella senza colonna grafico
+        if (viewerData) {
+            applyViewerFilters();
+        }
+    } else {
+        // Entra in fullscreen
+        panel.classList.add('fullscreen');
+        if (chartColumn) chartColumn.classList.remove('hidden');
+        if (metaEl) metaEl.classList.remove('hidden');
+        if (downloadBtn) downloadBtn.classList.remove('hidden');
+        
+        // Ricarica tabella con colonna grafico e funzionalità avanzate
+        if (viewerData) {
+            applyViewerFilters();
+        }
+    }
+}
+
+function updateViewerMeta(meta) {
+    const metaEl = document.getElementById('viewer-meta');
+    if (!metaEl) return;
+    
+    const panel = document.getElementById('viewer-panel');
+    const isFullscreen = panel && panel.classList.contains('fullscreen');
+    
+    if (!isFullscreen) {
+        metaEl.classList.add('hidden');
+        return;
+    }
+    
+    metaEl.classList.remove('hidden');
+    const total = meta.total_rows || viewerData?.rows?.length || 0;
+    const lastUpdate = meta.last_update 
+        ? formatRelativeTime(meta.last_update)
+        : "sconosciuto";
+    
+    metaEl.textContent = `${total} records • Last updated ${lastUpdate}`;
+}
+
+function formatRelativeTime(isoString) {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "appena ora";
+    if (diffMins < 60) return `${diffMins} minuti fa`;
+    if (diffHours < 24) return `${diffHours} ore fa`;
+    return `${diffDays} giorni fa`;
+}
+
+function handleViewerDownloadCSV() {
+    if (!authToken) return;
+    
+    // Download da endpoint backend
+    const csvUrl = `${API_BASE_URL}/api/viewer/export.csv`;
+    const link = document.createElement('a');
+    link.href = csvUrl;
+    link.download = 'inventario.csv';
+    
+    // Aggiungi token come header (non funziona con link diretto, usa fetch)
+    fetch(csvUrl, {
+        headers: {
+            'Authorization': `Bearer ${authToken}`,
+        },
+    })
+    .then(response => {
+        if (!response.ok) throw new Error('Errore download CSV');
+        return response.blob();
+    })
+    .then(blob => {
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+    })
+    .catch(error => {
+        console.error('Errore download CSV:', error);
+        alert('Errore durante il download del CSV');
+    });
+}
+
+function showMovementsChart(wineName) {
+    if (!authToken) {
+        alert('Token non valido');
+        return;
+    }
+    
+    const modal = document.getElementById('viewer-movements-modal');
+    const modalTitle = document.getElementById('viewer-movements-modal-wine-name');
+    const chartContainer = document.getElementById('viewer-movements-chart-container');
+    
+    if (!modal || !modalTitle || !chartContainer) return;
+    
+    modalTitle.textContent = `Movimenti: ${wineName}`;
+    modal.classList.remove('hidden');
+    
+    // Mostra loading
+    chartContainer.innerHTML = '<div class="loading">Caricamento movimenti...</div>';
+    
+    // Fetch movimenti (endpoint da implementare nel backend)
+    fetch(`${API_BASE_URL}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`, {
+        headers: {
+            'Authorization': `Bearer ${authToken}`,
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        const movements = data.movements || [];
+        
+        if (movements.length === 0) {
+            // Mostra grafico vuoto
+            chartContainer.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
+            const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
+            
+            if (movementsChart) {
+                movementsChart.destroy();
+            }
+            
+            movementsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        title: {
+                            display: true,
+                            text: 'Nessun movimento registrato per questo vino',
+                            font: { size: 14, color: '#666' }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+            return;
+        }
+        
+        // Prepara dati per grafico
+        const labels = [];
+        const consumiData = [];
+        const rifornimentiData = [];
+        const quantitaData = [];
+        
+        movements.forEach(mov => {
+            const date = new Date(mov.date);
+            labels.push(date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+            
+            if (mov.type === 'consumo') {
+                consumiData.push(Math.abs(mov.quantity_change));
+                rifornimentiData.push(null);
+            } else {
+                consumiData.push(null);
+                rifornimentiData.push(mov.quantity_change);
+            }
+            
+            quantitaData.push(mov.quantity_after);
+        });
+        
+        // Crea grafico
+        chartContainer.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
+        const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
+        
+        // Distruggi grafico precedente se esiste
+        if (movementsChart) {
+            movementsChart.destroy();
+        }
+        
+        movementsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Consumi',
+                        data: consumiData,
+                        borderColor: '#9a182e',
+                        backgroundColor: 'rgba(154, 24, 46, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Rifornimenti',
+                        data: rifornimentiData,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Quantità Stock',
+                        data: quantitaData,
+                        borderColor: '#007bff',
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.4,
+                        fill: false,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    title: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Bottiglie (Consumi/Rifornimenti)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Stock'
+                        },
+                        grid: {
+                            drawOnChartArea: false
+                        }
+                    }
+                }
+            }
+        });
+        
+    })
+    .catch(error => {
+        console.error('[VIEWER] Errore caricamento movimenti:', error);
+        chartContainer.innerHTML = `<div class="error-state">Errore nel caricamento dei movimenti: ${error.message}</div>`;
+    });
+}
+
+function closeMovementsModal() {
+    const modal = document.getElementById('viewer-movements-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+// Make functions available globally
+window.showMovementsChart = showMovementsChart;
 
 // ============================================
 // CONVERSATIONS MANAGEMENT

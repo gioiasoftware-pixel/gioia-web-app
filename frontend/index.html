@@ -152,8 +152,19 @@
             <!-- Viewer Content -->
             <div class="viewer-content">
                 <div class="viewer-header">
-                    <h2 class="viewer-title">Inventario</h2>
-                    <button id="viewer-close" class="viewer-close-btn">&times;</button>
+                    <div class="viewer-header-left">
+                        <h2 class="viewer-title">Inventario</h2>
+                        <p class="viewer-meta hidden" id="viewer-meta">Caricamento...</p>
+                    </div>
+                    <div class="viewer-header-actions">
+                        <a href="#" id="viewer-download-csv" class="viewer-download-btn hidden" title="Download CSV">Download CSV</a>
+                        <button id="viewer-fullscreen-btn" class="viewer-fullscreen-btn" title="Apri a tutto schermo (solo desktop)">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M3 3h5v2H5v3H3V3zm12 0h-5v2h3v3h2V3zm-5 14h5v-5h-2v3h-3v2zm-7 0v-5h2v3h3v2H3z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button id="viewer-close" class="viewer-close-btn">&times;</button>
+                    </div>
                 </div>
 
                 <!-- Viewer Search -->
@@ -217,6 +228,7 @@
                                 <th>Prezzo (€)</th>
                                 <th>Fornitore</th>
                                 <th>Scorta</th>
+                                <th class="viewer-chart-column hidden">Grafico</th>
                             </tr>
                         </thead>
                         <tbody id="viewer-table-body">
@@ -240,6 +252,22 @@
         </button>
     </div>
 
+    <!-- Modal per grafico movimenti -->
+    <div id="viewer-movements-modal" class="viewer-movements-modal hidden">
+        <div class="viewer-movements-modal-content">
+            <div class="viewer-movements-modal-header">
+                <h2 id="viewer-movements-modal-wine-name">Movimenti Vino</h2>
+                <button class="viewer-movements-modal-close" id="viewer-movements-modal-close">&times;</button>
+            </div>
+            <div class="viewer-movements-modal-body">
+                <div id="viewer-movements-chart-container">
+                    <canvas id="viewer-movements-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
         // Configurazione API URL - usa stesso dominio quando servito da backend
         window.API_BASE_URL = window.location.origin;

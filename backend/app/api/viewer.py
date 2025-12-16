@@ -312,3 +312,112 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
         )
         raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
 
+
+@router.get("/movements")
+async def get_wine_movements(
+    wine_name: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Recupera movimenti (consumi/rifornimenti) per un vino specifico.
+    Usa autenticazione JWT standard (Bearer token).
+    """
+    try:
+        user = current_user["user"]
+        telegram_id = user.telegram_id
+        user_id = user.id
+        business_name = user.business_name
+
+        if not business_name or not telegram_id:
+            raise HTTPException(
+                status_code=404,
+                detail="Inventario non disponibile"
+            )
+
+        table_name = f'"{telegram_id}/{business_name} Consumi e rifornimenti"'
+
+        async with AsyncSessionLocal() as session:
+            # Verifica che la tabella esista
+            table_name_check = table_name.strip('"')
+            check_table_query = sql_text("""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables 
+                    WHERE table_schema = 'public' 
+                    AND table_name = :table_name
+                )
+            """)
+            result = await session.execute(
+                check_table_query,
+                {"table_name": table_name_check}
+            )
+            table_exists = result.scalar()
+
+            if not table_exists:
+                logger.info(f"[VIEWER] Tabella movimenti {table_name} non esiste per telegram_id={telegram_id}, business_name={business_name}")
+                return {
+                    "movements": [],
+                    "wine_name": wine_name
+                }
+
+            # Recupera movimenti per il vino (ricerca case-insensitive)
+            query_movements = sql_text(f"""
+                SELECT 
+                    id,
+                    wine_name,
+                    wine_producer,
+                    movement_type,
+                    quantity_change,
+                    quantity_before,
+                    quantity_after,
+                    movement_date,
+                    notes
+                FROM {table_name}
+                WHERE user_id = :user_id
+                AND LOWER(wine_name) LIKE LOWER(:wine_name_pattern)
+                ORDER BY movement_date DESC
+                LIMIT 100
+            """)
+
+            result = await session.execute(
+                query_movements,
+                {
+                    "user_id": user_id,
+                    "wine_name_pattern": f"%{wine_name}%"
+                }
+            )
+            movements_rows = result.fetchall()
+
+            # Formatta movimenti per risposta
+            movements = []
+            for mov in movements_rows:
+                movements.append({
+                    "id": mov.id,
+                    "wine_name": mov.wine_name or wine_name,
+                    "wine_producer": mov.wine_producer,
+                    "type": mov.movement_type,  # 'consumo' o 'rifornimento'
+                    "quantity_change": mov.quantity_change or 0,
+                    "quantity_before": mov.quantity_before or 0,
+                    "quantity_after": mov.quantity_after or 0,
+                    "date": mov.movement_date.isoformat() if mov.movement_date else None,
+                    "notes": mov.notes
+                })
+
+            logger.info(
+                f"[VIEWER] Movimenti recuperati: wine_name='{wine_name}', count={len(movements)}, "
+                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}"
+            )
+
+            return {
+                "movements": movements,
+                "wine_name": wine_name
+            }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            f"[VIEWER] Errore recupero movimenti: {e}",
+            exc_info=True
+        )
+        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
+
