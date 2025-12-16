@@ -26,6 +26,7 @@ class ChatResponse(BaseModel):
     conversation_id: Optional[str] = None
     metadata: dict
     buttons: Optional[List[Dict[str, Any]]] = None  # Pulsanti interattivi per selezione vini
+    is_html: Optional[bool] = False  # Indica se il messaggio contiene HTML da renderizzare
 
 
 @router.post("/message", response_model=ChatResponse)

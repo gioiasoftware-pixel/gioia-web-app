@@ -254,7 +254,9 @@ async function handleChatSubmit(e) {
 
         // Remove loading and add AI response
         removeChatMessage(loadingId);
-        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons, data.is_html);
+        // Debug: verifica is_html
+        console.log('Chat response data:', { message: data.message?.substring(0, 100), is_html: data.is_html, buttons: data.buttons });
+        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons, data.is_html === true);
     } catch (error) {
         removeChatMessage(loadingId);
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
@@ -296,6 +298,11 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         // Altrimenti escape HTML per sicurezza
         const contentHtml = isHtml ? content : escapeHtml(content);
         const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
+        
+        // Debug
+        if (isHtml) {
+            console.log('Rendering HTML card:', content.substring(0, 200));
+        }
         
         messageEl.innerHTML = `
             <div class="chat-message-avatar">${avatar}</div>
