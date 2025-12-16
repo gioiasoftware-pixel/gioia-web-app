@@ -1557,9 +1557,8 @@ body {
 /* Wine Card Bookmarks (Segnalibri) */
 .wine-card-bookmarks {
     position: absolute;
-    right: -60px;
-    top: 50%;
-    transform: translateY(-50%);
+    right: -50px;
+    top: 0;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1567,31 +1566,35 @@ body {
 }
 
 .wine-card-bookmark {
-    width: 40px;
-    height: 40px;
-    background-color: var(--color-granaccia);
+    width: 48px;
+    min-height: 80px;
+    background: linear-gradient(180deg, var(--color-granaccia) 0%, #d43d5a 100%);
     color: var(--color-white);
     border: none;
-    border-radius: 8px 0 0 8px;
+    border-radius: 0 12px 12px 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
     transition: all 0.3s ease;
     opacity: 0;
-    transform: translateX(20px);
-    animation: bookmarkSlideIn 0.4s ease forwards;
+    transform: translateX(30px);
+    animation: bookmarkSlideIn 0.5s ease forwards;
+    padding: 12px 4px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    letter-spacing: 0.5px;
 }
 
 .wine-card-bookmark:nth-child(1) {
-    animation-delay: 0.1s;
+    animation-delay: 0.15s;
 }
 
 .wine-card-bookmark:nth-child(2) {
-    animation-delay: 0.2s;
+    animation-delay: 0.3s;
 }
 
 @keyframes bookmarkSlideIn {
@@ -1602,13 +1605,13 @@ body {
 }
 
 .wine-card-bookmark:hover {
-    background-color: var(--color-black);
-    transform: translateX(-4px);
-    box-shadow: 0 4px 12px rgba(154, 24, 46, 0.4);
+    background: linear-gradient(180deg, #7a1324 0%, var(--color-granaccia) 100%);
+    transform: translateX(-6px);
+    box-shadow: 0 4px 16px rgba(154, 24, 46, 0.5);
 }
 
 .wine-card-bookmark:active {
-    transform: translateX(-2px);
+    transform: translateX(-3px);
 }
 
 /* Wine Card Expanded Form */

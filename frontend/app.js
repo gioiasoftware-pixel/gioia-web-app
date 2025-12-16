@@ -692,7 +692,7 @@ function setupWineCardBookmarks(messageEl) {
     // Bookmark "Modifica"
     const editBookmark = document.createElement('button');
     editBookmark.className = 'wine-card-bookmark';
-    editBookmark.textContent = '✏️';
+    editBookmark.textContent = 'Modifica';
     editBookmark.title = 'Modifica';
     editBookmark.dataset.action = 'edit';
     editBookmark.dataset.wineId = wineId;
@@ -700,8 +700,8 @@ function setupWineCardBookmarks(messageEl) {
     // Bookmark "Mostra in inventario"
     const inventoryBookmark = document.createElement('button');
     inventoryBookmark.className = 'wine-card-bookmark';
-    inventoryBookmark.textContent = '📋';
-    inventoryBookmark.title = 'Mostra in inventario';
+    inventoryBookmark.textContent = 'Mostra nell\'inventario';
+    inventoryBookmark.title = 'Mostra nell\'inventario';
     inventoryBookmark.dataset.action = 'inventory';
     inventoryBookmark.dataset.wineId = wineId;
     
