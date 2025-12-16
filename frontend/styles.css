@@ -251,7 +251,8 @@ body {
     transition: background-color 0.2s;
     border-radius: 8px;
     touch-action: manipulation; /* Migliora responsività touch su mobile */
-    -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile */
+    -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile (Safari) */
+    -webkit-touch-callout: none; /* Disabilita menu contestuale su Safari */
     min-width: 44px; /* Dimensione touch-friendly */
     min-height: 44px;
     position: relative; /* Assicura che sia posizionato correttamente */
@@ -259,6 +260,8 @@ body {
     pointer-events: auto; /* Assicura che sia cliccabile */
     user-select: none; /* Previeni selezione testo */
     -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .sidebar-toggle-btn:hover {
@@ -267,11 +270,13 @@ body {
 
 .sidebar-toggle-btn:active {
     background-color: var(--color-light-gray);
+    opacity: 0.8; /* Feedback visivo su Safari */
 }
 
 /* Assicura che SVG dentro il pulsante non blocchi i click */
 .sidebar-toggle-btn svg {
     pointer-events: none; /* Permette click attraverso SVG */
+    touch-action: none; /* Previeni gesti touch sull'SVG */
 }
 
 /* Chat Sidebar */

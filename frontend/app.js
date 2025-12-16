@@ -76,36 +76,43 @@ function setupEventListeners() {
 
     // Chat sidebar
     document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
-    // Aggiungi listener per click e touchstart per mobile con debug
+    // Setup pulsante hamburger con supporto Safari mobile
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
         console.log('[DEBUG] Sidebar toggle button trovato:', sidebarToggle);
         
-        const handleToggle = (eventType) => {
-            return (e) => {
-                console.log(`[DEBUG] Evento ${eventType} catturato sul pulsante hamburger`);
+        // Flag per prevenire doppio trigger su Safari
+        let touchHandled = false;
+        
+        // Handler unificato per click/touch
+        const handleToggle = (e) => {
+            console.log('[DEBUG] Toggle chiamato, tipo evento:', e.type);
+            // Se è un touch, previeni il click successivo
+            if (e.type === 'touchend' || e.type === 'touchstart') {
+                touchHandled = true;
                 e.preventDefault();
                 e.stopPropagation();
                 toggleSidebar();
-            };
+                // Reset flag dopo breve delay
+                setTimeout(() => { touchHandled = false; }, 300);
+            } else if (e.type === 'click') {
+                // Se è un click e non abbiamo già gestito un touch, procedi
+                if (!touchHandled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleSidebar();
+                } else {
+                    // Ignora click se abbiamo già gestito touch
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+            }
         };
         
-        sidebarToggle.addEventListener('click', handleToggle('click'));
-        sidebarToggle.addEventListener('touchstart', (e) => {
-            console.log('[DEBUG] Touchstart catturato');
-            e.stopPropagation();
-        });
-        sidebarToggle.addEventListener('touchend', (e) => {
-            console.log('[DEBUG] Touchend catturato');
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSidebar();
-        });
-        
-        // Test: aggiungi anche mousedown per debug
-        sidebarToggle.addEventListener('mousedown', () => {
-            console.log('[DEBUG] Mousedown catturato');
-        });
+        // Safari mobile: usa touchend (più affidabile di touchstart)
+        sidebarToggle.addEventListener('touchend', handleToggle, { passive: false });
+        // Fallback per desktop e browser non-touch
+        sidebarToggle.addEventListener('click', handleToggle);
     } else {
         console.error('[DEBUG] Sidebar toggle button NON trovato!');
     }
@@ -932,17 +939,36 @@ function loadSidebarState() {
 function closeSidebarOnOverlayClick() {
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
+        let touchHandled = false;
+        
         const closeSidebar = (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const sidebar = document.getElementById('chat-sidebar');
-            if (sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
+            if (e.type === 'touchend') {
+                touchHandled = true;
+                e.preventDefault();
+                e.stopPropagation();
+                const sidebar = document.getElementById('chat-sidebar');
+                if (sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('active');
+                }
+                setTimeout(() => { touchHandled = false; }, 300);
+            } else if (e.type === 'click' && !touchHandled) {
+                e.preventDefault();
+                e.stopPropagation();
+                const sidebar = document.getElementById('chat-sidebar');
+                if (sidebar.classList.contains('open')) {
+                    sidebar.classList.remove('open');
+                    overlay.classList.remove('active');
+                }
+            } else if (e.type === 'click') {
+                e.preventDefault();
+                e.stopPropagation();
             }
         };
+        
+        // Safari: touchend è più affidabile
+        overlay.addEventListener('touchend', closeSidebar, { passive: false });
         overlay.addEventListener('click', closeSidebar);
-        overlay.addEventListener('touchend', closeSidebar);
     }
 }
 
