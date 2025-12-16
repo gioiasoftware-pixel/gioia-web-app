@@ -642,22 +642,40 @@ INFORMAZIONI UTENTE:
         
         return html
     
-    def _generate_wines_list_html(self, wines: list, query: str = None, show_buttons: bool = True) -> tuple[str, list]:
+    def _generate_wines_list_html(self, wines: list, query: str = None, show_buttons: bool = True, movement_context: Optional[Dict[str, Any]] = None) -> tuple[str, list]:
         """
         Genera HTML per lista vini multipli (2-10 o >10).
         Restituisce (html, buttons).
         Stile gio-ia: card con lista compatta.
+        
+        Args:
+            wines: Lista di vini
+            query: Query di ricerca (opzionale)
+            show_buttons: Se mostrare pulsanti per selezione
+            movement_context: Dict con 'movement_type' e 'quantity' se è un movimento (opzionale)
         """
         num_wines = len(wines)
         buttons = []
         
         html = '<div class="wines-list-card">'
         html += '<div class="wines-list-header">'
-        if query:
-            html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
-            html += f'<span class="wines-list-query">per "{self._escape_html(query)}"</span>'
+        if movement_context:
+            # Se è un movimento, usa titolo e query come in _generate_wine_confirmation_html
+            movement_type = movement_context.get("movement_type", "consumo")
+            quantity = movement_context.get("quantity", 1)
+            movement_label = "consumo" if movement_type == "consumo" else "rifornimento"
+            html += f'<h3 class="wines-list-title">Quale vino intendevi?</h3>'
+            if query:
+                html += f'<span class="wines-list-query">per "{self._escape_html(query)}" ({quantity} bottiglie - {movement_label})</span>'
+            else:
+                html += f'<span class="wines-list-query">({quantity} bottiglie - {movement_label})</span>'
         else:
-            html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
+            # Comportamento normale
+            if query:
+                html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
+                html += f'<span class="wines-list-query">per "{self._escape_html(query)}"</span>'
+            else:
+                html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
         html += '</div>'
         
         html += '<div class="wines-list-body">'
@@ -677,10 +695,19 @@ INFORMAZIONI UTENTE:
             
             # Prepara buttons per 2-10 vini
             if show_buttons and 2 <= num_wines <= 10:
-                buttons.append({
+                button_data = {
                     "id": wine.id,
                     "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
-                })
+                }
+                # Se è un movimento, aggiungi dati movimento ai buttons
+                if movement_context:
+                    button_data["data"] = {
+                        "wine_id": wine.id,
+                        "wine_name": wine.name,
+                        "movement_type": movement_context.get("movement_type", "consumo"),
+                        "quantity": movement_context.get("quantity", 1)
+                    }
+                buttons.append(button_data)
         
         html += '</div>'
         
@@ -688,7 +715,12 @@ INFORMAZIONI UTENTE:
         if num_wines > 10:
             html += f'<div class="wines-list-footer">... e altri {num_wines - 10} vini. Usa il viewer a destra per vedere tutti.</div>'
         elif num_wines >= 2:
-            html += '<div class="wines-list-footer">💡 Seleziona quale vuoi vedere per maggiori dettagli.</div>'
+            if movement_context:
+                # Messaggio per movimento
+                html += '<div class="wines-list-footer">💡 Seleziona quale vino vuoi registrare per questo movimento.</div>'
+            else:
+                # Messaggio normale
+                html += '<div class="wines-list-footer">💡 Seleziona quale vuoi vedere per maggiori dettagli.</div>'
         
         html += '</div>'
         
@@ -720,6 +752,77 @@ INFORMAZIONI UTENTE:
         html += '</div>'
         
         return html
+    
+    def _detect_movement_in_message(self, user_message: str) -> Optional[Dict[str, Any]]:
+        """
+        Rileva se il messaggio contiene parole chiave di movimento (consumo/rifornimento).
+        Restituisce dict con 'movement_type' e 'quantity' se rilevato, None altrimenti.
+        """
+        import re
+        if not user_message:
+            return None
+        
+        message_lower = user_message.lower()
+        
+        # Pattern per consumo (più flessibili)
+        consumo_patterns = [
+            r'(?:ho|hai|hanno)\s+consumato\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+            r'(?:ho|hai|hanno)\s+consumato\s+(.+)',  # Senza quantità esplicita
+            r'consumato\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+            r'consumato\s+(.+)',  # Senza quantità esplicita
+            r'ho\s+consumato\s+(\d+)\s+(.+)',
+            r'ho\s+consumato\s+(.+)',  # Senza quantità esplicita
+            r'consumi?\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+        ]
+        
+        # Pattern per rifornimento (più flessibili)
+        rifornimento_patterns = [
+            r'(?:ho|hai|hanno)\s+(?:ricevuto|rifornito|acquistato)\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+            r'(?:ho|hai|hanno)\s+(?:ricevuto|rifornito|acquistato)\s+(.+)',  # Senza quantità esplicita
+            r'(?:ricevuto|rifornito|acquistato)\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+            r'(?:ricevuto|rifornito|acquistato)\s+(.+)',  # Senza quantità esplicita
+            r'ho\s+(?:ricevuto|rifornito|acquistato)\s+(\d+)\s+(.+)',
+            r'ho\s+(?:ricevuto|rifornito|acquistato)\s+(.+)',  # Senza quantità esplicita
+            r'(?:ricevuti|riforniti|acquistati)\s+(\d+)\s+(?:bottiglie?|bott\.?)?\s+(?:di\s+)?(.+)',
+        ]
+        
+        # Prova pattern consumo
+        for pattern in consumo_patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2:
+                    # Prima gruppo è quantità, secondo è nome vino
+                    quantity_str = groups[0]
+                    if quantity_str.isdigit():
+                        quantity = int(quantity_str)
+                    else:
+                        # Se il primo gruppo non è un numero, potrebbe essere il nome del vino, quantità = 1
+                        quantity = 1
+                    return {"movement_type": "consumo", "quantity": quantity}
+                elif len(groups) == 1:
+                    # Pattern senza quantità esplicita, assume 1
+                    return {"movement_type": "consumo", "quantity": 1}
+        
+        # Prova pattern rifornimento
+        for pattern in rifornimento_patterns:
+            match = re.search(pattern, message_lower)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2:
+                    # Prima gruppo è quantità, secondo è nome vino
+                    quantity_str = groups[0]
+                    if quantity_str.isdigit():
+                        quantity = int(quantity_str)
+                    else:
+                        # Se il primo gruppo non è un numero, potrebbe essere il nome del vino, quantità = 1
+                        quantity = 1
+                    return {"movement_type": "rifornimento", "quantity": quantity}
+                elif len(groups) == 1:
+                    # Pattern senza quantità esplicita, assume 1
+                    return {"movement_type": "rifornimento", "quantity": 1}
+        
+        return None
     
     def _generate_wine_confirmation_html(self, wine_query: str, wines: list, movement_type: str, quantity: int) -> str:
         """
@@ -1567,7 +1670,8 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
         self,
         tool_name: str,
         tool_args: Dict[str, Any],
-        telegram_id: int
+        telegram_id: int,
+        user_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
         Esegue un tool chiamato dall'AI.
@@ -1644,13 +1748,15 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 )
                 
                 if wines:
+                    # Rileva se è un movimento
+                    movement_context = self._detect_movement_in_message(user_message) if user_message else None
                     # Se un solo vino, usa card HTML
                     if len(wines) == 1:
                         html_card = self._generate_wine_card_html(wines[0])
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
                         # Più vini: genera HTML card con buttons
-                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True)
+                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True, movement_context=movement_context)
                         return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 
                 error_html = self._generate_error_message_html(f"Non ho trovato vini per '{query}' nel tuo inventario.")
@@ -1672,13 +1778,15 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 )
                 
                 if wines:
+                    # Rileva se è un movimento
+                    movement_context = self._detect_movement_in_message(user_message) if user_message else None
                     # Se un solo vino, usa card HTML
                     if len(wines) == 1:
                         html_card = self._generate_wine_card_html(wines[0])
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
                         # Più vini: genera HTML card con buttons
-                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True)
+                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True, movement_context=movement_context)
                         return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 
                 error_html = self._generate_error_message_html(f"Non ho trovato vini per '{query}' nel tuo inventario.")
@@ -1823,10 +1931,13 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 
                 if filtered_wines:
                     logger.info(f"[TOOLS] ✅ Trovati {len(filtered_wines)} vini con filtri applicati")
+                    # Rileva se è un movimento
+                    movement_context = self._detect_movement_in_message(user_message) if user_message else None
                     html_card, buttons = self._generate_wines_list_html(
                         filtered_wines, 
                         search_query if search_terms else "ricerca filtrata",
-                        show_buttons=(2 <= len(filtered_wines) <= 10)
+                        show_buttons=(2 <= len(filtered_wines) <= 10),
+                        movement_context=movement_context
                     )
                     return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 else:
@@ -2105,7 +2216,7 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                 logger.info(f"[FUNCTION_CALLING] Tool chiamato: {tool_name} con args: {tool_args}")
                 
                 # Esegui tool
-                tool_result = await self._execute_tool(tool_name, tool_args, telegram_id)
+                tool_result = await self._execute_tool(tool_name, tool_args, telegram_id, user_message=user_message)
                 
                 if tool_result.get("success"):
                     message_text = tool_result.get("message", "✅ Operazione completata")
@@ -2215,7 +2326,9 @@ INFORMAZIONI UTENTE:
                         )
                         if found_wines:
                             logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}' (livello: {level_used})")
-                            specific_wine_info, _ = self._format_wines_response(found_wines, query=wine_search_term)
+                            # Rileva se è un movimento
+                            movement_context = self._detect_movement_in_message(user_message)
+                            specific_wine_info, _ = self._format_wines_response(found_wines, query=wine_search_term, movement_context=movement_context)
                         else:
                             logger.info(f"[FALLBACK] Nessun vino trovato dopo cascading retry per '{wine_search_term}'")
                             specific_wine_info = self._generate_error_message_html(f"Non ho trovato vini per '{wine_search_term}' nel tuo inventario.")
@@ -2240,7 +2353,7 @@ INFORMAZIONI UTENTE:
             logger.error(f"[FALLBACK] Errore accesso database: {e}", exc_info=True)
             # Continua comunque con risposta generica
     
-    def _format_wines_response(self, found_wines: list, query: str = None) -> tuple[str, bool]:
+    def _format_wines_response(self, found_wines: list, query: str = None, movement_context: Optional[Dict[str, Any]] = None) -> tuple[str, bool]:
         """
         Formatta risposta per vini trovati usando HTML.
         Restituisce (html, is_html).
@@ -2256,7 +2369,7 @@ INFORMAZIONI UTENTE:
             return html_card, True
         
         # Caso 2 e 3: 2+ vini → lista HTML con buttons se 2-10
-        html_card, buttons = self._generate_wines_list_html(found_wines, query, show_buttons=(2 <= num_wines <= 10))
+        html_card, buttons = self._generate_wines_list_html(found_wines, query, show_buttons=(2 <= num_wines <= 10), movement_context=movement_context)
         return html_card, True
     
     async def _simple_ai_response_complete(
