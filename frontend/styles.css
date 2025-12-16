@@ -338,6 +338,25 @@ body {
     opacity: 0.9;
 }
 
+/* Sidebar Overlay (mobile only) */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
 /* Responsive: nascondi sidebar su mobile */
 @media (max-width: 768px) {
     .chat-sidebar {
@@ -345,16 +364,29 @@ body {
         left: 0;
         top: 0;
         height: 100vh;
+        width: 280px !important; /* Forza larghezza su mobile */
         z-index: 1000;
         transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
     }
 
     .chat-sidebar.open {
         transform: translateX(0);
     }
 
+    .chat-sidebar.collapsed {
+        /* Su mobile, collapsed non ha effetto, usa solo 'open' */
+        transform: translateX(-100%);
+    }
+
     .chat-main-content {
         width: 100%;
+    }
+    
+    /* Mostra overlay quando sidebar è aperta su mobile */
+    .sidebar-overlay {
+        display: block;
     }
 }
 
@@ -1442,8 +1474,35 @@ body {
         padding: 32px 24px;
     }
 
+    .chat-header {
+        padding: 12px 16px;
+    }
+
+    .chat-title {
+        font-size: 20px;
+    }
+
+    .logo-container .logo {
+        width: 32px;
+        height: 32px;
+    }
+
+    .sidebar-toggle-btn {
+        padding: 6px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
     .chat-message {
         max-width: 90%;
+    }
+
+    .chat-messages-container {
+        padding: 16px;
+    }
+
+    .chat-input-container {
+        padding: 12px 16px;
     }
 
     .viewer-panel {
@@ -1480,6 +1539,11 @@ body {
 
     .wines-list-item-qty {
         margin-left: 0;
+    }
+
+    .btn-secondary {
+        padding: 6px 12px;
+        font-size: 13px;
     }
 }
 

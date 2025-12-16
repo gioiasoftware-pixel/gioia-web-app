@@ -77,12 +77,15 @@ function setupEventListeners() {
     // Chat sidebar
     document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
     document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar);
+    closeSidebarOnOverlayClick(); // Setup overlay click handler
+    
+    // Gestisci resize window per mobile/desktop
+    window.addEventListener('resize', handleWindowResize);
 
     // Viewer
     document.getElementById('viewer-toggle')?.addEventListener('click', toggleViewer);
     document.getElementById('viewer-close')?.addEventListener('click', closeViewer);
     document.getElementById('viewer-search')?.addEventListener('input', handleViewerSearch);
-    setupViewerDrag();
     setupViewerFilters();
 }
 
@@ -805,18 +808,102 @@ function clearChatMessages(keepWelcome = true) {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('chat-sidebar');
-    sidebar.classList.toggle('collapsed');
-    // Salva stato nel localStorage
-    const isCollapsed = sidebar.classList.contains('collapsed');
-    localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
+    const overlay = document.getElementById('sidebar-overlay');
+    
+    // Rileva se siamo su mobile (larghezza <= 768px)
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // Su mobile: usa classe 'open' per mostrare/nascondere
+        sidebar.classList.toggle('open');
+        
+        // Mostra/nascondi overlay quando sidebar è aperta
+        if (overlay) {
+            if (sidebar.classList.contains('open')) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+    } else {
+        // Su desktop: usa classe 'collapsed' per collassare/espandere
+        sidebar.classList.toggle('collapsed');
+        // Salva stato nel localStorage solo su desktop
+        const isCollapsed = sidebar.classList.contains('collapsed');
+        localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
+    }
 }
 
-// Carica stato sidebar al caricamento pagina
+// Carica stato sidebar al caricamento pagina (solo desktop)
 function loadSidebarState() {
     const sidebar = document.getElementById('chat-sidebar');
-    const savedState = localStorage.getItem('chat-sidebar-collapsed');
-    if (savedState === 'true') {
-        sidebar.classList.add('collapsed');
+    const overlay = document.getElementById('sidebar-overlay');
+    // Su mobile, la sidebar è sempre nascosta di default
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile) {
+        // Desktop: usa collapsed
+        const savedState = localStorage.getItem('chat-sidebar-collapsed');
+        if (savedState === 'true') {
+            sidebar.classList.add('collapsed');
+        }
+        // Rimuovi 'open' se presente (da mobile)
+        sidebar.classList.remove('open');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    } else {
+        // Mobile: assicurati che sia nascosta
+        sidebar.classList.remove('open');
+        sidebar.classList.remove('collapsed');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+    }
+}
+
+// Chiudi sidebar quando si clicca sull'overlay (solo mobile)
+function closeSidebarOnOverlayClick() {
+    const overlay = document.getElementById('sidebar-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', () => {
+            const sidebar = document.getElementById('chat-sidebar');
+            if (sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('active');
+            }
+        });
+    }
+}
+
+// Gestisci resize window per cambiare comportamento mobile/desktop
+function handleWindowResize() {
+    const sidebar = document.getElementById('chat-sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // Passato a mobile: rimuovi collapsed, usa solo open
+        sidebar.classList.remove('collapsed');
+        // Se sidebar era aperta su desktop, chiudila su mobile
+        if (!sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+            if (overlay) {
+                overlay.classList.remove('active');
+            }
+        }
+    } else {
+        // Passato a desktop: rimuovi open, usa collapsed
+        sidebar.classList.remove('open');
+        if (overlay) {
+            overlay.classList.remove('active');
+        }
+        // Ripristina stato collapsed da localStorage
+        const savedState = localStorage.getItem('chat-sidebar-collapsed');
+        if (savedState === 'true') {
+            sidebar.classList.add('collapsed');
+        } else {
+            sidebar.classList.remove('collapsed');
+        }
     }
 }
 
