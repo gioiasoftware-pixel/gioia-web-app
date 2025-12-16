@@ -38,9 +38,18 @@ function isTouchDevice() {
  * Aggiunge event listener universale per click/touch che funziona su tutti i browser mobile
  * Compatibile con: Safari iOS, Chrome Android, Firefox Mobile, Edge Mobile, Opera Mobile
  * Previene doppio trigger su Safari e altri browser che generano sia touch che click
+ * NON blocca lo scroll su elementi scrollabili (come chat-messages-container)
  */
 function addUniversalEventListener(element, handler, options = {}) {
     if (!element) return;
+    
+    // Rileva se l'elemento è scrollabile (non deve bloccare scroll)
+    const isScrollable = () => {
+        const style = window.getComputedStyle(element);
+        const overflowY = style.overflowY || style.overflow;
+        const hasScroll = element.scrollHeight > element.clientHeight;
+        return (overflowY === 'auto' || overflowY === 'scroll') && hasScroll;
+    };
     
     // Usa un WeakMap per tracciare lo stato per ogni elemento (evita conflitti)
     if (!window._touchStateMap) {
@@ -51,36 +60,71 @@ function addUniversalEventListener(element, handler, options = {}) {
         if (!window._touchStateMap.has(element)) {
             window._touchStateMap.set(element, {
                 touchHandled: false,
-                touchStartTime: 0
+                touchStartTime: 0,
+                touchStartY: 0,
+                touchStartX: 0
             });
         }
         return window._touchStateMap.get(element);
     };
     
     const TOUCH_DELAY = 400; // ms - tempo massimo per considerare un tap valido
+    const SWIPE_THRESHOLD = 10; // px - movimento minimo per considerare uno swipe
     
     const unifiedHandler = (e) => {
         const eventType = e.type;
         const now = Date.now();
         const state = getTouchState();
+        const elementIsScrollable = isScrollable();
         
         // Se è un evento touchstart
         if (eventType === 'touchstart') {
             state.touchStartTime = now;
             state.touchHandled = false;
+            const touch = e.touches[0] || e.changedTouches[0];
+            if (touch) {
+                state.touchStartY = touch.clientY;
+                state.touchStartX = touch.clientX;
+            }
             // Non chiamare handler su touchstart, aspetta touchend
             return;
         }
         
         // Se è un evento touchend
         if (eventType === 'touchend') {
+            const touch = e.changedTouches[0];
+            if (!touch) return;
+            
             const touchDuration = now - state.touchStartTime;
+            const deltaY = Math.abs(touch.clientY - state.touchStartY);
+            const deltaX = Math.abs(touch.clientX - state.touchStartX);
+            
+            // Se è uno swipe (movimento significativo), NON gestirlo come click
+            // Permetti lo scroll su elementi scrollabili
+            if (elementIsScrollable && (deltaY > SWIPE_THRESHOLD || deltaX > SWIPE_THRESHOLD)) {
+                // È uno swipe, non un tap - non fare nulla, lascia che lo scroll funzioni
+                return;
+            }
             
             // Gestisci solo se è un tap veloce (non long press o swipe)
-            if (touchDuration < TOUCH_DELAY && touchDuration > 0) {
+            if (touchDuration < TOUCH_DELAY && touchDuration > 0 && deltaY < SWIPE_THRESHOLD && deltaX < SWIPE_THRESHOLD) {
                 state.touchHandled = true;
-                e.preventDefault();
-                e.stopPropagation();
+                
+                // Previeni default SOLO se NON è un elemento scrollabile
+                // Su elementi scrollabili, previeni solo se è chiaramente un tap (non swipe)
+                if (!elementIsScrollable) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                } else {
+                    // Su elementi scrollabili, previeni solo se è un tap molto preciso (quasi nessun movimento)
+                    if (deltaY < 5 && deltaX < 5) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    } else {
+                        // C'è movimento, probabilmente è uno scroll - non bloccare
+                        return;
+                    }
+                }
                 
                 // Chiama handler
                 try {
@@ -118,8 +162,10 @@ function addUniversalEventListener(element, handler, options = {}) {
     // Su dispositivi touch, ascolta entrambi touch e click
     if (isTouchDevice()) {
         // Touch events per mobile
-        element.addEventListener('touchstart', unifiedHandler, { passive: false, ...options });
-        element.addEventListener('touchend', unifiedHandler, { passive: false, ...options });
+        // Su elementi scrollabili, usa passive: true per migliorare performance scroll
+        const passiveForTouch = elementIsScrollable ? true : false;
+        element.addEventListener('touchstart', unifiedHandler, { passive: passiveForTouch, ...options });
+        element.addEventListener('touchend', unifiedHandler, { passive: passiveForTouch, ...options });
         // Click come fallback per browser che non supportano touch events correttamente
         // o per dispositivi touch che emulano mouse
         element.addEventListener('click', unifiedHandler, { passive: true, ...options });
@@ -181,8 +227,11 @@ function setupEventListeners() {
         });
     }
 
-    // Logout
-    document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+    // Logout - usa listener universale per mobile
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        addUniversalEventListener(logoutBtn, handleLogout);
+    }
 
     // Chat sidebar
     const newChatBtn = document.getElementById('new-chat-btn');
