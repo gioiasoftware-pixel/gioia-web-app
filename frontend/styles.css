@@ -1560,7 +1560,7 @@ body {
 /* Wine Card Bookmarks (Segnalibri) */
 .wine-card-bookmarks {
     position: absolute;
-    right: -48px;
+    right: -1px;
     bottom: 0;
     display: flex;
     flex-direction: column;
@@ -1586,8 +1586,9 @@ body {
     box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
     transition: all 0.3s ease;
     opacity: 0;
-    transform: translateY(20px) translateX(20px);
-    animation: bookmarkSlideUp 0.5s ease forwards;
+    /* Animazione da sinistra a destra: parte completamente nascosto a sinistra */
+    transform: translateX(-48px);
+    animation: bookmarkSlideRight 0.5s ease forwards;
     padding: 12px 4px;
     writing-mode: vertical-rl;
     text-orientation: mixed;
@@ -1597,8 +1598,6 @@ body {
     border-left: none;
     /* Assicura che il bordo sinistro sia perfettamente allineato con la card */
     position: relative;
-    /* Sovrapponi leggermente il segnalibro alla card per evitare linee bianche */
-    margin-left: -1px;
     /* Rimuovi il bordo sinistro arrotondato per un effetto seamless */
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
 }
@@ -1611,10 +1610,10 @@ body {
     animation-delay: 0.3s;
 }
 
-@keyframes bookmarkSlideUp {
+@keyframes bookmarkSlideRight {
     to {
         opacity: 1;
-        transform: translateY(0) translateX(0);
+        transform: translateX(0);
     }
 }
 
