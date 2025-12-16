@@ -15,20 +15,31 @@ async def run_migrations():
     Esegue tutte le migrazioni necessarie all'avvio.
     Verifica se le tabelle/colonne esistono prima di crearle/modificarle.
     """
+    import sys
+    
+    print("[MIGRATIONS] Avvio migrazioni database...", file=sys.stderr)
     logger.info("[MIGRATIONS] Avvio migrazioni database...")
     
     try:
+        print("[MIGRATIONS] Creazione sessione database...", file=sys.stderr)
         async with AsyncSessionLocal() as session:
             # Migrazione 1: Crea tabella conversations se non esiste
+            print("[MIGRATIONS] Esecuzione migrazione tabella conversations...", file=sys.stderr)
             await migrate_conversations_table(session)
             
             # Migrazione 2: Aggiungi colonna conversation_id alle tabelle LOG interazione esistenti
+            print("[MIGRATIONS] Esecuzione migrazione tabelle LOG interazione...", file=sys.stderr)
             await migrate_log_interaction_tables(session)
             
+            print("[MIGRATIONS] Commit modifiche database...", file=sys.stderr)
             await session.commit()
+            
+            print("[MIGRATIONS] ✅ Migrazioni completate con successo", file=sys.stderr)
             logger.info("[MIGRATIONS] ✅ Migrazioni completate con successo")
     except Exception as e:
-        logger.error(f"[MIGRATIONS] ❌ Errore durante migrazioni: {e}", exc_info=True)
+        error_msg = f"[MIGRATIONS] ❌ Errore durante migrazioni: {e}"
+        print(error_msg, file=sys.stderr)
+        logger.error(error_msg, exc_info=True)
         raise
 
 
