@@ -2240,9 +2240,9 @@ body {
         grid-template-columns: 1fr;
     }
     
-    /* Su mobile, mantieni comunque layout orizzontale per il form di modifica */
+    /* Su mobile, riduci a 4 colonne per il form di modifica */
     .wine-card-edit-form-grid {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(4, 1fr);
     }
 
     .movement-card-stats {
