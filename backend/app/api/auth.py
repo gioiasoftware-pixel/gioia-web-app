@@ -280,24 +280,25 @@ async def login(login_request: LoginRequest):
 @router.post("/reset-password-debug")
 async def reset_password_debug(
     email: str = Body(...),
-    new_password: str = Body(...),
-    current_user: dict = Depends(get_current_user)
+    new_password: str = Body(...)
 ):
     """
-    ENDPOINT TEMPORANEO DI DEBUG: Resetta password per utente.
+    ENDPOINT TEMPORANEO DI DEBUG: Resetta password per utente SENZA autenticazione.
     Usa solo per debug, rimuovere in produzione!
     """
     from app.core.auth import hash_password
     from app.core.database import AsyncSessionLocal, User
     from sqlalchemy import select
     
-    # Solo admin o stesso utente
-    if current_user["user"].email != email.lower().strip():
-        raise HTTPException(status_code=403, detail="Non autorizzato")
+    email_normalized = email.lower().strip()
+    
+    # Validazione password
+    if len(new_password) < 8:
+        raise HTTPException(status_code=400, detail="La password deve essere di almeno 8 caratteri")
     
     async with AsyncSessionLocal() as session:
         result = await session.execute(
-            select(User).where(User.email == email.lower().strip())
+            select(User).where(User.email == email_normalized)
         )
         user = result.scalar_one_or_none()
         
@@ -311,14 +312,22 @@ async def reset_password_debug(
         user.password_hash = new_hash
         await session.commit()
         
-        logger.info(f"[DEBUG] Password resettata per email={email}")
-        logger.info(f"  - Vecchio hash: {old_hash[:30]}...")
+        logger.info(f"[DEBUG] Password resettata per email={email_normalized}, user_id={user.id}")
+        logger.info(f"  - Vecchio hash: {old_hash[:30] if old_hash else 'None'}...")
         logger.info(f"  - Nuovo hash: {new_hash[:30]}...")
         
+        # Verifica che il nuovo hash funzioni
+        from app.core.auth import verify_password
+        verify_result = verify_password(new_password, new_hash)
+        logger.info(f"  - Verifica nuovo hash: {verify_result}")
+        
         return {
-            "message": "Password resettata",
+            "message": "Password resettata con successo",
+            "email": email_normalized,
+            "user_id": user.id,
             "old_hash_prefix": old_hash[:30] if old_hash else None,
-            "new_hash_prefix": new_hash[:30]
+            "new_hash_prefix": new_hash[:30],
+            "verify_result": verify_result
         }
 
 
