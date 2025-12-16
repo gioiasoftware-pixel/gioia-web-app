@@ -143,10 +143,14 @@ class AIService:
         telegram_id: int
     ) -> Dict[str, Any]:
         """
-        Fallback: risposta AI semplificata senza logica complessa del bot.
+        Fallback: risposta AI con ricerca vini integrata (logica essenziale del bot).
         """
+        import re
+        
         # Recupera contesto utente
         user_context = ""
+        specific_wine_info = ""
+        
         try:
             user = await db_manager.get_user_by_telegram_id(telegram_id)
             if user:
@@ -155,8 +159,78 @@ INFORMAZIONI UTENTE:
 - Nome attività: {user.business_name or 'Non specificato'}
 - Onboarding completato: {'Sì' if user.onboarding_completed else 'No'}
 """
+                
+                # Rileva ricerca vini nel messaggio (pattern semplificati)
+                wine_search_patterns = [
+                    r'(?:che|quale|quali)\s+(.+?)(?:\s+ho|\s+hai|\s+ci\s+sono|\s+in\s+cantina|\s+in\s+magazzino|\s+quantità|\?|$)',
+                    r'(?:quanti|quante)\s+bottiglie?\s+di\s+(.+?)(?:\s+ho|\s+hai|\s+ci\s+sono|\s+in\s+cantina|\s+in\s+magazzino|\s+quantità|$)',
+                    r'(?:quanti|quante)\s+(.+?)(?:\s+ho|\s+hai|\s+ci\s+sono|\s+in\s+cantina|\s+in\s+magazzino|\s+quantità|$)',
+                    r'a\s+quanto\s+(?:vendo|vendi|costano|prezzo)\s+(.+)',
+                    r'prezzo\s+(.+)',
+                ]
+                
+                wine_search_term = None
+                for pattern in wine_search_patterns:
+                    match = re.search(pattern, user_message.lower())
+                    if match:
+                        raw_term = match.group(1).strip()
+                        # Pulisci termine
+                        wine_search_term = re.sub(r'\b(che|quale|quali|quanti|quante|ho|hai|ci|sono|in|cantina|magazzino|quantità|bottiglie|di)\b', '', raw_term).strip()
+                        if wine_search_term and len(wine_search_term) > 2:
+                            logger.info(f"[FALLBACK] Termine ricerca estratto: '{wine_search_term}'")
+                            break
+                
+                # Cerca vini se termine trovato
+                if wine_search_term:
+                    found_wines = await db_manager.search_wines(telegram_id, wine_search_term, limit=50)
+                    if found_wines:
+                        logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}'")
+                        
+                        # Formatta risposta per vini trovati
+                        if len(found_wines) == 1:
+                            wine = found_wines[0]
+                            response_parts = [f"✅ Ho trovato **{wine.name}**"]
+                            if wine.producer:
+                                response_parts.append(f"Produttore: {wine.producer}")
+                            if wine.vintage:
+                                response_parts.append(f"Annata: {wine.vintage}")
+                            if wine.quantity is not None:
+                                response_parts.append(f"Quantità: {wine.quantity} bottiglie")
+                            if wine.selling_price:
+                                response_parts.append(f"Prezzo vendita: €{wine.selling_price:.2f}")
+                            specific_wine_info = "\n".join(response_parts)
+                        elif len(found_wines) <= 10:
+                            wine_list = []
+                            for wine in found_wines[:10]:
+                                wine_str = f"- **{wine.name}**"
+                                if wine.producer:
+                                    wine_str += f" ({wine.producer})"
+                                if wine.quantity is not None:
+                                    wine_str += f" - {wine.quantity} bottiglie"
+                                wine_list.append(wine_str)
+                            specific_wine_info = f"✅ Ho trovato {len(found_wines)} vini:\n\n" + "\n".join(wine_list)
+                        else:
+                            wine_list = []
+                            for wine in found_wines[:10]:
+                                wine_str = f"- **{wine.name}**"
+                                if wine.producer:
+                                    wine_str += f" ({wine.producer})"
+                                wine_list.append(wine_str)
+                            specific_wine_info = f"✅ Ho trovato {len(found_wines)} vini (mostro i primi 10):\n\n" + "\n".join(wine_list) + f"\n\n... e altri {len(found_wines) - 10} vini."
+                    else:
+                        specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                
+                # Statistiche inventario
+                wines = await db_manager.get_user_wines(telegram_id)
+                if wines:
+                    user_context += f"\nINVENTARIO ATTUALE:\n"
+                    user_context += f"- Totale vini: {len(wines)}\n"
+                    user_context += f"- Quantità totale: {sum(w.quantity for w in wines if w.quantity) or 0} bottiglie\n"
+                    low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
+                    if low_stock:
+                        user_context += f"- Scorte basse: {len(low_stock)} vini\n"
         except Exception as e:
-            logger.error(f"Errore accesso database: {e}")
+            logger.error(f"[FALLBACK] Errore accesso database: {e}", exc_info=True)
         
         system_prompt = """Sei Gio.ia-bot, un assistente AI specializzato nella gestione inventario vini.
 Sei gentile, professionale e parli in italiano.
@@ -167,29 +241,42 @@ Puoi aiutare gli utenti con:
 - Gestione movimenti inventario (consumi/rifornimenti)
 - Report e statistiche
 
+IMPORTANTE: Se l'utente chiede informazioni su vini specifici, usa i dati forniti nel contesto.
 Rispondi sempre in italiano in modo chiaro e professionale."""
         
         try:
+            messages = [
+                {"role": "system", "content": system_prompt + user_context}
+            ]
+            
+            # Aggiungi info vini trovati se disponibile
+            if specific_wine_info:
+                messages.append({"role": "assistant", "content": specific_wine_info})
+            
+            messages.append({"role": "user", "content": user_message})
+            
             response = self.client.chat.completions.create(
                 model=self.openai_model,
-                messages=[
-                    {"role": "system", "content": system_prompt + user_context},
-                    {"role": "user", "content": user_message}
-                ],
+                messages=messages,
                 temperature=0.7
             )
             
             message_content = response.choices[0].message.content
             
+            # Se abbiamo info vini, combina con risposta AI
+            if specific_wine_info and not message_content.startswith("✅"):
+                message_content = specific_wine_info + "\n\n" + message_content
+            
             return {
                 "message": message_content,
                 "metadata": {
-                    "type": "simple_ai_response",
-                    "model": self.openai_model
+                    "type": "fallback_ai_response",
+                    "model": self.openai_model,
+                    "wines_found": len(found_wines) if 'found_wines' in locals() else 0
                 }
             }
         except Exception as e:
-            logger.error(f"Errore chiamata OpenAI: {e}")
+            logger.error(f"[FALLBACK] Errore chiamata OpenAI: {e}", exc_info=True)
             raise
 
 
