@@ -264,7 +264,13 @@ body {
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s ease, width 0.3s ease;
+}
+
+.chat-sidebar.collapsed {
+    width: 0;
+    overflow: hidden;
+    border-right: none;
 }
 
 .chat-sidebar-header {
@@ -437,6 +443,14 @@ body {
     justify-content: center;
     font-weight: 600;
     font-size: 14px;
+    overflow: hidden;
+}
+
+.chat-avatar-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    padding: 4px;
 }
 
 .chat-message.user .chat-message-avatar {
@@ -643,30 +657,6 @@ body {
     transform: translateX(0);
 }
 
-.viewer-drag-handle {
-    position: absolute;
-    left: -24px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 24px;
-    height: 80px;
-    background-color: var(--color-granaccia);
-    color: var(--color-white);
-    border-radius: 8px 0 0 8px;
-    cursor: grab;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.viewer-drag-handle:hover {
-    background-color: #7a1324;
-}
-
-.viewer-drag-handle:active {
-    cursor: grabbing;
-}
 
 .viewer-content {
     flex: 1;

@@ -224,6 +224,8 @@ function showAuthPage() {
 function showChatPage() {
     document.getElementById('auth-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
+    // Carica stato sidebar
+    loadSidebarState();
     // Carica conversazioni e seleziona quella corrente
     loadConversations();
     // Carica conversation_id dal localStorage
@@ -289,7 +291,9 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
 
     if (isLoading) {
         messageEl.innerHTML = `
-            <div class="chat-message-avatar">AI</div>
+            <div class="chat-message-avatar">
+                <img src="/static/assets/logo.png" alt="Gio.ia" class="chat-avatar-logo" onerror="this.style.display='none'; this.parentElement.textContent='G'">
+            </div>
             <div class="chat-message-content">
                 <div class="chat-message-loading">
                     <span></span>
@@ -299,7 +303,15 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             </div>
         `;
     } else {
-        const avatar = role === 'user' ? (currentUser?.email?.[0]?.toUpperCase() || 'U') : 'AI';
+        // Avatar: logo Gio.ia per AI, iniziale email per utente
+        let avatarHtml;
+        if (role === 'user') {
+            const userInitial = currentUser?.email?.[0]?.toUpperCase() || 'U';
+            avatarHtml = `<div class="chat-message-avatar">${userInitial}</div>`;
+        } else {
+            // Logo Gio.ia per risposte AI
+            avatarHtml = `<div class="chat-message-avatar"><img src="/static/assets/logo.png" alt="Gio.ia" class="chat-avatar-logo" onerror="this.style.display='none'; this.parentElement.textContent='G'"></div>`;
+        }
         
         // Renderizza pulsanti se presenti
         let buttonsHtml = '';
@@ -387,35 +399,6 @@ function closeViewer() {
     toggleBtn.classList.remove('hidden');
 }
 
-function setupViewerDrag() {
-    const handle = document.getElementById('viewer-drag-handle');
-    const panel = document.getElementById('viewer-panel');
-    let isDragging = false;
-    let startX = 0;
-    let startWidth = 0;
-
-    handle.addEventListener('mousedown', (e) => {
-        isDragging = true;
-        startX = e.clientX;
-        startWidth = panel.offsetWidth;
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', stopDrag);
-        e.preventDefault();
-    });
-
-    function handleDrag(e) {
-        if (!isDragging) return;
-        const diff = startX - e.clientX;
-        const newWidth = Math.max(400, Math.min(1000, startWidth + diff));
-        panel.style.width = `${newWidth}px`;
-    }
-
-    function stopDrag() {
-        isDragging = false;
-        document.removeEventListener('mousemove', handleDrag);
-        document.removeEventListener('mouseup', stopDrag);
-    }
-}
 
 function setupViewerFilters() {
     const filterHeaders = document.querySelectorAll('.filter-header');
@@ -813,6 +796,18 @@ function clearChatMessages() {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('chat-sidebar');
-    sidebar.classList.toggle('open');
+    sidebar.classList.toggle('collapsed');
+    // Salva stato nel localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
+}
+
+// Carica stato sidebar al caricamento pagina
+function loadSidebarState() {
+    const sidebar = document.getElementById('chat-sidebar');
+    const savedState = localStorage.getItem('chat-sidebar-collapsed');
+    if (savedState === 'true') {
+        sidebar.classList.add('collapsed');
+    }
 }
 
