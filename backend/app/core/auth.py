@@ -10,22 +10,29 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.core.config import get_settings
 from app.core.database import db_manager, AsyncSessionLocal
-from passlib.context import CryptContext
+import bcrypt
 
 logger = logging.getLogger(__name__)
-
-# Context per hash password
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
     """Hash password con bcrypt"""
-    return pwd_context.hash(password)
+    # Genera salt e hash password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verifica password contro hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode('utf-8'),
+            hashed_password.encode('utf-8')
+        )
+    except Exception as e:
+        logger.error(f"Errore verifica password: {e}")
+        return False
 
 security = HTTPBearer()
 
