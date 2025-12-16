@@ -76,14 +76,38 @@ function setupEventListeners() {
 
     // Chat sidebar
     document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
-    // Aggiungi listener per click e touchstart per mobile
+    // Aggiungi listener per click e touchstart per mobile con debug
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
+        console.log('[DEBUG] Sidebar toggle button trovato:', sidebarToggle);
+        
+        const handleToggle = (eventType) => {
+            return (e) => {
+                console.log(`[DEBUG] Evento ${eventType} catturato sul pulsante hamburger`);
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar();
+            };
+        };
+        
+        sidebarToggle.addEventListener('click', handleToggle('click'));
+        sidebarToggle.addEventListener('touchstart', (e) => {
+            console.log('[DEBUG] Touchstart catturato');
+            e.stopPropagation();
+        });
         sidebarToggle.addEventListener('touchend', (e) => {
-            e.preventDefault(); // Previeni doppio trigger
+            console.log('[DEBUG] Touchend catturato');
+            e.preventDefault();
+            e.stopPropagation();
             toggleSidebar();
         });
+        
+        // Test: aggiungi anche mousedown per debug
+        sidebarToggle.addEventListener('mousedown', () => {
+            console.log('[DEBUG] Mousedown catturato');
+        });
+    } else {
+        console.error('[DEBUG] Sidebar toggle button NON trovato!');
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
@@ -835,22 +859,34 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
+    console.log('[DEBUG] toggleSidebar chiamato');
     const sidebar = document.getElementById('chat-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     
+    if (!sidebar) {
+        console.error('[DEBUG] Sidebar non trovata!');
+        return;
+    }
+    
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
+    console.log('[DEBUG] isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
+        const wasOpen = sidebar.classList.contains('open');
         sidebar.classList.toggle('open');
+        const isNowOpen = sidebar.classList.contains('open');
+        console.log('[DEBUG] Mobile - sidebar era aperta:', wasOpen, 'ora è aperta:', isNowOpen);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
-            if (sidebar.classList.contains('open')) {
+            if (isNowOpen) {
                 overlay.classList.add('active');
+                console.log('[DEBUG] Overlay attivato');
             } else {
                 overlay.classList.remove('active');
+                console.log('[DEBUG] Overlay disattivato');
             }
         }
     } else {
@@ -859,6 +895,7 @@ function toggleSidebar() {
         // Salva stato nel localStorage solo su desktop
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
+        console.log('[DEBUG] Desktop - sidebar collapsed:', isCollapsed);
     }
 }
 

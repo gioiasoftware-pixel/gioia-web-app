@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Mobile Touch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .debug-info {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #c42d2d;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 5px;
+            min-width: 44px;
+            min-height: 44px;
+            touch-action: manipulation;
+        }
+        .log {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #0f0;
+            padding-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnostica Touch Mobile</h1>
+    
+    <div class="debug-info">
+        <h2>Informazioni Sistema</h2>
+        <p><strong>User Agent:</strong> <span id="user-agent"></span></p>
+        <p><strong>Larghezza Schermo:</strong> <span id="screen-width"></span>px</p>
+        <p><strong>Altezza Schermo:</strong> <span id="screen-height"></span>px</p>
+        <p><strong>Touch Support:</strong> <span id="touch-support"></span></p>
+        <p><strong>Pointer Events:</strong> <span id="pointer-events"></span></p>
+    </div>
+
+    <div class="debug-info">
+        <h2>Test Pulsanti</h2>
+        <button class="test-button" id="test-btn-1">Test Click</button>
+        <button class="test-button" id="test-btn-2">Test Touch</button>
+        <button class="test-button" id="test-btn-3">Test Eventi</button>
+    </div>
+
+    <div class="debug-info">
+        <h2>Log Eventi</h2>
+        <button onclick="clearLog()" style="margin-bottom: 10px;">Pulisci Log</button>
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            log.innerHTML = '';
+        }
+        
+        // Info sistema
+        document.getElementById('user-agent').textContent = navigator.userAgent;
+        document.getElementById('screen-width').textContent = window.innerWidth;
+        document.getElementById('screen-height').textContent = window.innerHeight;
+        document.getElementById('touch-support').textContent = 'ontouchstart' in window ? 'Sì' : 'No';
+        document.getElementById('pointer-events').textContent = window.PointerEvent ? 'Sì' : 'No';
+        
+        // Test pulsanti
+        const btn1 = document.getElementById('test-btn-1');
+        btn1.addEventListener('click', () => addLog('✅ CLICK catturato su Test Click'));
+        btn1.addEventListener('touchstart', () => addLog('👆 TOUCHSTART catturato su Test Click'));
+        btn1.addEventListener('touchend', () => addLog('👆 TOUCHEND catturato su Test Click'));
+        
+        const btn2 = document.getElementById('test-btn-2');
+        btn2.addEventListener('click', () => addLog('✅ CLICK catturato su Test Touch'));
+        btn2.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            addLog('👆 TOUCHSTART (preventDefault) catturato su Test Touch');
+        });
+        btn2.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            addLog('👆 TOUCHEND (preventDefault) catturato su Test Touch');
+        });
+        
+        const btn3 = document.getElementById('test-btn-3');
+        btn3.addEventListener('click', () => addLog('✅ CLICK catturato su Test Eventi'));
+        btn3.addEventListener('touchstart', () => addLog('👆 TOUCHSTART catturato su Test Eventi'));
+        btn3.addEventListener('touchend', () => addLog('👆 TOUCHEND catturato su Test Eventi'));
+        btn3.addEventListener('mousedown', () => addLog('🖱️ MOUSEDOWN catturato su Test Eventi'));
+        
+        // Test globale
+        document.addEventListener('touchstart', (e) => {
+            addLog(`🌐 TOUCHSTART globale su: ${e.target.tagName} (${e.target.id || e.target.className})`);
+        }, true);
+        
+        document.addEventListener('click', (e) => {
+            addLog(`🌐 CLICK globale su: ${e.target.tagName} (${e.target.id || e.target.className})`);
+        }, true);
+        
+        addLog('Sistema di diagnostica avviato');
+        addLog(`Touch support: ${'ontouchstart' in window ? 'Sì' : 'No'}`);
+        addLog(`Larghezza schermo: ${window.innerWidth}px`);
+    </script>
+</body>
+</html>

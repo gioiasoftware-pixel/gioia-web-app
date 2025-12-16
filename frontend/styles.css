@@ -254,6 +254,11 @@ body {
     -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile */
     min-width: 44px; /* Dimensione touch-friendly */
     min-height: 44px;
+    position: relative; /* Assicura che sia posizionato correttamente */
+    z-index: 1001; /* Sopra altri elementi */
+    pointer-events: auto; /* Assicura che sia cliccabile */
+    user-select: none; /* Previeni selezione testo */
+    -webkit-user-select: none;
 }
 
 .sidebar-toggle-btn:hover {
@@ -262,6 +267,11 @@ body {
 
 .sidebar-toggle-btn:active {
     background-color: var(--color-light-gray);
+}
+
+/* Assicura che SVG dentro il pulsante non blocchi i click */
+.sidebar-toggle-btn svg {
+    pointer-events: none; /* Permette click attraverso SVG */
 }
 
 /* Chat Sidebar */
@@ -1509,9 +1519,11 @@ body {
     }
 
     .sidebar-toggle-btn {
-        padding: 6px;
-        min-width: 40px;
-        min-height: 40px;
+        padding: 8px;
+        min-width: 44px; /* Mantieni dimensione touch-friendly */
+        min-height: 44px;
+        z-index: 1001; /* Sopra tutto su mobile */
+        position: relative;
     }
 
     .chat-message {
