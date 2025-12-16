@@ -1450,10 +1450,11 @@ Esempio di risposta: vermentino
 - Prezzo: 'prezzo sotto X', 'prezzo sopra Y'
 - Annata: 'dal 2015', 'fino al 2020'
 - Produttore: 'produttore X', 'cantina Y'
-- Combinati: 'rossi toscani', 'italiani sotto €50'
+- Fornitore: 'fornitore X', 'da X'
+- Combinati: 'rossi toscani', 'italiani sotto €50', 'vini del fornitore X'
 
 IMPORTANTE: Se la richiesta contiene QUALSIASI filtro, usa questa funzione invece di get_inventory_list.
-Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso", "price_max": 50, "vintage_min": 2015, "producer": "nome", "name_contains": "testo"}""",
+Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso", "price_max": 50, "vintage_min": 2015, "producer": "nome", "supplier": "fornitore", "name_contains": "testo"}""",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -1781,6 +1782,13 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         wine_producer = (wine.producer or "").lower()
                         filter_producer = filters["producer"].lower()
                         if filter_producer not in wine_producer and wine_producer not in filter_producer:
+                            continue
+                    
+                    # Filtro fornitore (match esatto o parziale)
+                    if filters.get("supplier"):
+                        wine_supplier = (wine.supplier or "").lower()
+                        filter_supplier = filters["supplier"].lower()
+                        if filter_supplier not in wine_supplier and wine_supplier not in filter_supplier:
                             continue
                     
                     # Filtri numerici
