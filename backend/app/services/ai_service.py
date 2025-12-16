@@ -935,11 +935,31 @@ INFORMAZIONI UTENTE:
     
     async def _retry_level_1_normalize_local(self, query: str) -> List[str]:
         """
-        Livello 1: Normalizzazione locale (plurali, accenti).
+        Livello 1: Normalizzazione locale (plurali, accenti, apostrofi, parentesi).
         Genera varianti normalizzate del termine di ricerca.
         """
+        import re
         variants = [query]
         query_lower = query.lower().strip()
+        
+        # Normalizzazione avanzata: rimuovi parentesi e contenuto
+        query_no_parentheses = re.sub(r'\([^)]*\)', '', query).strip()
+        if query_no_parentheses and query_no_parentheses != query_lower:
+            variants.append(query_no_parentheses.lower())
+        
+        # Normalizza apostrofi: sostituisci con spazio o rimuovi
+        apostrofi_varianti = ["'", "'", "`", "´", "ʼ"]
+        for apostrofo in apostrofi_varianti:
+            if apostrofo in query:
+                # Variante con spazio invece di apostrofo
+                variants.append(query.replace(apostrofo, ' ').strip())
+                # Variante senza apostrofo
+                variants.append(query.replace(apostrofo, '').strip())
+        
+        # Normalizza spazi multipli
+        query_normalized_spaces = re.sub(r'\s+', ' ', query).strip()
+        if query_normalized_spaces != query:
+            variants.append(query_normalized_spaces.lower())
         
         # Normalizzazione plurali (stessa logica di search_wines)
         if len(query_lower) > 2:
@@ -955,13 +975,20 @@ INFORMAZIONI UTENTE:
                 variants.append(base + 'o')  # bianco
                 variants.append(base)  # bianch
         
-        # Rimuovi accenti/apostrofi (normalizzazione base)
-        if "'" in query:
-            variants.append(query.replace("'", ""))
-        if "'" in query:  # apostrofo unicode (diverso carattere)
-            variants.append(query.replace("'", ""))
+        # Estrai solo le parole chiave principali (rimuovi stop words)
+        words = query_lower.split()
+        stop_words = {'del', 'della', 'dello', 'dei', 'degli', 'delle', 'di', 'da', 'dal', 'dalla', 
+                     'dallo', 'dai', 'dagli', 'dalle', 'la', 'le', 'il', 'lo', 'gli', 'i', 'un', 
+                     'una', 'uno', 'e', 'o', 'a', 'in', 'su', 'per', 'con', 'tra', 'fra', 'ca'}
+        key_words = [w for w in words if w not in stop_words and len(w) > 2]
+        if len(key_words) > 1:
+            # Prova con solo le prime due parole chiave
+            variants.append(' '.join(key_words[:2]))
+            # Prova con solo la prima parola chiave
+            if len(key_words) > 0:
+                variants.append(key_words[0])
         
-        return list(set(variants))  # Rimuovi duplicati mantenendo ordine
+        return list(set([v.lower().strip() for v in variants if v and len(v.strip()) > 1]))  # Rimuovi duplicati e vuoti
     
     async def _retry_level_2_fallback_less_specific(
         self,

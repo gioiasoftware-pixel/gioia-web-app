@@ -212,15 +212,30 @@ class DatabaseManager:
             table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
             
             try:
-                search_term_clean = search_term.strip().lower()
-                accent_from = "àáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜ'ʼ'`´"
+                # Normalizzazione avanzata: rimuovi caratteri speciali problematici e normalizza spazi
+                import re
+                search_term_normalized = search_term.strip()
+                
+                # Rimuovi parentesi e contenuto tra parentesi (spesso ridondante)
+                search_term_normalized = re.sub(r'\([^)]*\)', '', search_term_normalized)
+                
+                # Normalizza tutti i tipi di apostrofi a spazio o rimozione
+                apostrofi_varianti = ["'", "'", "`", "´", "ʼ"]
+                for apostrofo in apostrofi_varianti:
+                    search_term_normalized = search_term_normalized.replace(apostrofo, ' ')
+                
+                # Normalizza spazi multipli a singolo spazio
+                search_term_normalized = re.sub(r'\s+', ' ', search_term_normalized)
+                
+                search_term_clean = search_term_normalized.strip().lower()
+                
+                accent_from = "àáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜ"
                 accent_to = "aaaaeeeeiiiioooouuuuAAAAEEEEIIIIOOOOUUUU"
                 
                 def strip_accents(s: str) -> str:
                     # str.maketrans() richiede che tutte le chiavi siano di lunghezza 1
-                    # Usa due stringhe invece di un dict
-                    accent_chars = 'àáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜ\'\'`´'
-                    ascii_chars = 'aaaaeeeeiiiioooouuuuAAAAEEEEIIIIOOOOUUUU\'\'`\''
+                    accent_chars = 'àáâäèéêëìíîïòóôöùúûüÀÁÂÄÈÉÊËÌÍÎÏÒÓÔÖÙÚÛÜ'
+                    ascii_chars = 'aaaaeeeeiiiioooouuuuAAAAEEEEIIIIOOOOUUUU'
                     trans = str.maketrans(accent_chars, ascii_chars)
                     return s.translate(trans)
                 
