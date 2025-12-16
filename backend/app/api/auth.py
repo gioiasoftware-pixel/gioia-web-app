@@ -1,7 +1,7 @@
 """
 API endpoints per autenticazione
 """
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import logging
@@ -275,6 +275,51 @@ async def login(login_request: LoginRequest):
         business_name=user.business_name,
         onboarding_completed=user.onboarding_completed
     )
+
+
+@router.post("/reset-password-debug")
+async def reset_password_debug(
+    email: str = Body(...),
+    new_password: str = Body(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    ENDPOINT TEMPORANEO DI DEBUG: Resetta password per utente.
+    Usa solo per debug, rimuovere in produzione!
+    """
+    from app.core.auth import hash_password
+    from app.core.database import AsyncSessionLocal, User
+    from sqlalchemy import select
+    
+    # Solo admin o stesso utente
+    if current_user["user"].email != email.lower().strip():
+        raise HTTPException(status_code=403, detail="Non autorizzato")
+    
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.email == email.lower().strip())
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise HTTPException(status_code=404, detail="Utente non trovato")
+        
+        # Genera nuovo hash
+        new_hash = hash_password(new_password)
+        old_hash = user.password_hash
+        
+        user.password_hash = new_hash
+        await session.commit()
+        
+        logger.info(f"[DEBUG] Password resettata per email={email}")
+        logger.info(f"  - Vecchio hash: {old_hash[:30]}...")
+        logger.info(f"  - Nuovo hash: {new_hash[:30]}...")
+        
+        return {
+            "message": "Password resettata",
+            "old_hash_prefix": old_hash[:30] if old_hash else None,
+            "new_hash_prefix": new_hash[:30]
+        }
 
 
 @router.get("/me", response_model=UserInfo)
