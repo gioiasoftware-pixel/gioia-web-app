@@ -82,7 +82,8 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
             table_exists = result.scalar()
 
             if not table_exists:
-                logger.info(f"Tabella {table_name} non esiste per utente {telegram_id}")
+                logger.info(f"Tabella {table_name} non esiste per utente {telegram_id} (business_name={business_name})")
+                # Restituisci risposta vuota ma valida - l'utente non ha ancora inventario
                 return {
                     "rows": [],
                     "facets": {
@@ -93,7 +94,8 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
                     },
                     "meta": {
                         "total_rows": 0,
-                        "last_update": datetime.utcnow().isoformat()
+                        "last_update": datetime.utcnow().isoformat(),
+                        "message": "Nessun inventario trovato. Carica un file CSV per iniziare."
                     }
                 }
 

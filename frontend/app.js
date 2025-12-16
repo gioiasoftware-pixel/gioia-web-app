@@ -396,7 +396,8 @@ async function loadViewerData() {
         });
 
         if (!response.ok) {
-            throw new Error('Errore nel caricamento dei dati');
+            const errorData = await response.json().catch(() => ({ detail: 'Errore nel caricamento dei dati' }));
+            throw new Error(errorData.detail || `Errore ${response.status}: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -411,7 +412,9 @@ async function loadViewerData() {
         // Setup filter items
         setupFilterItems();
     } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="6" class="loading">Errore: ${error.message}</td></tr>`;
+        console.error('Errore caricamento viewer:', error);
+        const errorMsg = error.message || 'Errore nel caricamento dei dati';
+        tableBody.innerHTML = `<tr><td colspan="6" class="loading" style="color: var(--color-granaccia);">Errore: ${escapeHtml(errorMsg)}</td></tr>`;
     }
 }
 
@@ -497,7 +500,7 @@ function renderViewerTable(rows) {
     const tableBody = document.getElementById('viewer-table-body');
     
     if (rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="loading">Nessun risultato</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="6" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">Nessun inventario disponibile. Carica un file CSV per iniziare.</td></tr>';
         return;
     }
 
