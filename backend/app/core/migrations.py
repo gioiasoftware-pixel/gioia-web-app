@@ -78,13 +78,15 @@ async def migrate_conversations_table(session: AsyncSession):
         """)
         await session.execute(create_table_query)
         
-        # Crea indici
-        create_indexes_query = sql_text("""
-            CREATE INDEX idx_conversations_user_id ON conversations(user_id);
-            CREATE INDEX idx_conversations_telegram_id ON conversations(telegram_id);
-            CREATE INDEX idx_conversations_updated_at ON conversations(updated_at DESC);
-        """)
-        await session.execute(create_indexes_query)
+        # Crea indici (uno per volta perché asyncpg non supporta multiple commands in prepared statement)
+        create_index_1 = sql_text("CREATE INDEX idx_conversations_user_id ON conversations(user_id);")
+        await session.execute(create_index_1)
+        
+        create_index_2 = sql_text("CREATE INDEX idx_conversations_telegram_id ON conversations(telegram_id);")
+        await session.execute(create_index_2)
+        
+        create_index_3 = sql_text("CREATE INDEX idx_conversations_updated_at ON conversations(updated_at DESC);")
+        await session.execute(create_index_3)
         
         logger.info("[MIGRATIONS] ✅ Tabella 'conversations' creata con successo")
     except Exception as e:
