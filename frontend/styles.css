@@ -1588,8 +1588,8 @@ body {
 .wine-card-bookmark {
     width: 48px;
     min-height: 80px;
-    background: linear-gradient(180deg, var(--color-granaccia) 0%, #d43d5a 100%);
-    color: var(--color-white);
+    background: transparent;
+    color: var(--color-black);
     border: none;
     border-radius: 0 12px 12px 0;
     cursor: pointer;
@@ -1598,7 +1598,8 @@ body {
     justify-content: center;
     font-size: 13px;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
+    /* Bordo interno di 5px granaccia */
+    box-shadow: inset 0 0 0 5px var(--color-granaccia);
     transition: all 0.3s ease;
     opacity: 0;
     /* Animazione da sinistra a destra: parte completamente nascosto a sinistra */
@@ -1633,9 +1634,9 @@ body {
 }
 
 .wine-card-bookmark:hover {
-    background: linear-gradient(180deg, #7a1324 0%, var(--color-granaccia) 100%);
+    background: rgba(154, 24, 46, 0.1);
     transform: translateX(-6px);
-    box-shadow: 0 4px 16px rgba(154, 24, 46, 0.5);
+    box-shadow: inset 0 0 0 5px var(--color-granaccia), 0 4px 16px rgba(154, 24, 46, 0.3);
 }
 
 .wine-card-bookmark:active {
