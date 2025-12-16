@@ -250,9 +250,17 @@ body {
     color: var(--color-text-primary);
     transition: background-color 0.2s;
     border-radius: 8px;
+    touch-action: manipulation; /* Migliora responsività touch su mobile */
+    -webkit-tap-highlight-color: transparent; /* Rimuove highlight blu su mobile */
+    min-width: 44px; /* Dimensione touch-friendly */
+    min-height: 44px;
 }
 
 .sidebar-toggle-btn:hover {
+    background-color: var(--color-light-gray);
+}
+
+.sidebar-toggle-btn:active {
     background-color: var(--color-light-gray);
 }
 
@@ -370,6 +378,7 @@ body {
         transform: translateX(-100%); /* Chiusa di default */
         transition: transform 0.3s ease;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+        touch-action: pan-y; /* Permette scroll verticale nella sidebar */
     }
 
     .chat-sidebar.open {
@@ -383,11 +392,22 @@ body {
 
     .chat-main-content {
         width: 100%;
+        touch-action: pan-y; /* Permette scroll nella chat */
     }
     
     /* Mostra overlay quando sidebar è aperta su mobile */
     .sidebar-overlay {
         display: block;
+        touch-action: none; /* Previeni scroll quando overlay è attivo */
+    }
+    
+    /* Migliora touch per pulsanti su mobile */
+    .chat-button,
+    .btn,
+    button {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        min-height: 44px; /* Dimensione touch-friendly */
     }
 }
 

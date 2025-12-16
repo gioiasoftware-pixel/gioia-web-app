@@ -76,7 +76,15 @@ function setupEventListeners() {
 
     // Chat sidebar
     document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
-    document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar);
+    // Aggiungi listener per click e touchstart per mobile
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+        sidebarToggle.addEventListener('touchend', (e) => {
+            e.preventDefault(); // Previeni doppio trigger
+            toggleSidebar();
+        });
+    }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
     // Gestisci resize window per mobile/desktop
@@ -887,13 +895,17 @@ function loadSidebarState() {
 function closeSidebarOnOverlayClick() {
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
-        overlay.addEventListener('click', () => {
+        const closeSidebar = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const sidebar = document.getElementById('chat-sidebar');
             if (sidebar.classList.contains('open')) {
                 sidebar.classList.remove('open');
                 overlay.classList.remove('active');
             }
-        });
+        };
+        overlay.addEventListener('click', closeSidebar);
+        overlay.addEventListener('touchend', closeSidebar);
     }
 }
 
