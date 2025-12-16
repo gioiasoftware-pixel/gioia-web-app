@@ -606,21 +606,52 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = content; // Questo decodifica automaticamente &lt; in <
                 contentHtml = tempDiv.innerHTML; // Usa innerHTML, non textContent!
-            } else {
-                // Usa direttamente se non escapato
+            } else if (content.trim().startsWith('<')) {
+                // Se inizia con <, è già HTML non escapato, usa direttamente
                 contentHtml = content;
+            } else {
+                // Se non inizia con < e non contiene &lt;, potrebbe essere HTML che inizia con spazio/newline
+                // Prova a decodificare comunque, poi usa direttamente
+                const tempDiv = document.createElement('div');
+                tempDiv.textContent = content; // Prima prova come testo
+                // Se dopo textContent il contenuto è diverso, significa che c'erano entità HTML
+                if (tempDiv.textContent !== content) {
+                    // C'erano entità, decodifica
+                    tempDiv.innerHTML = content;
+                    contentHtml = tempDiv.innerHTML;
+                } else {
+                    // Nessuna entità, usa direttamente
+                    contentHtml = content;
+                }
             }
-            console.log('[CHAT] Rendering HTML card, content length:', content.length, 'starts with <div:', contentHtml.trim().startsWith('<div'));
+            console.log('[CHAT] Rendering HTML card, content length:', content.length, 'starts with <div:', contentHtml.trim().startsWith('<div'), 'contentHtml preview:', contentHtml.substring(0, 100));
         } else {
             contentHtml = escapeHtml(content);
         }
         
         const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
         
-        messageEl.innerHTML = `
-            ${avatarHtml}
-            <div class="${contentClass}" style="${isError ? 'color: var(--color-granaccia);' : ''}">${contentHtml}${buttonsHtml}</div>
-        `;
+        // Crea struttura base
+        messageEl.innerHTML = avatarHtml;
+        
+        // Crea contenitore contenuto
+        const contentDiv = document.createElement('div');
+        contentDiv.className = contentClass;
+        if (isError) {
+            contentDiv.style.color = 'var(--color-granaccia)';
+        }
+        
+        // Inserisci contenuto: se è HTML, inserisci direttamente; se è testo, è già escapato
+        contentDiv.innerHTML = contentHtml;
+        
+        // Aggiungi pulsanti se presenti
+        if (buttonsHtml) {
+            const buttonsDiv = document.createElement('div');
+            buttonsDiv.innerHTML = buttonsHtml;
+            contentDiv.appendChild(buttonsDiv);
+        }
+        
+        messageEl.appendChild(contentDiv);
         
         // Aggiungi event listeners ai pulsanti
         if (buttons && buttons.length > 0) {
@@ -2148,8 +2179,11 @@ async function loadConversationMessages(conversationId) {
             if (isHtml && trimmedContent.startsWith('&lt;')) {
                 // Decodifica HTML escapato
                 const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = content;
-                finalContent = tempDiv.textContent || content;
+                tempDiv.innerHTML = content; // Decodifica &lt; in <
+                finalContent = tempDiv.innerHTML; // Usa innerHTML, non textContent!
+            } else if (isHtml && (trimmedContent.startsWith('<') || trimmedContent.includes('class="'))) {
+                // HTML non escapato, usa direttamente
+                finalContent = content;
             }
             
             const messageId = addChatMessage(msg.role, finalContent, false, false, null, isHtml);
