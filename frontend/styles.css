@@ -332,6 +332,11 @@ body {
     cursor: pointer;
     transition: background-color 0.2s;
     margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
 }
 
 .chat-sidebar-item:hover {

@@ -1858,19 +1858,73 @@ function renderConversationsList() {
     sidebarList.innerHTML = conversations.map(conv => `
         <div class="chat-sidebar-item ${conv.id === currentConversationId ? 'active' : ''}" 
              data-conversation-id="${conv.id}">
-            <div class="chat-sidebar-item-title">${escapeHtml(conv.title || 'Nuova chat')}</div>
-            <div class="chat-sidebar-item-time">${formatConversationTime(conv.last_message_at || conv.updated_at)}</div>
+            <div class="chat-sidebar-item-content">
+                <div class="chat-sidebar-item-title">${escapeHtml(conv.title || 'Nuova chat')}</div>
+                <div class="chat-sidebar-item-time">${formatConversationTime(conv.last_message_at || conv.updated_at)}</div>
+            </div>
+            <button class="chat-sidebar-item-delete" 
+                    data-conversation-id="${conv.id}"
+                    title="Cancella chat"
+                    onclick="event.stopPropagation(); deleteConversation(${conv.id});">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
         </div>
     `).join('');
     
     // Aggiungi event listeners con supporto universale mobile
     sidebarList.querySelectorAll('.chat-sidebar-item').forEach(item => {
-        addUniversalEventListener(item, () => {
+        addUniversalEventListener(item, (e) => {
+            // Non selezionare se il click è sul pulsante di cancellazione
+            if (e.target.closest('.chat-sidebar-item-delete')) {
+                return;
+            }
             const conversationId = parseInt(item.dataset.conversationId);
             selectConversation(conversationId);
         });
     });
 }
+
+async function deleteConversation(conversationId) {
+    if (!authToken) return;
+    
+    // Conferma cancellazione
+    if (!confirm('Sei sicuro di voler cancellare questa chat?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore cancellazione chat' }));
+            throw new Error(errorData.detail || 'Errore cancellazione chat');
+        }
+        
+        // Se era la conversazione corrente, resetta
+        if (conversationId === currentConversationId) {
+            currentConversationId = null;
+            localStorage.removeItem('current_conversation_id');
+            clearChatMessages();
+        }
+        
+        // Ricarica lista conversazioni
+        await loadConversations();
+        
+    } catch (error) {
+        console.error('Errore cancellazione chat:', error);
+        alert(`Errore: ${error.message}`);
+    }
+}
+
+// Make function available globally
+window.deleteConversation = deleteConversation;
 
 function formatConversationTime(timestamp) {
     if (!timestamp) return '';
