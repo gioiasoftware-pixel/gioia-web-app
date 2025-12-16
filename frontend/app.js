@@ -748,9 +748,6 @@ async function loadViewerData() {
         
         // Render table
         renderViewerTable(data.rows || []);
-        
-        // Setup filter items
-        setupFilterItems();
     } catch (error) {
         console.error('Errore caricamento viewer:', error);
         const errorMsg = error.message || 'Errore nel caricamento dei dati';
@@ -766,7 +763,7 @@ function populateFilters(facets) {
         const items = facets[filterType];
         content.innerHTML = '';
 
-        // Ordina per frequenza (count desc) - solo se ci sono items
+        // Ordina per frequenza (count desc)
         const sortedItems = Object.entries(items).sort((a, b) => b[1] - a[1]);
 
         sortedItems.forEach(([value, count]) => {
@@ -780,6 +777,9 @@ function populateFilters(facets) {
             content.appendChild(item);
         });
     });
+    
+    // Setup filter items dopo aver popolato
+    setupFilterItems();
 }
 
 function setupFilterItems() {

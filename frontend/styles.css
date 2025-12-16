@@ -810,8 +810,17 @@ body {
     }
 
     .viewer-panel.fullscreen .viewer-filters {
-        max-height: none;
+        max-height: 220px; /* Più compatto anche in fullscreen */
         flex: 0 0 auto;
+        padding: 12px 24px; /* Padding ridotto */
+    }
+    
+    .viewer-panel.fullscreen .filter-section {
+        margin-bottom: 6px; /* Spaziatura ridotta */
+    }
+    
+    .viewer-panel.fullscreen .filter-content {
+        max-height: 180px; /* Altezza massima ridotta */
     }
 
     .viewer-panel.fullscreen .viewer-table-container {
@@ -1172,9 +1181,7 @@ body {
 .viewer-filters {
     padding: 16px 24px;
     border-bottom: 1px solid var(--color-border);
-    overflow-y: auto;
     flex-shrink: 0;
-    max-height: 250px;
 }
 
 .filters-header-row {
@@ -1225,69 +1232,113 @@ body {
     transform: rotate(-180deg);
 }
 
-.filter-section {
-    margin-bottom: 8px;
+/* Filtri orizzontali con dropdown */
+.filters-buttons-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 }
 
-.filter-header {
+.filter-dropdown-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 140px;
+}
+
+.filter-dropdown-btn {
     width: 100%;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 0;
-    background: none;
-    border: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 10px 12px;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    text-align: left;
+}
+
+.filter-dropdown-btn:hover {
+    border-color: var(--color-granaccia);
+    background: var(--color-light-gray);
+}
+
+.filter-dropdown-btn.active {
+    border-color: var(--color-granaccia);
+    background: rgba(154, 24, 46, 0.05);
+}
+
+.filter-btn-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-light);
+}
+
+.filter-btn-value {
     font-size: 13px;
     font-weight: 600;
     color: var(--color-text-primary);
-    cursor: pointer;
-    text-align: left;
-    font-family: inherit;
-    transition: color 0.2s;
 }
 
-.filter-header:hover {
+.filter-dropdown-btn.active .filter-btn-value {
     color: var(--color-granaccia);
 }
 
-.filter-icon {
+.filter-dropdown-icon {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
     width: 12px;
     height: 12px;
     color: var(--color-text-light);
     transition: transform 0.2s ease;
-    flex-shrink: 0;
+    pointer-events: none;
 }
 
-.filter-icon.expanded {
-    transform: rotate(180deg);
+.filter-dropdown-btn.active .filter-dropdown-icon {
+    transform: translateY(-50%) rotate(180deg);
+    color: var(--color-granaccia);
 }
 
-.filter-content {
-    margin-top: 6px;
-    padding-left: 8px;
-    max-height: 200px;
+.filter-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    max-height: 300px;
     overflow-y: auto;
-    transition: max-height 0.3s ease, opacity 0.2s ease;
 }
 
-.filter-content.hidden {
+.filter-dropdown-menu.hidden {
     display: none;
+}
+
+.filter-dropdown-content {
+    padding: 8px;
 }
 
 .filter-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 6px 0;
+    padding: 8px 12px;
     cursor: pointer;
     font-size: 13px;
     color: var(--color-text-secondary);
     transition: color 0.2s, background-color 0.2s;
     border-radius: 4px;
-    padding-left: 4px;
-    padding-right: 4px;
-    margin-left: -4px;
-    margin-right: -4px;
+    margin-bottom: 2px;
 }
 
 .filter-item:hover {
@@ -1305,6 +1356,7 @@ body {
     color: var(--color-text-light);
     font-weight: 400;
     font-size: 12px;
+    margin-left: 8px;
 }
 
 .filter-item.active .filter-count {
