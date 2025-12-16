@@ -6,8 +6,10 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List, Tuple
 from openai import OpenAI, OpenAIError
+import json
+import re
 
 # Aggiungi path al telegram bot per importare moduli
 # Da backend/app/services/ai_service.py → root → telegram-ai-bot/src
@@ -82,16 +84,50 @@ class AIService:
             }
         
         try:
-            # Importa adapter PRIMA di importare ai.py
+            # ========== NUOVO FLUSSO: Function Calling prima di tutto ==========
+            
+            # 1. Prepara contesto utente per function calling
+            user_context = ""
+            try:
+                user = await db_manager.get_user_by_telegram_id(telegram_id)
+                if user:
+                    user_context = f"""
+INFORMAZIONI UTENTE:
+- Nome attività: {user.business_name or 'Non specificato'}
+- Onboarding completato: {'Sì' if user.onboarding_completed else 'No'}
+"""
+                    wines = await db_manager.get_user_wines(telegram_id)
+                    if wines:
+                        user_context += f"\nINVENTARIO ATTUALE:\n"
+                        user_context += f"- Totale vini: {len(wines)}\n"
+                        user_context += f"- Quantità totale: {sum(w.quantity for w in wines if w.quantity) or 0} bottiglie\n"
+                        low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
+                        if low_stock:
+                            user_context += f"- Scorte basse: {len(low_stock)} vini\n"
+            except Exception as e:
+                logger.warning(f"[AI_SERVICE] Errore recupero contesto utente: {e}")
+            
+            # 2. Prova Function Calling OpenAI (nuovo sistema)
+            logger.info(f"[AI_SERVICE] Tentativo function calling per telegram_id={telegram_id}")
+            function_call_result = await self._call_openai_with_tools(
+                user_message=user_message,
+                telegram_id=telegram_id,
+                conversation_history=conversation_history,
+                user_context=user_context
+            )
+            
+            if function_call_result:
+                logger.info(f"[AI_SERVICE] Function calling completato: tipo={function_call_result.get('metadata', {}).get('type')}")
+                return function_call_result
+            
+            # 3. Fallback: Prova import get_ai_response dal telegram bot (sistema esistente)
+            logger.info(f"[AI_SERVICE] Function calling non ha prodotto risultato, provo import bot")
             from app.services.telegram_bot_adapter import setup_telegram_bot_imports
             setup_telegram_bot_imports()
             
-            # Prova a importare get_ai_response dal telegram bot
             try:
-                # Assicurati che config.py del telegram bot abbia le variabili necessarie
                 import config as telegram_config
                 if not hasattr(telegram_config, 'OPENAI_API_KEY') or not telegram_config.OPENAI_API_KEY:
-                    # Usa la chiave dalla web app
                     telegram_config.OPENAI_API_KEY = self.openai_api_key
                     telegram_config.OPENAI_MODEL = self.openai_model
                     logger.info("[AI_SERVICE] Config telegram bot aggiornata con chiavi web app")
@@ -99,7 +135,6 @@ class AIService:
                 from ai import get_ai_response
                 logger.info(f"[AI_SERVICE] get_ai_response importato con successo, telegram_id={telegram_id}")
                 
-                # Usa la funzione originale del bot
                 response_text = await get_ai_response(
                     prompt=user_message,
                     telegram_id=telegram_id,
@@ -117,11 +152,11 @@ class AIService:
                 }
             except ImportError as e:
                 logger.error(f"[AI_SERVICE] Impossibile importare get_ai_response dal bot: {e}", exc_info=True)
-                # Fallback: chiamata OpenAI diretta semplificata
+                # Fallback finale: chiamata OpenAI diretta semplificata
                 return await self._simple_ai_response(user_message, telegram_id)
             except Exception as e:
                 logger.error(f"[AI_SERVICE] Errore chiamata get_ai_response: {e}", exc_info=True)
-                # Fallback: chiamata OpenAI diretta semplificata
+                # Fallback finale: chiamata OpenAI diretta semplificata
                 return await self._simple_ai_response(user_message, telegram_id)
         
         except OpenAIError as e:
@@ -223,6 +258,843 @@ class AIService:
         
         return result if result else term  # Se rimane vuoto, ritorna il termine originale
     
+    # ========== CASCADING RETRY SEARCH ==========
+    
+    async def _retry_level_1_normalize_local(self, query: str) -> List[str]:
+        """
+        Livello 1: Normalizzazione locale (plurali, accenti).
+        Genera varianti normalizzate del termine di ricerca.
+        """
+        variants = [query]
+        query_lower = query.lower().strip()
+        
+        # Normalizzazione plurali (stessa logica di search_wines)
+        if len(query_lower) > 2:
+            if query_lower.endswith('i'):
+                # Plurale maschile: "vermentini" -> "vermentino"
+                base = query_lower[:-1]
+                variants.append(base + 'o')  # vermentino
+                variants.append(base)  # vermentin
+            elif query_lower.endswith('e'):
+                # Plurale femminile: "bianche" -> "bianco"
+                base = query_lower[:-1]
+                variants.append(base + 'a')  # bianca
+                variants.append(base + 'o')  # bianco
+                variants.append(base)  # bianch
+        
+        # Rimuovi accenti/apostrofi (normalizzazione base)
+        if "'" in query:
+            variants.append(query.replace("'", ""))
+        if "'" in query:  # apostrofo unicode (diverso carattere)
+            variants.append(query.replace("'", ""))
+        
+        return list(set(variants))  # Rimuovi duplicati mantenendo ordine
+    
+    async def _retry_level_2_fallback_less_specific(
+        self,
+        telegram_id: int,
+        original_filters: Dict[str, Any],
+        original_query: Optional[str] = None
+    ) -> Optional[List]:
+        """
+        Livello 2: Fallback a ricerca meno specifica.
+        Rimuove filtri troppo specifici e prova ricerca generica.
+        """
+        try:
+            # Estrai termini chiave dai filtri per ricerca generica
+            fallback_queries = []
+            
+            # Se c'è producer, usa come query generica
+            if "producer" in original_filters and original_filters["producer"]:
+                fallback_queries.append(original_filters["producer"])
+            
+            # Se c'è name_contains, usa come query generica
+            if "name_contains" in original_filters and original_filters["name_contains"]:
+                fallback_queries.append(original_filters["name_contains"])
+            
+            # Se c'è una query originale, usala
+            if original_query:
+                fallback_queries.append(original_query)
+            
+            # Prova ogni query fallback con search_wines (ricerca generica)
+            for fallback_query in fallback_queries:
+                if not fallback_query or not fallback_query.strip():
+                    continue
+                
+                logger.info(f"[RETRY_L2] Provo ricerca meno specifica con: '{fallback_query}'")
+                wines = await db_manager.search_wines(telegram_id, fallback_query.strip(), limit=50)
+                if wines:
+                    logger.info(f"[RETRY_L2] ✅ Trovati {len(wines)} vini con ricerca meno specifica")
+                    return wines
+            
+            return None
+        except Exception as e:
+            logger.error(f"[RETRY_L2] Errore in fallback meno specifica: {e}", exc_info=True)
+            return None
+    
+    async def _retry_level_3_ai_post_processing(
+        self,
+        original_query: str,
+        failed_search_term: Optional[str] = None,
+        original_filters: Optional[Dict[str, Any]] = None
+    ) -> Optional[str]:
+        """
+        Livello 3: AI Post-Processing.
+        Chiama OpenAI per reinterpretare/suggerire query alternativa.
+        """
+        try:
+            if not self.openai_api_key:
+                logger.warning("[RETRY_L3] OPENAI_API_KEY non disponibile, salto AI Post-Processing")
+                return None
+            
+            # Costruisci prompt per AI
+            context_parts = []
+            if failed_search_term:
+                context_parts.append(f"L'utente ha cercato: '{failed_search_term}'")
+            elif original_query:
+                context_parts.append(f"L'utente ha cercato: '{original_query}'")
+            
+            if original_filters:
+                filters_str = ", ".join([f"{k}: {v}" for k, v in original_filters.items() if v])
+                if filters_str:
+                    context_parts.append(f"Filtri applicati: {filters_str}")
+            
+            context_parts.append("La ricerca nel database non ha trovato risultati.")
+            
+            retry_prompt = f"""
+{chr(10).join(context_parts)}
+
+Suggerisci una query di ricerca alternativa normalizzata. Considera:
+- Normalizzazione plurali (es. "vermentini" → "vermentino")
+- Rimozione filtri troppo specifici
+- Termine chiave principale da cercare
+
+Rispondi SOLO con il termine di ricerca suggerito, senza spiegazioni, senza virgolette, senza punteggiatura finale.
+Esempio di risposta: vermentino
+"""
+            
+            logger.info(f"[RETRY_L3] Chiamo AI per reinterpretare query: {original_query[:50]}")
+            
+            response = self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=[
+                    {"role": "system", "content": "Sei un assistente che aiuta a normalizzare query di ricerca per vini. Rispondi solo con il termine normalizzato."},
+                    {"role": "user", "content": retry_prompt}
+                ],
+                max_tokens=50,
+                temperature=0.3  # Bassa temperatura per risposte più deterministiche
+            )
+            
+            if response.choices and response.choices[0].message.content:
+                retry_query = response.choices[0].message.content.strip().strip('"').strip("'").strip()
+                if retry_query and retry_query != original_query and len(retry_query) > 1:
+                    logger.info(f"[RETRY_L3] ✅ AI suggerisce query alternativa: '{retry_query}'")
+                    return retry_query
+            
+            return None
+        except Exception as e:
+            logger.error(f"[RETRY_L3] Errore in AI Post-Processing: {e}", exc_info=True)
+            return None
+    
+    async def _cascading_retry_search(
+        self,
+        telegram_id: int,
+        original_query: str,
+        search_func,
+        search_func_args: Dict[str, Any],
+        original_filters: Optional[Dict[str, Any]] = None
+    ) -> Tuple[Optional[List], Optional[str], str]:
+        """
+        Esegue ricerca con cascata di retry a 3 livelli.
+        
+        Returns:
+            (wines_found, retry_query_used, level_used)
+        """
+        # Tentativo originale
+        try:
+            wines = await search_func(**search_func_args)
+            if wines:
+                logger.info(f"[RETRY] ✅ Ricerca originale ha trovato {len(wines)} vini")
+                return wines, None, "original"
+        except Exception as e:
+            logger.warning(f"[RETRY] Errore ricerca originale: {e}")
+        
+        # Livello 1: Normalizzazione locale (solo per ricerca non filtrata o con name_contains)
+        if not original_filters or "name_contains" in search_func_args.get("filters", {}):
+            variants = await self._retry_level_1_normalize_local(original_query)
+            for variant in variants[1:]:  # Skip primo (originale già provato)
+                if variant == original_query:
+                    continue
+                try:
+                    # Prova con variante normalizzata
+                    args_retry = search_func_args.copy()
+                    if "search_term" in args_retry:
+                        args_retry["search_term"] = variant
+                    elif "query" in args_retry:
+                        args_retry["query"] = variant
+                    elif "filters" in args_retry:
+                        # Per search_wines_filtered, aggiungi variant come name_contains
+                        args_retry["filters"] = args_retry["filters"].copy()
+                        args_retry["filters"]["name_contains"] = variant
+                    
+                    wines = await search_func(**args_retry)
+                    if wines:
+                        logger.info(f"[RETRY_L1] ✅ Trovati {len(wines)} vini con variante normalizzata: '{variant}'")
+                        return wines, variant, "level1"
+                except Exception as e:
+                    logger.debug(f"[RETRY_L1] Variante '{variant}' fallita: {e}")
+                    continue
+        
+        # Livello 2: Fallback a ricerca meno specifica (solo se ricerca filtrata)
+        if original_filters:
+            logger.info(f"[RETRY_L2] Avvio fallback ricerca meno specifica per query filtrata: '{original_query}'")
+            wines = await self._retry_level_2_fallback_less_specific(
+                telegram_id, original_filters, original_query
+            )
+            if wines:
+                logger.info(f"[RETRY_L2] ✅ Fallback riuscito: trovati {len(wines)} vini")
+                return wines, None, "level2"
+            else:
+                logger.info(f"[RETRY_L2] ❌ Fallback non ha trovato risultati")
+        
+        # Livello 3: AI Post-Processing
+        logger.info(f"[RETRY_L3] Avvio AI Post-Processing per: '{original_query}'")
+        retry_query = await self._retry_level_3_ai_post_processing(
+            original_query, original_query, original_filters
+        )
+        if retry_query:
+            logger.info(f"[RETRY_L3] Query suggerita da AI: '{retry_query}'")
+            try:
+                # Per ricerca filtrata, usa sempre search_wines generico con query AI
+                # Per ricerca semplice, prova con search_func modificato
+                if original_filters:
+                    # Ricerca filtrata: usa search_wines generico
+                    wines = await db_manager.search_wines(telegram_id, retry_query, limit=50)
+                    if wines:
+                        logger.info(f"[RETRY_L3] ✅ Trovati {len(wines)} vini con query AI (ricerca generica): '{retry_query}'")
+                        return wines, retry_query, "level3"
+                else:
+                    # Ricerca semplice: prova con search_func modificato
+                    args_retry = search_func_args.copy()
+                    if "search_term" in args_retry:
+                        args_retry["search_term"] = retry_query
+                    elif "query" in args_retry:
+                        args_retry["query"] = retry_query
+                    
+                    wines = await search_func(**args_retry)
+                    if wines:
+                        logger.info(f"[RETRY_L3] ✅ Trovati {len(wines)} vini con query AI: '{retry_query}'")
+                        return wines, retry_query, "level3"
+            except Exception as e:
+                logger.warning(f"[RETRY_L3] Errore ricerca con query AI: {e}", exc_info=True)
+        
+        logger.warning(f"[RETRY] ❌ TUTTI I LIVELLI DI RETRY FALLITI per query: '{original_query}' (livelli provati: originale → L1 → L2 → L3)")
+        return None, None, "failed"
+    
+    # ========== FUNCTION CALLING OPENAI ==========
+    
+    def _get_openai_tools(self) -> List[Dict[str, Any]]:
+        """
+        Definisce tutti i tools disponibili per OpenAI function calling.
+        Copia struttura dal telegram bot.
+        """
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_inventory_list",
+                    "description": "Restituisce l'elenco dei vini dell'utente corrente con quantità e prezzi.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "limit": {"type": "integer", "description": "Numero massimo di vini da elencare", "default": 50}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_wine_info",
+                    "description": "Restituisce le informazioni dettagliate di un vino presente nell'inventario utente.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_query": {"type": "string", "description": "Nome o parte del nome del vino da cercare"}
+                        },
+                        "required": ["wine_query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_wine_price",
+                    "description": "Restituisce i prezzi (vendita/acquisto) per un vino dell'utente.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_query": {"type": "string", "description": "Nome o parte del nome del vino"}
+                        },
+                        "required": ["wine_query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_wine_quantity",
+                    "description": "Restituisce la quantità in magazzino per un vino dell'utente.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_query": {"type": "string", "description": "Nome o parte del nome del vino"}
+                        },
+                        "required": ["wine_query"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_wine_by_criteria",
+                    "description": """Trova il vino che corrisponde a criteri specifici (min/max per quantità, prezzo, annata).
+                    Usa questa funzione quando l'utente chiede domande qualitative o comparative:
+                    - "quale vino ha meno quantità" → query_type: "min", field: "quantity"
+                    - "quale è il più costoso/pregiato/migliore/valore/prestigio" → query_type: "max", field: "selling_price"
+                    - "quale ha più bottiglie" → query_type: "max", field: "quantity"
+                    - "quale è il più economico" → query_type: "min", field: "selling_price"
+                    - "quale vino ho pagato di più" → query_type: "max", field: "cost_price"
+                    - "quale è il più recente/nuovo" → query_type: "max", field: "vintage"
+                    - "quale è il più vecchio/antico" → query_type: "min", field: "vintage"
+                    
+                    IMPORTANTE: "pregiato", "migliore", "di valore", "prestigioso" generalmente si riferiscono al prezzo più alto (selling_price max).
+                    """,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query_type": {
+                                "type": "string",
+                                "enum": ["min", "max"],
+                                "description": "Tipo di query: 'min' per trovare il minimo, 'max' per trovare il massimo"
+                            },
+                            "field": {
+                                "type": "string",
+                                "enum": ["quantity", "selling_price", "cost_price", "vintage"],
+                                "description": "Campo da interrogare: 'quantity' per quantità bottiglie, 'selling_price' per prezzo vendita, 'cost_price' per prezzo acquisto, 'vintage' per annata"
+                            }
+                        },
+                        "required": ["query_type", "field"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_wines",
+                    "description": """Cerca vini applicando filtri multipli. USA QUESTA FUNZIONE quando l'utente chiede vini con criteri specifici:
+- Geografici: 'della Toscana', 'italiani', 'del Piemonte', 'francesi', ecc.
+- Tipo: 'rossi', 'bianchi', 'spumanti', 'rosati'
+- Prezzo: 'prezzo sotto X', 'prezzo sopra Y'
+- Annata: 'dal 2015', 'fino al 2020'
+- Produttore: 'produttore X', 'cantina Y'
+- Combinati: 'rossi toscani', 'italiani sotto €50'
+
+IMPORTANTE: Se la richiesta contiene QUALSIASI filtro, usa questa funzione invece di get_inventory_list.
+Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso", "price_max": 50, "vintage_min": 2015, "producer": "nome", "name_contains": "testo"}""",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filters": {
+                                "type": "object",
+                                "properties": {
+                                    "region": {"type": "string", "description": "Regione italiana (es. 'Toscana', 'Piemonte')"},
+                                    "country": {"type": "string", "description": "Paese (es. 'Italia', 'Francia', 'Spagna')"},
+                                    "wine_type": {"type": "string", "enum": ["rosso", "bianco", "rosato", "spumante"]},
+                                    "classification": {"type": "string"},
+                                    "producer": {"type": "string", "description": "Nome produttore/cantina"},
+                                    "name_contains": {"type": "string", "description": "Testo contenuto nel nome vino"},
+                                    "price_min": {"type": "number", "description": "Prezzo minimo vendita"},
+                                    "price_max": {"type": "number", "description": "Prezzo massimo vendita"},
+                                    "vintage_min": {"type": "integer", "description": "Annata minima (es. 2015)"},
+                                    "vintage_max": {"type": "integer", "description": "Annata massima (es. 2020)"},
+                                    "quantity_min": {"type": "integer"},
+                                    "quantity_max": {"type": "integer"}
+                                }
+                            },
+                            "limit": {"type": "integer", "default": 50}
+                        },
+                        "required": ["filters"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_inventory_stats",
+                    "description": "Ritorna il riepilogo inventario (totale vini, totale bottiglie, prezzi media/min/max, low stock).",
+                    "parameters": {"type": "object", "properties": {}}
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_movement_summary",
+                    "description": "Riepiloga consumi/rifornimenti per un periodo (day/week/month). Se periodo mancante, chiedilo all'utente.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "period": {"type": "string", "enum": ["day", "week", "month"], "description": "Periodo del riepilogo"}
+                        },
+                        "required": []
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "register_consumption",
+                    "description": "Registra un consumo (vendita/consumo) di bottiglie. Diminuisce la quantità disponibile del vino specificato.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_name": {"type": "string", "description": "Nome del vino da consumare"},
+                            "quantity": {"type": "integer", "description": "Numero di bottiglie consumate (deve essere positivo)"}
+                        },
+                        "required": ["wine_name", "quantity"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "register_replenishment",
+                    "description": "Registra un rifornimento (acquisto/aggiunta) di bottiglie. Aumenta la quantità disponibile del vino specificato.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_name": {"type": "string", "description": "Nome del vino da rifornire"},
+                            "quantity": {"type": "integer", "description": "Numero di bottiglie aggiunte (deve essere positivo)"}
+                        },
+                        "required": ["wine_name", "quantity"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_low_stock_wines",
+                    "description": "Ottiene lista vini con scorte basse (quantità inferiore alla soglia). Utile per identificare vini da rifornire.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "threshold": {"type": "integer", "description": "Soglia minima quantità (vini con quantità < threshold vengono segnalati)", "default": 5}
+                        }
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_wine_details",
+                    "description": "Ottiene dettagli completi di un vino specifico: nome, produttore, annata, quantità, prezzo, regione, tipo, etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "wine_id": {"type": "integer", "description": "ID del vino di cui ottenere i dettagli"}
+                        },
+                        "required": ["wine_id"]
+                    }
+                }
+            }
+        ]
+        return tools
+    
+    async def _execute_tool(
+        self,
+        tool_name: str,
+        tool_args: Dict[str, Any],
+        telegram_id: int
+    ) -> Dict[str, Any]:
+        """
+        Esegue un tool chiamato dall'AI.
+        Fallback inline (compatibilità senza FunctionExecutor).
+        """
+        logger.info(f"[TOOLS] Esecuzione tool: {tool_name} con args: {tool_args}")
+        
+        try:
+            # get_inventory_list
+            if tool_name == "get_inventory_list":
+                limit = int(tool_args.get("limit", 50))
+                wines = await db_manager.get_user_wines(telegram_id)
+                if wines:
+                    wine_list = []
+                    for wine in wines[:limit]:
+                        wine_str = f"• **{wine.name}**"
+                        if wine.producer:
+                            wine_str += f" ({wine.producer})"
+                        if wine.vintage:
+                            wine_str += f" {wine.vintage}"
+                        if wine.quantity is not None:
+                            wine_str += f" - {wine.quantity} bottiglie"
+                        if wine.selling_price:
+                            wine_str += f" - €{wine.selling_price:.2f}"
+                        wine_list.append(wine_str)
+                    
+                    response = f"📋 **Il tuo inventario** ({len(wines)} vini)\n\n"
+                    response += "\n".join(wine_list)
+                    return {"success": True, "message": response, "use_template": False}
+                return {"success": True, "message": "📋 Il tuo inventario è vuoto.", "use_template": False}
+            
+            # get_wine_info
+            if tool_name == "get_wine_info":
+                query = (tool_args.get("wine_query") or "").strip()
+                if not query:
+                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                
+                wines, retry_query_used, level_used = await self._cascading_retry_search(
+                    telegram_id=telegram_id,
+                    original_query=query,
+                    search_func=db_manager.search_wines,
+                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 10},
+                    original_filters=None
+                )
+                
+                if wines:
+                    logger.info(f"[TOOLS] ✅ Trovati {len(wines)} vini (livello: {level_used})")
+                    if len(wines) == 1:
+                        wine = wines[0]
+                        response = f"🍷 **{wine.name}**"
+                        if wine.producer:
+                            response += f" ({wine.producer})"
+                        response += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        if wine.vintage:
+                            response += f"📅 **Annata:** {wine.vintage}\n"
+                        if wine.quantity is not None:
+                            response += f"📦 **Quantità:** {wine.quantity} bottiglie\n"
+                        if wine.selling_price:
+                            response += f"💰 **Prezzo vendita:** €{wine.selling_price:.2f}\n"
+                        if wine.cost_price:
+                            response += f"💵 **Prezzo acquisto:** €{wine.cost_price:.2f}\n"
+                        if wine.region:
+                            response += f"📍 **Regione:** {wine.region}\n"
+                        if wine.country:
+                            response += f"🌍 **Paese:** {wine.country}\n"
+                        if wine.wine_type:
+                            response += f"🔴/⚪ **Tipo:** {wine.wine_type}\n"
+                        response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                        return {"success": True, "message": response, "use_template": False, "buttons": None}
+                    else:
+                        # Più vini: genera buttons
+                        buttons = [
+                            {
+                                "id": wine.id,
+                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+                            }
+                            for wine in wines[:10]
+                        ]
+                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
+                        for wine in wines[:10]:
+                            response += f"• **{wine.name}**"
+                            if wine.producer:
+                                response += f" ({wine.producer})"
+                            response += "\n"
+                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
+                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
+                
+                return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
+            
+            # get_wine_price
+            if tool_name == "get_wine_price":
+                query = (tool_args.get("wine_query") or "").strip()
+                if not query:
+                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                
+                wines, retry_query_used, level_used = await self._cascading_retry_search(
+                    telegram_id=telegram_id,
+                    original_query=query,
+                    search_func=db_manager.search_wines,
+                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 50},
+                    original_filters=None
+                )
+                
+                if wines:
+                    response_parts = []
+                    for wine in wines[:5]:  # Max 5 vini per prezzo
+                        wine_info = f"🍷 **{wine.name}**"
+                        if wine.producer:
+                            wine_info += f" ({wine.producer})"
+                        wine_info += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        if wine.selling_price:
+                            wine_info += f"💰 **Prezzo vendita:** €{wine.selling_price:.2f}\n"
+                        if wine.cost_price:
+                            wine_info += f"💵 **Prezzo acquisto:** €{wine.cost_price:.2f}\n"
+                            if wine.selling_price and wine.cost_price:
+                                margin = wine.selling_price - wine.cost_price
+                                margin_pct = (margin / wine.cost_price) * 100 if wine.cost_price > 0 else 0
+                                wine_info += f"📊 **Margine:** €{margin:.2f} ({margin_pct:.1f}%)\n"
+                        wine_info += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                        response_parts.append(wine_info)
+                    
+                    return {"success": True, "message": "\n\n".join(response_parts), "use_template": False}
+                
+                return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
+            
+            # get_wine_quantity
+            if tool_name == "get_wine_quantity":
+                query = (tool_args.get("wine_query") or "").strip()
+                if not query:
+                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                
+                wines, retry_query_used, level_used = await self._cascading_retry_search(
+                    telegram_id=telegram_id,
+                    original_query=query,
+                    search_func=db_manager.search_wines,
+                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 50},
+                    original_filters=None
+                )
+                
+                if wines:
+                    response_parts = []
+                    for wine in wines[:5]:  # Max 5 vini per quantità
+                        wine_info = f"🍷 **{wine.name}**"
+                        if wine.producer:
+                            wine_info += f" ({wine.producer})"
+                        wine_info += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        if wine.quantity is not None:
+                            wine_info += f"📦 **In cantina hai:** {wine.quantity} bottiglie\n"
+                        else:
+                            wine_info += "📦 **Quantità:** Non specificata\n"
+                        wine_info += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                        response_parts.append(wine_info)
+                    
+                    return {"success": True, "message": "\n\n".join(response_parts), "use_template": False}
+                
+                return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
+            
+            # get_wine_by_criteria
+            if tool_name == "get_wine_by_criteria":
+                query_type = tool_args.get("query_type")
+                field = tool_args.get("field")
+                if not query_type or not field:
+                    return {"success": False, "error": "Richiesta incompleta: specifica query_type (min/max) e field."}
+                
+                # Implementazione semplificata - TODO: implementare _handle_informational_query completo
+                logger.info(f"[TOOLS] get_wine_by_criteria: {query_type} {field} - TODO: implementare completamente")
+                return {"success": False, "error": "Funzionalità in fase di implementazione. Usa ricerca diretta per ora."}
+            
+            # search_wines
+            if tool_name == "search_wines":
+                filters = tool_args.get("filters") or {}
+                limit = int(tool_args.get("limit", 50))
+                
+                # TODO: implementare search_wines_filtered in db_manager
+                logger.info(f"[TOOLS] search_wines con filtri: {filters} - TODO: implementare search_wines_filtered")
+                return {"success": False, "error": "Ricerca filtrata in fase di implementazione. Usa ricerca semplice per ora."}
+            
+            # get_inventory_stats
+            if tool_name == "get_inventory_stats":
+                wines = await db_manager.get_user_wines(telegram_id)
+                if wines:
+                    total_bottles = sum(w.quantity for w in wines if w.quantity) or 0
+                    prices = [w.selling_price for w in wines if w.selling_price]
+                    low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
+                    
+                    response = f"📊 **Riepilogo Inventario**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    response += f"🍷 **Totale vini:** {len(wines)}\n"
+                    response += f"📦 **Totale bottiglie:** {total_bottles}\n"
+                    if prices:
+                        response += f"💰 **Prezzo medio:** €{sum(prices)/len(prices):.2f}\n"
+                        response += f"💰 **Prezzo min:** €{min(prices):.2f}\n"
+                        response += f"💰 **Prezzo max:** €{max(prices):.2f}\n"
+                    if low_stock:
+                        response += f"⚠️ **Scorte basse:** {len(low_stock)} vini\n"
+                    response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                    return {"success": True, "message": response, "use_template": False}
+                
+                return {"success": True, "message": "📊 Il tuo inventario è vuoto.", "use_template": False}
+            
+            # register_consumption / register_replenishment
+            if tool_name in ("register_consumption", "register_replenishment"):
+                wine_name = (tool_args.get("wine_name") or "").strip()
+                quantity = tool_args.get("quantity")
+                
+                if not wine_name or not quantity or quantity <= 0:
+                    return {"success": False, "error": "Richiesta incompleta: specifica vino e quantità valida."}
+                
+                movement_type = "consumo" if tool_name == "register_consumption" else "rifornimento"
+                
+                # Processa movimento via Processor
+                try:
+                    user = await db_manager.get_user_by_telegram_id(telegram_id)
+                    if not user or not user.business_name:
+                        return {"success": False, "error": "Nome locale non trovato. Completa prima l'onboarding."}
+                    
+                    result = await processor_client.process_movement(
+                        telegram_id=telegram_id,
+                        business_name=user.business_name,
+                        wine_name=wine_name,
+                        movement_type=movement_type,
+                        quantity=quantity
+                    )
+                    
+                    if result.get('status') == 'success':
+                        wine_name_result = result.get('wine_name', wine_name)
+                        qty_before = result.get('quantity_before', 0)
+                        qty_after = result.get('quantity_after', 0)
+                        
+                        response = f"✅ **{movement_type.capitalize()} registrato**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        response += f"🍷 **Vino:** {wine_name_result}\n"
+                        response += f"📦 **Quantità:** {quantity} bottiglie\n"
+                        response += f"📊 **Prima:** {qty_before} bottiglie\n"
+                        response += f"📊 **Dopo:** {qty_after} bottiglie\n"
+                        response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                        return {"success": True, "message": response, "use_template": False}
+                    else:
+                        error_msg = result.get('error', 'Errore sconosciuto')
+                        return {"success": False, "error": f"❌ Errore: {error_msg}"}
+                except Exception as e:
+                    logger.error(f"[TOOLS] Errore processamento movimento: {e}", exc_info=True)
+                    return {"success": False, "error": f"Errore durante il processamento: {str(e)[:200]}"}
+            
+            # Tool non riconosciuto
+            logger.warning(f"[TOOLS] Tool '{tool_name}' non riconosciuto")
+            return {"success": False, "error": f"Funzione '{tool_name}' non ancora implementata."}
+            
+        except Exception as e:
+            logger.error(f"[TOOLS] Errore esecuzione tool '{tool_name}': {e}", exc_info=True)
+            return {"success": False, "error": f"Errore durante l'esecuzione: {str(e)[:200]}"}
+    
+    async def _call_openai_with_tools(
+        self,
+        user_message: str,
+        telegram_id: int,
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        user_context: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Chiama OpenAI con function calling.
+        Restituisce risposta formattata o None se nessun tool chiamato.
+        """
+        if not self.client:
+            return None
+        
+        try:
+            # Prepara system prompt
+            system_prompt = f"""Sei Gio.ia-bot, un assistente AI specializzato nella gestione inventario vini. Sei gentile, professionale e parli in italiano.
+
+{user_context}
+
+CAPACITÀ:
+- Analizzare l'inventario dell'utente in tempo reale
+- Rispondere a QUALSIASI domanda o messaggio
+- Suggerire riordini per scorte basse
+- Fornire consigli pratici su gestione magazzino
+- Analizzare movimenti e consumi
+- Generare report e statistiche
+- Conversazione naturale e coinvolgente
+
+ISTRUZIONI IMPORTANTI:
+- CONSULTA SEMPRE il database usando i tools prima di rispondere a qualsiasi domanda informativa
+- RISPONDI SEMPRE a qualsiasi messaggio, anche se non è una domanda
+- Mantieni una conversazione naturale e amichevole
+- Usa sempre i dati dell'inventario e dei movimenti quando disponibili
+- Sii specifico e pratico nei consigli
+- Se l'utente comunica consumi/rifornimenti, usa register_consumption o register_replenishment
+- Se l'inventario ha scorte basse, avvisa proattivamente
+
+REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMPRE il database usando i tools disponibili."""
+            
+            # Prepara messaggi
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            # Aggiungi storia conversazione se disponibile
+            if conversation_history:
+                messages.extend(conversation_history)
+            
+            # Aggiungi ultimo messaggio utente
+            messages.append({"role": "user", "content": user_message.strip()})
+            
+            # Ottieni tools
+            tools = self._get_openai_tools()
+            
+            # Chiama OpenAI con tools
+            logger.info(f"[FUNCTION_CALLING] Chiamata OpenAI con {len(tools)} tools disponibili")
+            response = self.client.chat.completions.create(
+                model=self.openai_model,
+                messages=messages,
+                max_tokens=1500,
+                temperature=0.7,
+                tools=tools,
+                tool_choice="auto"
+            )
+            
+            choice = response.choices[0]
+            message = choice.message
+            
+            # Controlla se ci sono tool calls
+            tool_calls = getattr(message, "tool_calls", None)
+            
+            if tool_calls:
+                # Esegui la prima tool call (una risposta deterministica e rapida)
+                call = tool_calls[0]
+                fn = call.function
+                tool_name = getattr(fn, "name", "")
+                tool_args = {}
+                try:
+                    tool_args = json.loads(getattr(fn, "arguments", "{}") or "{}")
+                except Exception as e:
+                    logger.error(f"[FUNCTION_CALLING] Errore parsing tool arguments: {e}")
+                    return None
+                
+                logger.info(f"[FUNCTION_CALLING] Tool chiamato: {tool_name} con args: {tool_args}")
+                
+                # Esegui tool
+                tool_result = await self._execute_tool(tool_name, tool_args, telegram_id)
+                
+                if tool_result.get("success"):
+                    message_text = tool_result.get("message", "✅ Operazione completata")
+                    buttons = tool_result.get("buttons")
+                    
+                    return {
+                        "message": message_text,
+                        "metadata": {
+                            "type": "function_call",
+                            "tool": tool_name,
+                            "model": self.openai_model
+                        },
+                        "buttons": buttons
+                    }
+                else:
+                    error_msg = tool_result.get("error", "Errore sconosciuto")
+                    return {
+                        "message": f"❌ {error_msg}",
+                        "metadata": {
+                            "type": "function_call_error",
+                            "tool": tool_name
+                        },
+                        "buttons": None
+                    }
+            else:
+                # Nessun tool chiamato: usa contenuto generato dall'AI
+                content = getattr(message, "content", "") or ""
+                if content.strip():
+                    return {
+                        "message": content.strip(),
+                        "metadata": {
+                            "type": "ai_response",
+                            "model": self.openai_model
+                        },
+                        "buttons": None
+                    }
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"[FUNCTION_CALLING] Errore chiamata OpenAI con tools: {e}", exc_info=True)
+            return None
+    
     async def _simple_ai_response(
         self,
         user_message: str,
@@ -272,51 +1144,26 @@ INFORMAZIONI UTENTE:
                             logger.info(f"[FALLBACK] Pattern matchato: '{pattern[:50]}...' | Termine estratto: '{raw_term}' → pulito: '{wine_search_term}'")
                             break
                 
-                # Cerca vini se termine trovato
+                # Cerca vini se termine trovato (con cascading retry)
                 if wine_search_term:
                     try:
-                        found_wines = await db_manager.search_wines(telegram_id, wine_search_term, limit=50)
+                        # Usa cascading retry per migliorare successo ricerca
+                        found_wines, retry_query_used, level_used = await self._cascading_retry_search(
+                            telegram_id=telegram_id,
+                            original_query=wine_search_term,
+                            search_func=db_manager.search_wines,
+                            search_func_args={"telegram_id": telegram_id, "search_term": wine_search_term, "limit": 50},
+                            original_filters=None
+                        )
                         if found_wines:
-                            logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}'")
+                            logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}' (livello: {level_used})")
                             specific_wine_info = self._format_wines_response(found_wines)
                         else:
-                            logger.info(f"[FALLBACK] Nessun vino trovato per '{wine_search_term}', provo ricerca diretta")
-                            # Retry: ricerca diretta con tutto il prompt pulito
-                            broad_term = re.sub(r"[^\w\s'']", " ", user_message.lower()).strip()
-                            broad_term_clean = self._clean_wine_search_term(broad_term)
-                            if broad_term_clean and len(broad_term_clean) > 2 and broad_term_clean != wine_search_term:
-                                logger.info(f"[FALLBACK] Retry con termine: '{broad_term_clean}'")
-                                try:
-                                    found_wines = await db_manager.search_wines(telegram_id, broad_term_clean, limit=50)
-                                    if found_wines:
-                                        logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini con ricerca diretta")
-                                        specific_wine_info = self._format_wines_response(found_wines)
-                                    else:
-                                        specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
-                                except Exception as e:
-                                    logger.error(f"[FALLBACK] Errore ricerca diretta: {e}", exc_info=True)
-                                    specific_wine_info = f"❌ Errore nella ricerca. Riprova con un termine diverso."
-                            else:
-                                specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                            logger.info(f"[FALLBACK] Nessun vino trovato dopo cascading retry per '{wine_search_term}'")
+                            specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
                     except Exception as e:
-                        logger.error(f"[FALLBACK] Errore ricerca vini: {e}", exc_info=True)
-                        # Prova ricerca diretta anche in caso di errore
-                        try:
-                            broad_term = re.sub(r"[^\w\s'']", " ", user_message.lower()).strip()
-                            broad_term_clean = self._clean_wine_search_term(broad_term)
-                            if broad_term_clean and len(broad_term_clean) > 2:
-                                logger.info(f"[FALLBACK] Retry dopo errore con termine: '{broad_term_clean}'")
-                                found_wines = await db_manager.search_wines(telegram_id, broad_term_clean, limit=50)
-                                if found_wines:
-                                    logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini con ricerca diretta dopo errore")
-                                    specific_wine_info = self._format_wines_response(found_wines)
-                                else:
-                                    specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
-                            else:
-                                specific_wine_info = f"❌ Errore nella ricerca. Riprova con un termine diverso."
-                        except Exception as e2:
-                            logger.error(f"[FALLBACK] Errore anche nel retry: {e2}", exc_info=True)
-                            specific_wine_info = f"❌ Errore temporaneo nella ricerca. Riprova tra qualche minuto."
+                        logger.error(f"[FALLBACK] Errore ricerca vini con cascading retry: {e}", exc_info=True)
+                        specific_wine_info = f"❌ Errore temporaneo nella ricerca. Riprova tra qualche minuto."
                 
                 # Statistiche inventario (solo se non abbiamo già trovato vini specifici)
                 if not specific_wine_info:
@@ -391,6 +1238,20 @@ INFORMAZIONI UTENTE:
         response += f"\n\n... e altri {num_wines - 10} vini.\n\n"
         response += "💡 Usa il viewer a destra per vedere e filtrare tutti i vini."
         return response
+    
+    async def _simple_ai_response_complete(
+        self,
+        user_message: str,
+        telegram_id: int,
+        specific_wine_info: str = "",
+        found_wines: list = None,
+        user_context: str = ""
+    ) -> Dict[str, Any]:
+        """
+        Completa la risposta AI dopo la ricerca vini.
+        Gestisce il caso in cui abbiamo già trovato vini o dobbiamo chiamare OpenAI.
+        """
+        found_wines = found_wines or []
         
         # Se abbiamo già una risposta formattata con vini trovati, restituiscila direttamente
         if specific_wine_info and found_wines and len(found_wines) > 0:
@@ -499,3 +1360,4 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
 
 # Istanza globale
 ai_service = AIService()
+

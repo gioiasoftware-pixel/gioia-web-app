@@ -179,3 +179,4 @@ curl http://localhost:8000/api/auth/me \
 **Sistema completo e funzionante!** 🎉
 
 Ricorda di eseguire la migration prima di testare signup/login.
+

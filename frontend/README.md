@@ -49,3 +49,4 @@ frontend/
 ## 📝 Note
 
 Vedi documentazione completa in `../ANALISI_WEB_APP_UNIFICATA.md`.
+

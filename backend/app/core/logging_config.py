@@ -69,3 +69,4 @@ def setup_logging(service_name: str = "web-app"):
     logging.getLogger('uvicorn.error').setLevel(logging.INFO)
     
     return root_logger
+

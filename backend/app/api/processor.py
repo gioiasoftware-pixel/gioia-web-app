@@ -15,3 +15,4 @@ async def processor_health():
     """Verifica connessione al Processor"""
     result = await processor_client.health_check()
     return result
+

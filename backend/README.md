@@ -62,3 +62,4 @@ Usa SQLAlchemy async per query.
 ## 🔗 Integrazione Processor
 
 Chiama Processor microservice via HTTP usando `processor_client.py`.
+

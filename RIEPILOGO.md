@@ -169,3 +169,4 @@ npm run dev
 ---
 
 **Prossimo Step**: Scegliere stack frontend e iniziare implementazione Fase 1!
+

@@ -207,3 +207,4 @@ Il token viene generato tramite `/api/auth/login` con `telegram_id` dell'utente 
 - ✅ Chat API protetta con autenticazione
 - ⚠️ **IMPORTANTE**: Eseguire migration `001_add_password_to_users.sql` prima di usare signup/login
 - Backend core funzionante e pronto per integrazione frontend
+

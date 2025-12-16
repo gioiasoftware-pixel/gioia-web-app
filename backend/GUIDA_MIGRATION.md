@@ -88,3 +88,4 @@ Dovresti vedere:
 - Può essere eseguita più volte senza problemi
 - Non modifica dati esistenti
 - Utenti Telegram esistenti avranno `password_hash = NULL` (normale)
+

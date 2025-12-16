@@ -89,3 +89,4 @@ async def chat_health():
         "service": "chat",
         "ai_configured": ai_service.client is not None
     }
+

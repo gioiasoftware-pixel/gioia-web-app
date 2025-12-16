@@ -77,3 +77,4 @@ def setup_telegram_bot_imports():
 
 # Setup automatico quando questo modulo viene importato
 setup_telegram_bot_imports()
+

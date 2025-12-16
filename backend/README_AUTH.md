@@ -174,3 +174,4 @@ curl http://localhost:8000/api/auth/me \
 - **Default**: 7 giorni (configurabile con `ACCESS_TOKEN_EXPIRE_HOURS`)
 - **Remember Me**: 30 giorni
 - Payload include `user_id`, `telegram_id` (opzionale), `business_name`
+

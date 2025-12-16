@@ -14,3 +14,4 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
 -- Crea indice su telegram_id se non esiste già
 CREATE INDEX IF NOT EXISTS idx_users_telegram_id ON users(telegram_id);
+

@@ -1,3 +1,4 @@
 # Root requirements for Railway/Nixpacks
 # Delegates real deps to backend requirements
 -r backend/requirements.txt
+

@@ -603,3 +603,4 @@ function viewerGoToPage(page) {
 
 // Make function available globally for onclick handlers
 window.viewerGoToPage = viewerGoToPage;
+

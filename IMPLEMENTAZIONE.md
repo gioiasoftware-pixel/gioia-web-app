@@ -81,3 +81,4 @@
 - Viewer esistente: `../Vineinventory Viewer/`
 - Telegram Bot: `../telegram-ai-bot/Telegram AI BOT 2/`
 - Processor: `../gioia-processor/`
+

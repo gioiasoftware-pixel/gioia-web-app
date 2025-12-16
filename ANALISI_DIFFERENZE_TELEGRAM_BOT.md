@@ -168,3 +168,4 @@
 - Renderizzare pulsanti come elementi cliccabili nella chat
 - Al click, inviare messaggio al backend con wine_id
 - Backend risponde con dettagli completi del vino
+

@@ -311,3 +311,4 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
+

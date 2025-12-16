@@ -483,3 +483,4 @@ class DatabaseManager:
 
 # Istanza globale
 db_manager = DatabaseManager()
+

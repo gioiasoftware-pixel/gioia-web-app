@@ -62,3 +62,4 @@ La web app è strutturata come **full-stack application** con:
 - XSS prevention (sanitizzazione output)
 
 Vedi `../ANALISI_WEB_APP_UNIFICATA.md` per dettagli completi.
+
