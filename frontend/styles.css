@@ -1572,9 +1572,9 @@ body {
 /* I segnalibri sono ora nel wrapper, non nella card, quindi possono essere sotto */
 .wine-card-wrapper .wine-card-bookmarks {
     position: absolute;
-    /* Posiziona i segnalibri in modo che spuntino abbastanza per mostrare il testo verticale */
-    /* I segnalibri sono larghi 48px, quindi right: -15px fa spuntare 33px (sufficiente per il testo) */
-    right: -15px;
+    /* Posiziona i segnalibri in modo che spuntino abbastanza per mostrare completamente il testo verticale */
+    /* I segnalibri sono larghi 48px, quindi right: -5px fa spuntare 43px (quasi completamente visibile) */
+    right: -5px;
     bottom: 0;
     display: flex;
     flex-direction: column;
