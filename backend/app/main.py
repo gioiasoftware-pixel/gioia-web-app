@@ -3,7 +3,9 @@ Main FastAPI application entry point.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 
@@ -15,31 +17,46 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration
+# CORS Configuration - Allow all origins when serving frontend from same domain
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL],
+    allow_origins=["*"],  # Allow all when serving from same domain
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files from frontend directory
+# Path: backend/app/main.py -> backend -> gioia-web-app -> frontend
+frontend_path = Path(__file__).parent.parent.parent.parent / "frontend"
+if frontend_path.exists():
+    app.mount("/static", StaticFiles(directory=str(frontend_path)), name="static")
+    
+    # Serve index.html at root
+    @app.get("/")
+    async def serve_frontend():
+        """Serve frontend HTML."""
+        index_file = frontend_path / "index.html"
+        if index_file.exists():
+            return FileResponse(str(index_file))
+        return {"message": "Gio.ia Web App API", "version": "1.0.0", "docs": "/docs"}
+else:
+    # Fallback if frontend not found
+    @app.get("/")
+    async def root():
+        """Root endpoint."""
+        return {
+            "message": "Gio.ia Web App API",
+            "version": "1.0.0",
+            "docs": "/docs"
+        }
 
 # Health check endpoint
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy", "service": "gioia-web-app-backend"}
-
-# Root endpoint
-@app.get("/")
-async def root():
-    """Root endpoint."""
-    return {
-        "message": "Gio.ia Web App API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
 
 # Import routers
 from app.api import auth, chat, processor, viewer
