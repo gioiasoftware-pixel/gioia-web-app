@@ -86,9 +86,13 @@ async def signup(signup_request: SignupRequest):
             detail="Email già registrata"
         )
     
-    # Hash password
+    # Hash password (o salva in chiaro se modalità debug)
     password_hash = hash_password(password)
-    logger.info(f"[AUTH] Password hashata durante signup: hash_length={len(password_hash)}, hash_prefix={password_hash[:10]}...")
+    from app.core.auth import PASSWORD_PLAINTEXT_MODE
+    if PASSWORD_PLAINTEXT_MODE:
+        logger.info(f"[AUTH] Password salvata in chiaro durante signup (modalità debug): length={len(password_hash)}")
+    else:
+        logger.info(f"[AUTH] Password hashata durante signup: hash_length={len(password_hash)}, hash_prefix={password_hash[:10]}...")
     
     # Caso speciale: telegram_id fornito e utente Telegram esiste già con onboarding completato
     if telegram_id:
@@ -238,13 +242,15 @@ async def login(login_request: LoginRequest):
     logger.info(f"  - password_length={len(password_clean)}")
     logger.info(f"  - password_starts_with={password_clean[:3] if len(password_clean) >= 3 else 'N/A'}...")
     
-    # Verifica formato hash
-    if password_hash_clean and not password_hash_clean.startswith('$2b$'):
-        logger.error(f"[AUTH] Hash password formato non valido! Inizia con: '{password_hash_clean[:20]}'")
-        raise HTTPException(
-            status_code=500,
-            detail="Errore configurazione password. Contatta l'amministratore."
-        )
+    # Verifica formato hash solo se non siamo in modalità plaintext
+    from app.core.auth import PASSWORD_PLAINTEXT_MODE
+    if not PASSWORD_PLAINTEXT_MODE:
+        if password_hash_clean and not password_hash_clean.startswith('$2b$'):
+            logger.error(f"[AUTH] Hash password formato non valido! Inizia con: '{password_hash_clean[:20]}'")
+            raise HTTPException(
+                status_code=500,
+                detail="Errore configurazione password. Contatta l'amministratore."
+            )
     
     password_valid = verify_password(password_clean, password_hash_clean)
     logger.info(f"[AUTH] Risultato verifica password: {password_valid}")
@@ -347,3 +353,4 @@ async def get_current_user_info(current_user: dict = Depends(get_current_user)):
         first_name=user.first_name,
         onboarding_completed=user.onboarding_completed
     )
+

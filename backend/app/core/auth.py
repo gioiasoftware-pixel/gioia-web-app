@@ -15,46 +15,68 @@ import bcrypt
 logger = logging.getLogger(__name__)
 
 
+# ⚠️ TEMPORANEO: Password in chiaro per debug
+# TODO: Quando implementiamo recupero password, tornare ad usare hash bcrypt
+PASSWORD_PLAINTEXT_MODE = True  # Cambia a False per tornare ad hash
+
 def hash_password(password: str) -> str:
-    """Hash password con bcrypt"""
-    # Genera salt e hash password
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    """
+    'Hash' password - TEMPORANEAMENTE salva in chiaro per debug.
+    Quando implementiamo recupero password, tornare ad usare bcrypt.
+    """
+    if PASSWORD_PLAINTEXT_MODE:
+        # MODALITÀ DEBUG: salva password in chiaro
+        logger.warning("[AUTH] ⚠️ MODALITÀ DEBUG: Password salvata in chiaro!")
+        return password.strip()
+    else:
+        # MODALITÀ PRODUZIONE: hash con bcrypt
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verifica password contro hash"""
+def verify_password(plain_password: str, stored_password: str) -> bool:
+    """
+    Verifica password - TEMPORANEAMENTE confronta in chiaro per debug.
+    Quando implementiamo recupero password, tornare ad usare bcrypt.
+    """
     try:
-        if not hashed_password:
-            logger.warning("[AUTH] Hash password vuoto")
+        if not stored_password:
+            logger.warning("[AUTH] Password vuota nel database")
             return False
         
         if not plain_password:
-            logger.warning("[AUTH] Password vuota")
+            logger.warning("[AUTH] Password vuota inserita")
             return False
         
         # Pulisci entrambi i valori
         plain_password_clean = plain_password.strip()
-        hashed_password_clean = hashed_password.strip()
+        stored_password_clean = stored_password.strip()
         
-        # Verifica che l'hash sia nel formato corretto (deve iniziare con $2b$)
-        if not hashed_password_clean.startswith('$2b$'):
-            logger.error(f"[AUTH] Hash password formato non valido: inizia con '{hashed_password_clean[:20]}' invece di '$2b$'")
-            return False
-        
-        # Verifica lunghezza hash (bcrypt hash dovrebbe essere ~60 caratteri)
-        if len(hashed_password_clean) < 60:
-            logger.error(f"[AUTH] Hash password troppo corto: {len(hashed_password_clean)} caratteri invece di ~60")
-            return False
-        
-        result = bcrypt.checkpw(
-            plain_password_clean.encode('utf-8'),
-            hashed_password_clean.encode('utf-8')
-        )
-        
-        logger.debug(f"[AUTH] Verifica password: result={result}, password_len={len(plain_password_clean)}, hash_len={len(hashed_password_clean)}")
-        return result
+        if PASSWORD_PLAINTEXT_MODE:
+            # MODALITÀ DEBUG: confronto diretto
+            result = plain_password_clean == stored_password_clean
+            logger.debug(f"[AUTH] Verifica password (plaintext): result={result}, password_len={len(plain_password_clean)}")
+            return result
+        else:
+            # MODALITÀ PRODUZIONE: verifica hash bcrypt
+            # Verifica che l'hash sia nel formato corretto (deve iniziare con $2b$)
+            if not stored_password_clean.startswith('$2b$'):
+                logger.error(f"[AUTH] Hash password formato non valido: inizia con '{stored_password_clean[:20]}' invece di '$2b$'")
+                return False
+            
+            # Verifica lunghezza hash (bcrypt hash dovrebbe essere ~60 caratteri)
+            if len(stored_password_clean) < 60:
+                logger.error(f"[AUTH] Hash password troppo corto: {len(stored_password_clean)} caratteri invece di ~60")
+                return False
+            
+            result = bcrypt.checkpw(
+                plain_password_clean.encode('utf-8'),
+                stored_password_clean.encode('utf-8')
+            )
+            
+            logger.debug(f"[AUTH] Verifica password (bcrypt): result={result}, password_len={len(plain_password_clean)}, hash_len={len(stored_password_clean)}")
+            return result
     except Exception as e:
         logger.error(f"[AUTH] Errore verifica password: {e}", exc_info=True)
         return False
@@ -216,3 +238,4 @@ async def get_current_user_optional(
         return None
     
     return await get_current_user(credentials)
+
