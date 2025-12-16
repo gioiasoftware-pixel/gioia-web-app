@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gio.ia - Login</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Login/Signup Page -->
+    <div id="auth-page" class="auth-page">
+        <div class="auth-container">
+            <div class="auth-header">
+                <div class="logo-container">
+                    <img src="../Vineinventory Viewer/assets/logo.png" alt="Gio.ia Logo" class="logo" onerror="this.style.display='none'">
+                </div>
+                <h1 class="auth-title">Gio.ia</h1>
+            </div>
+
+            <!-- Login Form -->
+            <div id="login-form" class="auth-form active">
+                <h2 class="form-title">Accedi</h2>
+                <form id="login-form-element" class="form">
+                    <div class="form-group">
+                        <label for="login-email">Email</label>
+                        <input type="email" id="login-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-password">Password</label>
+                        <input type="password" id="login-password" name="password" required>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="remember-me" name="remember_me">
+                            <span>Ricordami</span>
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Accedi</button>
+                    <p class="form-switch">
+                        Non hai un account? <a href="#" id="switch-to-signup">Registrati</a>
+                    </p>
+                </form>
+                <div id="login-error" class="error-message hidden"></div>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signup-form" class="auth-form">
+                <h2 class="form-title">Registrati</h2>
+                <form id="signup-form-element" class="form">
+                    <div class="form-group">
+                        <label for="signup-email">Email</label>
+                        <input type="email" id="signup-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="signup-password">Password</label>
+                        <input type="password" id="signup-password" name="password" required minlength="8">
+                        <small class="form-hint">Minimo 8 caratteri</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="business-name">Nome del tuo locale</label>
+                        <input type="text" id="business-name" name="business_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="telegram-id">ID Telegram (opzionale)</label>
+                        <input type="number" id="telegram-id" name="telegram_id" placeholder="Solo se hai già fatto onboarding su Telegram">
+                        <small class="form-hint">Lascia vuoto se sei un nuovo utente</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrati</button>
+                    <p class="form-switch">
+                        Hai già un account? <a href="#" id="switch-to-login">Accedi</a>
+                    </p>
+                </form>
+                <div id="signup-error" class="error-message hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat Page (hidden initially) -->
+    <div id="chat-page" class="chat-page hidden">
+        <!-- Header -->
+        <header class="chat-header">
+            <div class="chat-header-left">
+                <div class="logo-container">
+                    <img src="../Vineinventory Viewer/assets/logo.png" alt="Gio.ia Logo" class="logo" onerror="this.style.display='none'">
+                </div>
+                <h1 class="chat-title">Gio.ia</h1>
+            </div>
+            <div class="chat-header-right">
+                <button id="logout-btn" class="btn btn-secondary">Esci</button>
+            </div>
+        </header>
+
+        <!-- Main Chat Container -->
+        <div class="chat-container">
+            <!-- Chat Messages Area -->
+            <div class="chat-messages-container" id="chat-messages">
+                <div class="welcome-message">
+                    <h2>Ciao! Come posso aiutarti?</h2>
+                    <p>Chiedimi informazioni sul tuo inventario vini</p>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <form id="chat-form" class="chat-form">
+                    <textarea 
+                        id="chat-input" 
+                        class="chat-input" 
+                        placeholder="Scrivi un messaggio..."
+                        rows="1"
+                    ></textarea>
+                    <button type="submit" class="chat-send-btn" id="chat-send-btn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M18 2L9 11M18 2L12 18L9 11M18 2L2 8L9 11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Viewer Panel (draggable sidebar) -->
+        <div id="viewer-panel" class="viewer-panel">
+            <!-- Drag Handle -->
+            <div class="viewer-drag-handle" id="viewer-drag-handle">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                    <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+
+            <!-- Viewer Content -->
+            <div class="viewer-content">
+                <div class="viewer-header">
+                    <h2 class="viewer-title">Inventario</h2>
+                    <button id="viewer-close" class="viewer-close-btn">&times;</button>
+                </div>
+
+                <!-- Viewer Search -->
+                <div class="viewer-search-container">
+                    <svg class="viewer-search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M14 14L11.1 11.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <input type="text" id="viewer-search" class="viewer-search-input" placeholder="Cerca inventario...">
+                </div>
+
+                <!-- Viewer Filters -->
+                <div class="viewer-filters">
+                    <h3 class="filters-title">FILTRI</h3>
+                    <div class="filter-section">
+                        <button class="filter-header" data-filter="type">
+                            <span>TIPOLOGIA</span>
+                            <svg class="filter-icon expanded" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="filter-content" id="filter-type"></div>
+                    </div>
+                    <div class="filter-section">
+                        <button class="filter-header" data-filter="vintage">
+                            <span>ANNATA</span>
+                            <svg class="filter-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="filter-content hidden" id="filter-vintage"></div>
+                    </div>
+                    <div class="filter-section">
+                        <button class="filter-header" data-filter="winery">
+                            <span>CANTINA</span>
+                            <svg class="filter-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="filter-content hidden" id="filter-winery"></div>
+                    </div>
+                    <div class="filter-section">
+                        <button class="filter-header" data-filter="supplier">
+                            <span>FORNITORI</span>
+                            <svg class="filter-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="filter-content hidden" id="filter-supplier"></div>
+                    </div>
+                </div>
+
+                <!-- Viewer Table -->
+                <div class="viewer-table-container">
+                    <table class="viewer-table" id="viewer-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Cantina</th>
+                                <th>Quantità</th>
+                                <th>Prezzo (€)</th>
+                                <th>Fornitore</th>
+                                <th>Scorta</th>
+                            </tr>
+                        </thead>
+                        <tbody id="viewer-table-body">
+                            <tr>
+                                <td colspan="6" class="loading">Caricamento...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Viewer Pagination -->
+                <div class="viewer-pagination" id="viewer-pagination"></div>
+            </div>
+        </div>
+
+        <!-- Viewer Toggle Button (fixed right side) -->
+        <button id="viewer-toggle" class="viewer-toggle-btn" title="Apri inventario">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                <path d="M6 4L14 10L6 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        // Configurazione API URL (modifica se necessario)
+        window.API_BASE_URL = 'http://localhost:8000';
+    </script>
+    <script src="app.js"></script>
+</body>
+</html>
