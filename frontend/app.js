@@ -518,9 +518,18 @@ async function sendChatMessage(message, showUserMessage = true) {
 
         // Remove loading and add AI response
         removeChatMessage(loadingId);
-        // Debug: verifica is_html
-        console.log('Chat response data:', { message: data.message?.substring(0, 100), is_html: data.is_html, buttons: data.buttons, conversation_id: data.conversation_id });
-        addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons, data.is_html === true);
+        // Debug: verifica is_html e contenuto
+        const messageContent = data.message || data.response || 'Nessuna risposta';
+        console.log('[CHAT] Response ricevuta:', { 
+            is_html: data.is_html, 
+            message_length: messageContent.length,
+            message_preview: messageContent.substring(0, 200),
+            starts_with_div: messageContent.trim().startsWith('<div'),
+            contains_lt: messageContent.includes('&lt;'),
+            contains_gt: messageContent.includes('&gt;'),
+            buttons: data.buttons?.length || 0
+        });
+        addChatMessage('ai', messageContent, false, false, data.buttons, data.is_html === true);
     } catch (error) {
         removeChatMessage(loadingId);
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
@@ -610,82 +619,46 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         }
         
         if (isHtml) {
-            // SOLUZIONE ALTERNATIVA: Usa un approccio più robusto per inserire HTML
-            // Prima aggiungi l'elemento al DOM, poi inserisci l'HTML
-            messageEl.appendChild(contentDiv);
+            // SOLUZIONE DEFINITIVA: Crea elemento temporaneo FUORI dal DOM, inserisci HTML, poi sposta nodi
+            // Questo garantisce che l'HTML venga parsato correttamente prima di essere inserito nel DOM
+            const tempContainer = document.createElement('div');
+            tempContainer.style.display = 'none'; // Nascondi temporaneamente
+            document.body.appendChild(tempContainer); // Aggiungi al DOM (ma nascosto) per permettere parsing
             
-            // Usa requestAnimationFrame per assicurarsi che il rendering avvenga correttamente
-            requestAnimationFrame(() => {
-                try {
-                    // Prima decodifica eventuale HTML escapato usando un elemento temporaneo
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = content; // Decodifica automaticamente &lt; in <
-                    const decodedHtml = tempDiv.innerHTML;
-                    
-                    // Inserisci l'HTML decodificato direttamente
-                    contentDiv.innerHTML = decodedHtml;
-                    
-                    console.log('[CHAT] HTML inserito, length:', decodedHtml.length, 'starts with <div:', decodedHtml.trim().startsWith('<div'));
-                } catch (error) {
-                    console.error('[CHAT] Errore inserimento HTML:', error);
-                    // Fallback: prova a inserire direttamente
-                    contentDiv.innerHTML = content;
+            try {
+                // Inserisci HTML nel container temporaneo - questo forza il browser a parsare l'HTML
+                tempContainer.innerHTML = content;
+                
+                // Sposta tutti i nodi parsati nel contenitore reale
+                while (tempContainer.firstChild) {
+                    contentDiv.appendChild(tempContainer.firstChild);
                 }
-            });
+                
+                console.log('[CHAT] HTML parsato e inserito, nodi:', contentDiv.children.length);
+            } catch (error) {
+                console.error('[CHAT] Errore parsing HTML:', error);
+                // Fallback: inserisci direttamente
+                contentDiv.innerHTML = content;
+            } finally {
+                // Rimuovi container temporaneo
+                document.body.removeChild(tempContainer);
+            }
         } else {
             // Testo normale: escape per sicurezza
             contentDiv.textContent = content;
-            messageEl.appendChild(contentDiv);
         }
         
-        // Aggiungi pulsanti se presenti (solo se non è HTML, perché per HTML lo facciamo dopo)
-        if (buttonsHtml && !isHtml) {
+        // Aggiungi pulsanti se presenti
+        if (buttonsHtml) {
             const buttonsDiv = document.createElement('div');
             buttonsDiv.innerHTML = buttonsHtml;
             contentDiv.appendChild(buttonsDiv);
-        } else if (buttonsHtml && isHtml) {
-            // Per HTML, aggiungi i pulsanti dopo che l'HTML è stato inserito
-            requestAnimationFrame(() => {
-                const buttonsDiv = document.createElement('div');
-                buttonsDiv.innerHTML = buttonsHtml;
-                contentDiv.appendChild(buttonsDiv);
-                
-                // Aggiungi event listeners ai pulsanti dopo che sono stati inseriti
-                if (buttons && buttons.length > 0) {
-                    const buttonElements = messageEl.querySelectorAll('.chat-button');
-                    buttonElements.forEach(btn => {
-                        btn.addEventListener('click', async () => {
-                            const wineId = btn.dataset.wineId;
-                            const wineText = btn.dataset.wineText;
-                            const movementType = btn.dataset.movementType;
-                            const quantity = btn.dataset.quantity;
-                            
-                            // Se è un pulsante di conferma movimento, processa direttamente senza mostrare messaggio
-                            if (movementType && quantity && wineId) {
-                                // Invia direttamente all'API senza mostrare il messaggio nella chat
-                                const message = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
-                                await sendChatMessage(message, false); // false = non mostrare messaggio utente
-                                return;
-                            }
-                            
-                            // Pulsante normale: ricerca vino con ID
-                            const input = document.getElementById('chat-input');
-                            if (wineId) {
-                                input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
-                            } else {
-                                // Fallback: solo testo
-                                input.value = `dimmi tutto su ${wineText}`;
-                            }
-                            input.dispatchEvent(new Event('input')); // Trigger resize
-                            document.getElementById('chat-form').dispatchEvent(new Event('submit'));
-                        });
-                    });
-                }
-            });
         }
         
-        // Aggiungi event listeners ai pulsanti (solo se non è HTML, perché per HTML lo facciamo dopo)
-        if (buttons && buttons.length > 0 && !isHtml) {
+        messageEl.appendChild(contentDiv);
+        
+        // Aggiungi event listeners ai pulsanti
+        if (buttons && buttons.length > 0) {
             const buttonElements = messageEl.querySelectorAll('.chat-button');
             buttonElements.forEach(btn => {
                 btn.addEventListener('click', async () => {
