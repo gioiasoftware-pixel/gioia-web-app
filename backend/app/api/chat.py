@@ -49,11 +49,32 @@ async def send_message(
     logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}, telegram_id={telegram_id}: {chat_message.message[:50]}...")
     
     try:
+        # Recupera storia conversazione (ultimi 10 messaggi)
+        conversation_history = None
+        try:
+            conversation_history = await db_manager.get_recent_chat_messages(ai_telegram_id, limit=10)
+            if conversation_history:
+                # Converti in formato OpenAI (solo role e content)
+                conversation_history = [
+                    {"role": msg["role"], "content": msg["content"]}
+                    for msg in conversation_history
+                ]
+                logger.info(f"[CHAT] Recuperati {len(conversation_history)} messaggi dalla storia conversazione")
+        except Exception as e:
+            logger.warning(f"[CHAT] Errore recupero storia conversazione: {e}")
+            conversation_history = None
+        
+        # Salva messaggio utente PRIMA di processare
+        try:
+            await db_manager.log_chat_message(ai_telegram_id, "user", chat_message.message)
+        except Exception as e:
+            logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
+        
         # Processa messaggio con AI service
         result = await ai_service.process_message(
             user_message=chat_message.message,
             telegram_id=ai_telegram_id,
-            conversation_history=None  # TODO: recuperare da database se conversation_id fornito
+            conversation_history=conversation_history
         )
         
         # Verifica che result sia valido
@@ -65,7 +86,13 @@ async def send_message(
                 "buttons": None
             }
         
-        # TODO: Salvare messaggio e risposta nel database per storia conversazione
+        # Salva risposta AI DOPO la generazione
+        try:
+            ai_response_message = result.get("message", "")
+            if ai_response_message:
+                await db_manager.log_chat_message(ai_telegram_id, "assistant", ai_response_message)
+        except Exception as e:
+            logger.warning(f"[CHAT] Errore salvataggio risposta AI: {e}")
         
         return ChatResponse(
             message=result.get("message", "⚠️ Nessuna risposta disponibile"),

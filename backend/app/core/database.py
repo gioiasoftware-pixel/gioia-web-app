@@ -5,7 +5,7 @@ Reuse da telegram-ai-bot con adattamenti per web app
 import os
 import logging
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import select, text as sql_text, Column, Integer, BigInteger, String, Float, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
@@ -479,6 +479,99 @@ class DatabaseManager:
             except Exception as e:
                 logger.error(f"Errore verifica tabelle dinamiche: {e}", exc_info=True)
                 return False, None
+    
+    async def log_chat_message(self, telegram_id: int, role: str, content: str) -> bool:
+        """
+        Registra un messaggio di chat nella tabella dinamica LOG interazione.
+        Compatibile con sistema Telegram bot.
+        
+        Args:
+            telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
+            role: 'user' o 'assistant'
+            content: Contenuto del messaggio
+        
+        Returns:
+            True se salvato con successo, False altrimenti
+        """
+        async with AsyncSessionLocal() as session:
+            user = await self.get_user_by_telegram_id(telegram_id)
+            if not user or not user.business_name:
+                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per log_chat_message")
+                return False
+            
+            table_name = f'"{telegram_id}/{user.business_name} LOG interazione"'
+            try:
+                # Normalizza ruolo su tipi ammessi (stesso sistema Telegram bot)
+                interaction_type = 'chat_user' if role == 'user' or role == 'chat_user' else 'chat_assistant'
+                
+                insert_query = sql_text(f"""
+                    INSERT INTO {table_name}
+                    (user_id, interaction_type, interaction_data, created_at)
+                    VALUES (:user_id, :interaction_type, :interaction_data, CURRENT_TIMESTAMP)
+                """)
+                
+                await session.execute(insert_query, {
+                    "user_id": user.id,
+                    "interaction_type": interaction_type,
+                    "interaction_data": content[:8000] if content else None  # Limite 8000 caratteri
+                })
+                await session.commit()
+                logger.debug(f"[DB] Messaggio chat salvato: role={role}, telegram_id={telegram_id}, content_len={len(content) if content else 0}")
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore salvando chat log in {table_name}: {e}", exc_info=True)
+                await session.rollback()
+                return False
+    
+    async def get_recent_chat_messages(self, telegram_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Recupera ultimi messaggi chat (utente/assistant) dalla tabella LOG interazione.
+        Compatibile con sistema Telegram bot.
+        
+        Args:
+            telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
+            limit: Numero massimo di messaggi da recuperare
+        
+        Returns:
+            Lista di dict con 'role' ('user' o 'assistant'), 'content' e 'created_at'
+            Ordinati dal più vecchio al più recente (cronologico)
+        """
+        async with AsyncSessionLocal() as session:
+            user = await self.get_user_by_telegram_id(telegram_id)
+            if not user or not user.business_name:
+                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per get_recent_chat_messages")
+                return []
+            
+            table_name = f'"{telegram_id}/{user.business_name} LOG interazione"'
+            try:
+                query = sql_text(f"""
+                    SELECT interaction_type, interaction_data, created_at
+                    FROM {table_name}
+                    WHERE user_id = :user_id
+                      AND interaction_type IN ('chat_user','chat_assistant')
+                    ORDER BY created_at DESC
+                    LIMIT :limit
+                """)
+                
+                result = await session.execute(query, {"user_id": user.id, "limit": limit})
+                rows = result.fetchall()
+                
+                history = []
+                for row in rows:
+                    role = 'user' if row.interaction_type == 'chat_user' else 'assistant'
+                    history.append({
+                        "role": role,
+                        "content": row.interaction_data or "",
+                        "created_at": row.created_at
+                    })
+                
+                # Ritorna in ordine cronologico (dal più vecchio al più recente)
+                history.reverse()
+                logger.debug(f"[DB] Recuperati {len(history)} messaggi chat per telegram_id={telegram_id}")
+                return history
+            except Exception as e:
+                logger.error(f"[DB] Errore leggendo chat history da {table_name}: {e}", exc_info=True)
+                return []
 
 
 # Istanza globale

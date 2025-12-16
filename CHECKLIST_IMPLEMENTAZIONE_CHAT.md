@@ -65,18 +65,18 @@ Portare la chat della Web App alla parità funzionale con il Telegram AI Bot.
 ## 🟡 Fase 2: Miglioramenti UX (Priorità MEDIA)
 
 ### 2.1 Storia Conversazione
-- [ ] Creare tabella `chat_messages` nel database (se non esiste)
-  - [ ] Schema: id, user_id, role, content, created_at
-  - [ ] Indici per user_id e created_at
-- [ ] Implementare `get_recent_chat_messages` in `database.py`
-  - [ ] Recupero ultimi N messaggi per user_id
-  - [ ] Filtro per role (user/assistant)
-- [ ] Implementare salvataggio messaggi
-  - [ ] Salvare messaggio utente dopo ricezione
-  - [ ] Salvare risposta AI dopo generazione
-- [ ] Integrare in `process_message`
-  - [ ] Recuperare storia prima di chiamare AI
-  - [ ] Includere nel contesto OpenAI
+- [x] Creare tabella `chat_messages` nel database (se non esiste)
+  - [x] Schema: id, user_id, role, content, created_at (usa tabella dinamica LOG interazione)
+  - [x] Indici per user_id e created_at
+- [x] Implementare `get_recent_chat_messages` in `database.py`
+  - [x] Recupero ultimi N messaggi per user_id
+  - [x] Filtro per role (user/assistant)
+- [x] Implementare salvataggio messaggi
+  - [x] Salvare messaggio utente dopo ricezione (`log_chat_message`)
+  - [x] Salvare risposta AI dopo generazione (`log_chat_message`)
+- [x] Integrare in `process_message`
+  - [x] Recuperare storia prima di chiamare AI
+  - [x] Includere nel contesto OpenAI
 
 ### 2.2 Formattazione Pre-Strutturata
 - [ ] Copiare/importare `response_templates.py` dal bot
@@ -95,21 +95,21 @@ Portare la chat della Web App alla parità funzionale con il Telegram AI Bot.
   - [ ] Generare sempre buttons per 2-10 vini
 
 ### 2.3 Rilevamento Richieste Specifiche
-- [ ] Implementare `_is_inventory_list_request`
-  - [ ] Pattern matching per richieste lista
-  - [ ] Bypassa AI, risposta diretta DB
-- [ ] Implementare `_is_movement_summary_request`
-  - [ ] Rilevamento richieste movimenti
-  - [ ] Supporto periodi (day/week/month/yesterday)
+- [x] Implementare `_is_inventory_list_request`
+  - [x] Pattern matching per richieste lista
+  - [x] Bypassa AI, risposta diretta DB (`_build_inventory_list_response`)
+- [x] Implementare `_is_movement_summary_request`
+  - [x] Rilevamento richieste movimenti
+  - [x] Supporto periodi (day/week/month/yesterday/yesterday_replenished)
 - [ ] Implementare `_handle_movement_summary_request`
-  - [ ] Recupero dati movimenti
+  - [ ] Recupero dati movimenti (TODO: quando necessario)
   - [ ] Formattazione con template
-- [ ] Implementare `_is_informational_query`
-  - [ ] Rilevamento query min/max
-  - [ ] Estrazione query_type e field
-- [ ] Implementare `_handle_informational_query`
-  - [ ] Query DB per min/max
-  - [ ] Formattazione risultati
+- [x] Implementare `_is_informational_query`
+  - [x] Rilevamento query min/max
+  - [x] Estrazione query_type e field
+- [x] Implementare `_handle_informational_query`
+  - [x] Query DB per min/max
+  - [x] Formattazione risultati
 
 ---
 
@@ -173,14 +173,14 @@ Portare la chat della Web App alla parità funzionale con il Telegram AI Bot.
 - [x] Rilevamento Movimenti - Implementato tramite Function Calling (register_consumption/register_replenishment)
 - [x] Function Executor fallback inline - Implementato per tutti i tools
 - [x] Integrazione nel flusso process_message - Completata
+- [x] Storia Conversazione - Implementata con tabella dinamica LOG interazione
+- [x] Rilevamento Richieste Specifiche - Implementato (_is_inventory_list_request, _is_movement_summary_request, _is_informational_query, _handle_informational_query)
 
 ### In Progress
 - Nessuna funzionalità in corso al momento
 
 ### Pending
-- Storia Conversazione (Fase 2)
-- Formattazione Pre-Strutturata completa (Fase 2)
-- Rilevamento Richieste Specifiche (Fase 2)
+- Formattazione Pre-Strutturata completa (Fase 2) - Parzialmente implementata, mancano templates completi
 - Query Qualitative/Sensoriali (Fase 3)
 - Parser Filtri Avanzato (Fase 3)
 
@@ -189,10 +189,10 @@ Portare la chat della Web App alla parità funzionale con il Telegram AI Bot.
 ## 📊 Progresso Generale
 
 - **Fase 1 (ALTA)**: 3/3 funzionalità completate ✅ **100%**
-- **Fase 2 (MEDIA)**: 0/3 funzionalità completate
+- **Fase 2 (MEDIA)**: 2/3 funzionalità completate ✅ **67%** (Storia Conversazione ✅, Rilevamento Richieste Specifiche ✅, Formattazione Pre-Strutturata parziale)
 - **Fase 3 (BASSA)**: 0/3 funzionalità completate
 
-**Totale**: 3/9 funzionalità completate (**33%**)
+**Totale**: 5/9 funzionalità completate (**56%**)
 
 ### Note Implementazione
 

@@ -107,7 +107,57 @@ INFORMAZIONI UTENTE:
             except Exception as e:
                 logger.warning(f"[AI_SERVICE] Errore recupero contesto utente: {e}")
             
-            # 2. Prova Function Calling OpenAI (nuovo sistema)
+            # 2. Rilevamento richieste specifiche PRIMA di function calling (bypass AI quando possibile)
+            
+            # 2a. Richieste esplicite di elenco inventario
+            if self._is_inventory_list_request(user_message):
+                logger.info(f"[AI_SERVICE] Richiesta lista inventario rilevata, bypass AI")
+                inventory_response = await self._build_inventory_list_response(telegram_id, limit=50)
+                return {
+                    "message": inventory_response,
+                    "metadata": {
+                        "type": "inventory_list",
+                        "model": None
+                    },
+                    "buttons": None
+                }
+            
+            # 2b. Richieste di riepilogo movimenti
+            is_movement_request, period = self._is_movement_summary_request(user_message)
+            if is_movement_request:
+                logger.info(f"[AI_SERVICE] Richiesta movimenti rilevata: period={period}")
+                # TODO: Implementare recupero movimenti quando necessario
+                # Per ora ritorna messaggio informativo
+                if period == 'yesterday':
+                    return {
+                        "message": "📊 Funzionalità riepilogo movimenti in fase di implementazione. Usa Function Calling per ora.",
+                        "metadata": {"type": "movement_summary", "period": period},
+                        "buttons": None
+                    }
+                else:
+                    return {
+                        "message": "📊 Per quale periodo vuoi vedere i movimenti? (giorno/settimana/mese)",
+                        "metadata": {"type": "movement_summary_ask_period"},
+                        "buttons": None
+                    }
+            
+            # 2c. Query informative (min/max)
+            query_type, field = self._is_informational_query(user_message)
+            if query_type and field:
+                logger.info(f"[AI_SERVICE] Query informativa rilevata: {query_type} {field}")
+                informational_response = await self._handle_informational_query(telegram_id, query_type, field)
+                if informational_response:
+                    return {
+                        "message": informational_response,
+                        "metadata": {
+                            "type": "informational_query",
+                            "query_type": query_type,
+                            "field": field
+                        },
+                        "buttons": None
+                    }
+            
+            # 3. Prova Function Calling OpenAI (nuovo sistema)
             logger.info(f"[AI_SERVICE] Tentativo function calling per telegram_id={telegram_id}")
             function_call_result = await self._call_openai_with_tools(
                 user_message=user_message,
@@ -257,6 +307,338 @@ INFORMAZIONI UTENTE:
         result = re.sub(r'[?.,;:!]+$', '', result).strip()
         
         return result if result else term  # Se rimane vuoto, ritorna il termine originale
+    
+    # ========== RILEVAMENTO RICHIESTE SPECIFICHE ==========
+    
+    def _is_inventory_list_request(self, prompt: str) -> bool:
+        """
+        Riconosce richieste tipo: che vini ho? elenco/lista inventario, mostra inventario, ecc.
+        IMPORTANTE: NON matchare se la richiesta contiene filtri (region, tipo, paese, prezzo) -
+        in quel caso passa all'AI che userà search_wines.
+        """
+        p = prompt.lower().strip()
+        
+        # Se contiene filtri, NON è una richiesta lista semplice → passa all'AI
+        filter_keywords = [
+            'della', 'del', 'dello', 'delle', 'degli', 'di', 'itali', 'frances', 'spagnol', 'tedesc',
+            'toscana', 'piemonte', 'veneto', 'sicilia', 'rosso', 'bianco', 'spumante', 'rosato',
+            'prezzo', 'annata', 'produttore', 'cantina', 'azienda'
+        ]
+        if any(kw in p for kw in filter_keywords):
+            return False  # Passa all'AI con search_wines
+        
+        patterns = [
+            r"\bche\s+vini\s+ho\b",
+            r"\bquanti\s+vini\s+ho\b",
+            r"\bquante\s+vini\s+ho\b",
+            r"\bquanti\s+vini\s+hai\b",
+            r"\bquante\s+vini\s+hai\b",
+            r"\bche\s+vini\s+hai\b",
+            r"\bquali\s+vini\s+ho\b",
+            r"\bquali\s+vini\s+hai\b",
+            r"\belenco\s+vini\b",
+            r"\blista\s+vini\b",
+            r"\bmostra\s+inventario\b",
+            r"\bvedi\s+inventario\b",
+            r"\bmostra\s+i\s+vini\b",
+            r"\bmostrami\s+i\s+vini\b",
+            r"\bmostrami\s+inventario\b",
+            r"\bmostra\s+tutti\s+i\s+vini\b",
+            r"\binventario\s+completo\b",
+            r"\binventario\b",
+        ]
+        return any(re.search(pt, p) for pt in patterns)
+    
+    def _is_movement_summary_request(self, prompt: str) -> tuple[bool, Optional[str]]:
+        """
+        Riconosce richieste tipo: ultimi consumi/movimenti/ricavi.
+        Ritorna (is_request, period) dove period può essere 'day', 'week', 'month', o 'yesterday'.
+        """
+        p = prompt.lower().strip()
+        
+        # Controlla prima per richieste specifiche con date
+        # Richieste consumo ieri
+        if any(re.search(pt, p) for pt in [
+            r"\b(consumato|consumi|consumate)\s+(ieri|il\s+giorno\s+prima)\b",
+            r"\bvini\s+(consumato|consumi|consumate)\s+ieri\b",
+            r"\b(che\s+)?vini\s+ho\s+consumato\s+ieri\b",
+            r"\b(che\s+)?vini\s+hai\s+consumato\s+ieri\b",
+            r"\bconsumi\s+(di|del)\s+ieri\b",
+            r"\b(ieri|il\s+giorno\s+prima)\s+(ho|hai)\s+consumato\b",
+        ]):
+            return (True, 'yesterday')
+        
+        # Richieste rifornimenti/arrivati/ricevuti ieri
+        if any(re.search(pt, p) for pt in [
+            r"\b(che\s+)?vini\s+(mi\s+sono\s+)?(arrivati|ricevuti|riforniti)\s+ieri",
+            r"\b(che\s+)?vini\s+ho\s+(ricevuto|rifornito)\s+ieri",
+            r"\bvini\s+(mi\s+sono\s+)?arrivati\s+ieri",
+            r"\b(ieri|il\s+giorno\s+prima)\s+(sono\s+arrivati|ho\s+ricevuto|ho\s+rifornito)",
+            r"\brifornimenti\s+(di|del)\s+ieri",
+            r"\b(arrivati|arrivate|arrivato|ricevuti|ricevute|ricevuto|riforniti|rifornite|rifornito)\s+(ieri|il\s+giorno\s+prima)",
+        ]):
+            return (True, 'yesterday_replenished')
+        
+        # Richieste movimenti generici di ieri
+        if any(re.search(pt, p) for pt in [
+            r"\bmovimenti\s+(di|del)\s+ieri\b",
+        ]):
+            return (True, 'yesterday')
+        
+        # Pattern generici (senza data specifica)
+        if any(re.search(pt, p) for pt in [
+            r"\bultimi\s+consumi\b",
+            r"\bultimi\s+movimenti\b",
+            r"\bconsumi\s+recenti\b",
+            r"\bmovimenti\s+recenti\b",
+            r"\bmi\s+dici\s+i\s+miei\s+ultimi\s+consumi\b",
+            r"\bmi\s+dici\s+gli\s+ultimi\s+miei\s+consumi\b",
+            r"\bultimi\s+miei\s+consumi\b",
+            r"\bmostra\s+(ultimi|recenti)\s+(consumi|movimenti)\b",
+            r"\briepilogo\s+(consumi|movimenti)\b",
+        ]):
+            return (True, None)  # Period non specificato, chiedi all'utente
+        
+        return (False, None)
+    
+    def _is_informational_query(self, prompt: str) -> tuple[Optional[str], Optional[str]]:
+        """
+        Riconosce domande informative generiche sul vino.
+        Ritorna (query_type, field) dove:
+        - query_type: 'min' o 'max'
+        - field: 'quantity', 'selling_price', 'cost_price', 'vintage'
+        """
+        p = prompt.lower().strip()
+        
+        # Pattern per quantità (min)
+        min_quantity_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:ha|con)\s+(?:meno|minore|minima)\s+(?:quantit[àa]|bottiglie)",
+            r"quale\s+è\s+il\s+(?:vino|bottiglia)\s+(?:con|che\s+ha)\s+(?:meno|minore|minima)\s+(?:quantit[àa]|bottiglie)",
+            r"(?:vino|bottiglia)\s+(?:con|che\s+ha)\s+(?:meno|minore|minima)\s+(?:quantit[àa]|bottiglie)",
+            r"(?:meno|minore|minima)\s+(?:quantit[àa]|bottiglie)",
+        ]
+        
+        # Pattern per quantità (max)
+        max_quantity_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:ha|con)\s+(?:pi[ùu]|maggiore|massima)\s+(?:quantit[àa]|bottiglie)",
+            r"quale\s+è\s+il\s+(?:vino|bottiglia)\s+(?:con|che\s+ha)\s+(?:pi[ùu]|maggiore|massima)\s+(?:quantit[àa]|bottiglie)",
+            r"(?:vino|bottiglia)\s+(?:con|che\s+ha)\s+(?:pi[ùu]|maggiore|massima)\s+(?:quantit[àa]|bottiglie)",
+            r"(?:pi[ùu]|maggiore|massima)\s+(?:quantit[àa]|bottiglie)",
+        ]
+        
+        # Pattern per prezzo vendita (max - più costoso)
+        max_price_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?costos[oa]",
+            r"quale\s+è\s+il\s+(?:vino|bottiglia)\s+(?:pi[ùu]\s+)?costos[oa]",
+            r"(?:vino|bottiglia)\s+(?:pi[ùu]\s+)?costos[oa]",
+            r"quale\s+(?:vino|bottiglia)\s+costa\s+di\s+pi[ùu]",
+            r"quale\s+(?:vino|bottiglia)\s+ha\s+il\s+prezzo\s+(?:pi[ùu]\s+)?alto",
+            r"(?:pi[ùu]\s+)?costos[oa]",
+        ]
+        
+        # Pattern per prezzo vendita (min - più economico)
+        min_price_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?economic[oa]",
+            r"quale\s+è\s+il\s+(?:vino|bottiglia)\s+(?:pi[ùu]\s+)?economic[oa]",
+            r"(?:vino|bottiglia)\s+(?:pi[ùu]\s+)?economic[oa]",
+            r"quale\s+(?:vino|bottiglia)\s+costa\s+di\s+meno",
+            r"quale\s+(?:vino|bottiglia)\s+ha\s+il\s+prezzo\s+(?:pi[ùu]\s+)?basso",
+            r"(?:pi[ùu]\s+)?economic[oa]",
+        ]
+        
+        # Pattern per prezzo acquisto (max)
+        max_cost_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?costos[oa]\s+(?:da\s+)?acquist[oa]",
+            r"quale\s+(?:vino|bottiglia)\s+ho\s+pagato\s+di\s+pi[ùu]",
+            r"(?:prezzo|costo)\s+acquisto\s+(?:pi[ùu]\s+)?alto",
+        ]
+        
+        # Pattern per prezzo acquisto (min)
+        min_cost_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?economic[oa]\s+(?:da\s+)?acquist[oa]",
+            r"quale\s+(?:vino|bottiglia)\s+ho\s+pagato\s+di\s+meno",
+            r"(?:prezzo|costo)\s+acquisto\s+(?:pi[ùu]\s+)?basso",
+        ]
+        
+        # Pattern per annata (max - più recente)
+        max_vintage_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?recente",
+            r"quale\s+(?:vino|bottiglia)\s+(?:ha|con)\s+(?:annata|anno)\s+(?:pi[ùu]\s+)?recente",
+            r"(?:annata|anno)\s+(?:pi[ùu]\s+)?recente",
+        ]
+        
+        # Pattern per annata (min - più vecchio)
+        min_vintage_patterns = [
+            r"quale\s+(?:vino|bottiglia)\s+(?:è|è\s+il)\s+(?:pi[ùu]\s+)?vecchi[oa]",
+            r"quale\s+(?:vino|bottiglia)\s+(?:ha|con)\s+(?:annata|anno)\s+(?:pi[ùu]\s+)?vecchi[oa]",
+            r"(?:annata|anno)\s+(?:pi[ùu]\s+)?vecchi[oa]",
+        ]
+        
+        # Controlla pattern
+        if any(re.search(pt, p) for pt in min_quantity_patterns):
+            return ('min', 'quantity')
+        if any(re.search(pt, p) for pt in max_quantity_patterns):
+            return ('max', 'quantity')
+        if any(re.search(pt, p) for pt in max_price_patterns):
+            return ('max', 'selling_price')
+        if any(re.search(pt, p) for pt in min_price_patterns):
+            return ('min', 'selling_price')
+        if any(re.search(pt, p) for pt in max_cost_patterns):
+            return ('max', 'cost_price')
+        if any(re.search(pt, p) for pt in min_cost_patterns):
+            return ('min', 'cost_price')
+        if any(re.search(pt, p) for pt in max_vintage_patterns):
+            return ('max', 'vintage')
+        if any(re.search(pt, p) for pt in min_vintage_patterns):
+            return ('min', 'vintage')
+        
+        return (None, None)
+    
+    async def _handle_informational_query(self, telegram_id: int, query_type: str, field: str) -> Optional[str]:
+        """
+        Gestisce una domanda informativa generica e ritorna la risposta formattata.
+        Copia logica da telegram-ai-bot/src/ai.py:_handle_informational_query
+        
+        Args:
+            telegram_id: ID Telegram utente
+            query_type: 'min' o 'max'
+            field: Campo da interrogare ('quantity', 'selling_price', 'cost_price', 'vintage')
+        
+        Returns:
+            Risposta formattata o None se errore
+        """
+        try:
+            user = await db_manager.get_user_by_telegram_id(telegram_id)
+            if not user or not user.business_name:
+                return None
+            
+            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            
+            # Determina ORDER BY e NULLS LAST/FIRST
+            if query_type == 'max':
+                order_by = f"{field} DESC NULLS LAST"
+                if field == 'vintage':
+                    order_by = f"{field} DESC NULLS LAST"
+            else:  # min
+                order_by = f"{field} ASC NULLS LAST"
+                if field == 'vintage':
+                    order_by = f"{field} ASC NULLS LAST"
+            
+            # Query SQL: prima trova il valore min/max, poi tutti i vini con quel valore
+            from sqlalchemy import text as sql_text
+            from app.core.database import AsyncSessionLocal
+            
+            # Step 1: Trova il valore min/max
+            find_value_query = sql_text(f"""
+                SELECT {field}
+                FROM {table_name}
+                WHERE user_id = :user_id
+                AND {field} IS NOT NULL
+                ORDER BY {order_by}
+                LIMIT 1
+            """)
+            
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(find_value_query, {"user_id": user.id})
+                value_row = result.fetchone()
+                
+                if not value_row:
+                    # Nessun vino trovato con quel campo valorizzato
+                    field_names = {
+                        'quantity': 'quantità',
+                        'selling_price': 'prezzo di vendita',
+                        'cost_price': 'prezzo di acquisto',
+                        'vintage': 'annata'
+                    }
+                    field_name = field_names.get(field, field)
+                    return f"❌ Non ho trovato vini con {field_name} specificato nel tuo inventario."
+                
+                target_value = value_row[0]
+                
+                # Step 2: Trova TUTTI i vini con quel valore
+                find_all_query = sql_text(f"""
+                    SELECT *
+                    FROM {table_name}
+                    WHERE user_id = :user_id
+                    AND {field} = :target_value
+                    ORDER BY name ASC
+                    LIMIT 20
+                """)
+                
+                result = await session.execute(find_all_query, {"user_id": user.id, "target_value": target_value})
+                rows = result.fetchall()
+                
+                if not rows:
+                    return f"❌ Errore: valore trovato ma nessun vino corrispondente."
+                
+                # Costruisci oggetti Wine
+                from app.core.database import Wine
+                wines = []
+                for row in rows:
+                    wine_dict = {
+                        'id': row.id,
+                        'user_id': row.user_id,
+                        'name': row.name,
+                        'producer': row.producer,
+                        'vintage': row.vintage,
+                        'grape_variety': row.grape_variety,
+                        'region': row.region,
+                        'country': row.country,
+                        'wine_type': row.wine_type,
+                        'classification': row.classification,
+                        'quantity': row.quantity,
+                        'min_quantity': row.min_quantity if hasattr(row, 'min_quantity') else 0,
+                        'cost_price': row.cost_price,
+                        'selling_price': row.selling_price,
+                        'alcohol_content': row.alcohol_content,
+                        'description': row.description,
+                        'notes': row.notes,
+                        'created_at': row.created_at,
+                        'updated_at': row.updated_at
+                    }
+                    
+                    wine = Wine()
+                    for key, value in wine_dict.items():
+                        setattr(wine, key, value)
+                    wines.append(wine)
+                
+                # Formatta risposta usando _format_wines_response
+                return self._format_wines_response(wines)
+                
+        except Exception as e:
+            logger.error(f"[INFORMATIONAL_QUERY] Errore gestione query informativa: {e}", exc_info=True)
+            return None
+    
+    async def _build_inventory_list_response(self, telegram_id: int, limit: int = 50) -> str:
+        """
+        Costruisce risposta formattata per lista inventario.
+        Copia logica da telegram-ai-bot.
+        """
+        try:
+            wines = await db_manager.get_user_wines(telegram_id)
+            if not wines:
+                return "📋 Il tuo inventario è vuoto."
+            
+            wine_list = []
+            for idx, wine in enumerate(wines[:limit], start=1):
+                wine_str = f"{idx}. **{wine.name}**"
+                if wine.producer:
+                    wine_str += f" ({wine.producer})"
+                if wine.vintage:
+                    wine_str += f" {wine.vintage}"
+                if wine.quantity is not None:
+                    wine_str += f" — {wine.quantity} bott."
+                if wine.selling_price:
+                    wine_str += f" - €{wine.selling_price:.2f}"
+                wine_list.append(wine_str)
+            
+            response = f"📋 **Il tuo inventario** ({len(wines)} vini)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            response += "\n".join(wine_list)
+            response += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            return response
+        except Exception as e:
+            logger.error(f"[INVENTORY_LIST] Errore costruzione lista: {e}", exc_info=True)
+            return "❌ Errore nel recupero dell'inventario. Riprova."
     
     # ========== CASCADING RETRY SEARCH ==========
     
@@ -880,9 +1262,11 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 if not query_type or not field:
                     return {"success": False, "error": "Richiesta incompleta: specifica query_type (min/max) e field."}
                 
-                # Implementazione semplificata - TODO: implementare _handle_informational_query completo
-                logger.info(f"[TOOLS] get_wine_by_criteria: {query_type} {field} - TODO: implementare completamente")
-                return {"success": False, "error": "Funzionalità in fase di implementazione. Usa ricerca diretta per ora."}
+                logger.info(f"[TOOLS] get_wine_by_criteria: {query_type} {field}")
+                informational_response = await self._handle_informational_query(telegram_id, query_type, field)
+                if informational_response:
+                    return {"success": True, "message": informational_response, "use_template": False}
+                return {"success": False, "error": "Non ho trovato vini che corrispondono ai criteri richiesti."}
             
             # search_wines
             if tool_name == "search_wines":
