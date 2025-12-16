@@ -31,4 +31,4 @@ python-dateutil==2.8.2
 structlog==23.2.0
 
 # CORS
-python-cors==1.0.0
+# FastAPI usa Starlette CORS middleware, nessun pacchetto extra richiesto
