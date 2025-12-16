@@ -48,7 +48,7 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
         # Se l'utente non ha telegram_id, usa user_id come fallback
         # Ma le tabelle dinamiche sono basate su telegram_id, quindi potrebbe non esistere
         if not telegram_id:
-            logger.warning(f"Utente {user_id} non ha telegram_id, impossibile accedere a tabelle dinamiche")
+            logger.warning(f"[VIEWER] Utente user_id={user_id} non ha telegram_id, impossibile accedere a tabelle dinamiche")
             return {
                 "rows": [],
                 "facets": {
@@ -82,7 +82,7 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
             table_exists = result.scalar()
 
             if not table_exists:
-                logger.info(f"Tabella {table_name} non esiste per utente {telegram_id} (business_name={business_name})")
+                logger.info(f"[VIEWER] Tabella {table_name} non esiste per telegram_id={telegram_id}, business_name={business_name}")
                 # Restituisci risposta vuota ma valida - l'utente non ha ancora inventario
                 return {
                     "rows": [],
@@ -186,7 +186,9 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
 
             logger.info(
                 f"[VIEWER] Snapshot restituito: rows={len(rows)}, "
-                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}"
+                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}, "
+                f"facets_type={len(facets.get('type', {}))}, facets_vintage={len(facets.get('vintage', {}))}, "
+                f"facets_winery={len(facets.get('winery', {}))}, facets_supplier={len(facets.get('supplier', {}))}"
             )
             return response
 
@@ -289,8 +291,8 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
             output.close()
 
             logger.info(
-                f"[VIEWER] CSV export: rows={len(wines_rows)}, "
-                f"user_id={user_id}, telegram_id={telegram_id}"
+                f"[VIEWER] CSV export completato: rows={len(wines_rows)}, "
+                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}"
             )
 
             return Response(

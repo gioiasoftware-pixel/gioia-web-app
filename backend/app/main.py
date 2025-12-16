@@ -9,6 +9,10 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+# Setup logging PRIMA di tutto
+from app.core.logging_config import setup_logging
+setup_logging(service_name="web-app")
+
 load_dotenv()
 
 app = FastAPI(

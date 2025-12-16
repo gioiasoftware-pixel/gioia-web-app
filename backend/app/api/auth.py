@@ -110,7 +110,7 @@ async def signup(signup_request: SignupRequest):
                     )
                 
                 user = await db_manager.get_user_by_telegram_id(telegram_id)
-                logger.info(f"Email/password aggiunte a utente Telegram esistente: telegram_id={telegram_id}, email={email}")
+                logger.info(f"[AUTH] Email/password aggiunte a utente Telegram esistente: telegram_id={telegram_id}, email={email}, user_id={user.id}")
                 
                 # Genera token
                 token = create_access_token(
@@ -149,7 +149,7 @@ async def signup(signup_request: SignupRequest):
                     else:
                         raise HTTPException(status_code=500, detail="Errore aggiornamento utente")
                 
-                logger.info(f"Utente Telegram aggiornato con email/password: telegram_id={telegram_id}")
+                logger.info(f"[AUTH] Utente Telegram aggiornato con email/password: telegram_id={telegram_id}, user_id={user.id}, business_name={user.business_name}")
                 
                 token = create_access_token(
                     user_id=user.id,
@@ -175,7 +175,7 @@ async def signup(signup_request: SignupRequest):
         telegram_id=telegram_id
     )
     
-    logger.info(f"Nuovo utente creato: email={email}, telegram_id={telegram_id}")
+    logger.info(f"[AUTH] Nuovo utente creato: email={email}, user_id={user.id}, telegram_id={telegram_id}, business_name={user.business_name}")
     
     # Genera token
     token = create_access_token(
@@ -235,7 +235,7 @@ async def login(login_request: LoginRequest):
         remember_me=remember_me
     )
     
-    logger.info(f"Login effettuato: email={email}, user_id={user.id}, remember_me={remember_me}")
+    logger.info(f"[AUTH] Login effettuato: email={email}, user_id={user.id}, telegram_id={user.telegram_id}, remember_me={remember_me}")
     
     return LoginResponse(
         access_token=token,

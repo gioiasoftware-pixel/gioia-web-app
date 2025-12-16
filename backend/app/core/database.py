@@ -132,7 +132,7 @@ class DatabaseManager:
         async with AsyncSessionLocal() as session:
             user = await self.get_user_by_telegram_id(telegram_id)
             if not user or not user.business_name:
-                logger.warning(f"User {telegram_id} non trovato o business_name mancante")
+                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
                 return []
             
             table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
@@ -177,11 +177,11 @@ class DatabaseManager:
                         setattr(wine, key, value)
                     wines.append(wine)
                 
-                logger.info(f"Recuperati {len(wines)} vini da tabella dinamica per {telegram_id}/{user.business_name}")
+                logger.info(f"[DB] Recuperati {len(wines)} vini da tabella dinamica per telegram_id={telegram_id}, business_name={user.business_name}")
                 return wines
                 
             except Exception as e:
-                logger.error(f"Errore leggendo inventario da tabella dinamica {table_name}: {e}")
+                logger.error(f"[DB] Errore leggendo inventario da tabella dinamica {table_name}: {e}", exc_info=True)
                 # Fallback: prova vecchia tabella wines
                 try:
                     result = await session.execute(
@@ -200,7 +200,7 @@ class DatabaseManager:
         async with AsyncSessionLocal() as session:
             user = await self.get_user_by_telegram_id(telegram_id)
             if not user or not user.business_name:
-                logger.warning(f"User {telegram_id} non trovato o business_name mancante")
+                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
                 return []
             
             table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
@@ -365,11 +365,11 @@ class DatabaseManager:
                     wines.append(wine)
                 
                 wines = wines[:limit]
-                logger.info(f"Trovati {len(wines)} vini per ricerca '{search_term}' per {telegram_id}/{user.business_name}")
+                logger.info(f"[DB] Trovati {len(wines)} vini per ricerca '{search_term}' per telegram_id={telegram_id}, business_name={user.business_name}")
                 return wines
                 
             except Exception as e:
-                logger.error(f"Errore ricerca vini da tabella dinamica {table_name}: {e}", exc_info=True)
+                logger.error(f"[DB] Errore ricerca vini da tabella dinamica {table_name}: {e}", exc_info=True)
                 return []
     
     async def get_user_by_email(self, email: str) -> Optional[User]:

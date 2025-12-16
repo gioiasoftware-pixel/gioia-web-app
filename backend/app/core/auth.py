@@ -31,7 +31,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
             hashed_password.encode('utf-8')
         )
     except Exception as e:
-        logger.error(f"Errore verifica password: {e}")
+        logger.error(f"[AUTH] Errore verifica password: {e}")
         return False
 
 security = HTTPBearer()
@@ -108,7 +108,7 @@ def validate_token(token: str) -> Optional[Dict]:
         )
         return payload
     except JWTError as e:
-        logger.warning(f"Token JWT non valido: {e}")
+        logger.warning(f"[AUTH] Token JWT non valido: {e}")
         return None
 
 
@@ -151,10 +151,10 @@ async def get_current_user(
     # Usa user_id se disponibile, altrimenti telegram_id per retrocompatibilità
     if user_id:
         from sqlalchemy import select
-        from app.core.database import AsyncSessionLocal
+        from app.core.database import AsyncSessionLocal, User
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(db_manager.User).where(db_manager.User.id == user_id)
+                select(User).where(User.id == user_id)
             )
             user = result.scalar_one_or_none()
     elif telegram_id:
