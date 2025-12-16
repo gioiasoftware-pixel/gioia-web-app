@@ -730,16 +730,17 @@ body {
 /* Viewer Fullscreen Mode (Desktop Only) */
 @media (min-width: 769px) {
     .viewer-panel.fullscreen {
-        width: 100vw;
-        height: 100vh;
-        left: 0;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        transform: translateX(0);
+        width: 100vw !important;
+        height: 100vh !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        transform: translateX(0) !important;
         z-index: 10000;
         border-left: none;
         box-shadow: none;
+        transition: transform 0.4s ease-out, width 0.4s ease-out, height 0.4s ease-out, left 0.4s ease-out, right 0.4s ease-out;
     }
 
     .viewer-panel.fullscreen .viewer-content {
@@ -782,26 +783,7 @@ body {
     }
 
     .viewer-panel.fullscreen .viewer-download-btn {
-        background-color: var(--color-black);
-        color: var(--color-white);
-        padding: 10px 20px;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        text-decoration: none;
-        cursor: pointer;
-        transition: background-color 0.2s;
-        display: inline-block;
-        font-family: inherit;
-    }
-
-    .viewer-panel.fullscreen .viewer-download-btn:hover {
-        background-color: var(--color-text-primary);
-    }
-
-    .viewer-panel.fullscreen .viewer-download-btn.hidden {
-        display: none;
+        display: inline-block !important; /* Visibile in fullscreen */
     }
 
     .viewer-panel.fullscreen .viewer-fullscreen-btn {
@@ -1078,6 +1060,55 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+.viewer-download-btn {
+    background-color: var(--color-black);
+    color: var(--color-white);
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    display: none; /* Nascosto di default, visibile solo in fullscreen */
+    font-family: inherit;
+}
+
+.viewer-download-btn:hover {
+    background-color: var(--color-text-primary);
+}
+
+.viewer-fullscreen-btn {
+    width: 32px;
+    height: 32px;
+    border: none;
+    background: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.viewer-fullscreen-btn:hover {
+    background-color: var(--color-light-gray);
+    color: var(--color-granaccia);
+}
+
+.viewer-fullscreen-btn svg {
+    pointer-events: none;
+}
+
+/* Nascondi pulsante fullscreen su mobile */
+@media (max-width: 768px) {
+    .viewer-fullscreen-btn {
+        display: none;
+    }
 }
 
 .viewer-title {

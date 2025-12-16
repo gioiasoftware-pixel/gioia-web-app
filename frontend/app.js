@@ -281,45 +281,42 @@ function setupEventListeners() {
     document.getElementById('viewer-search')?.addEventListener('input', handleViewerSearch);
     setupViewerFilters();
     
-    // Viewer Fullscreen (solo desktop)
-    if (window.innerWidth > 768) {
-        const viewerFullscreenBtn = document.getElementById('viewer-fullscreen-btn');
-        if (viewerFullscreenBtn) {
-            addUniversalEventListener(viewerFullscreenBtn, openViewerFullscreen);
-        }
-        const viewerFullscreenClose = document.getElementById('viewer-fullscreen-close');
-        if (viewerFullscreenClose) {
-            addUniversalEventListener(viewerFullscreenClose, closeViewerFullscreen);
-        }
-        const viewerFullscreenSearch = document.getElementById('viewer-fullscreen-search');
-        if (viewerFullscreenSearch) {
-            viewerFullscreenSearch.addEventListener('input', handleViewerFullscreenSearch);
-        }
-        const viewerFullscreenDownload = document.getElementById('viewer-fullscreen-download-csv');
-        if (viewerFullscreenDownload) {
-            addUniversalEventListener(viewerFullscreenDownload, handleViewerFullscreenDownloadCSV);
-        }
-        setupViewerFullscreenFilters();
-        
-        // Modal movimenti
-        const movementsModalClose = document.getElementById('viewer-movements-modal-close');
-        if (movementsModalClose) {
-            addUniversalEventListener(movementsModalClose, closeMovementsModal);
-        }
-        const movementsModal = document.getElementById('viewer-movements-modal');
-        if (movementsModal) {
-            addUniversalEventListener(movementsModal, (e) => {
-                if (e.target === movementsModal) {
-                    closeMovementsModal();
-                }
-            });
-        }
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && movementsModal && !movementsModal.classList.contains('hidden')) {
+    // Viewer Fullscreen - sempre disponibile, ma funziona solo su desktop
+    const viewerFullscreenBtn = document.getElementById('viewer-fullscreen-btn');
+    if (viewerFullscreenBtn) {
+        addUniversalEventListener(viewerFullscreenBtn, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleViewerFullscreen();
+        });
+    }
+    
+    const viewerDownloadBtn = document.getElementById('viewer-download-csv');
+    if (viewerDownloadBtn) {
+        addUniversalEventListener(viewerDownloadBtn, (e) => {
+            e.preventDefault();
+            handleViewerDownloadCSV();
+        });
+    }
+    
+    // Modal movimenti
+    const movementsModalClose = document.getElementById('viewer-movements-modal-close');
+    if (movementsModalClose) {
+        addUniversalEventListener(movementsModalClose, closeMovementsModal);
+    }
+    const movementsModal = document.getElementById('viewer-movements-modal');
+    if (movementsModal) {
+        addUniversalEventListener(movementsModal, (e) => {
+            if (e.target === movementsModal) {
                 closeMovementsModal();
             }
         });
     }
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && movementsModal && !movementsModal.classList.contains('hidden')) {
+            closeMovementsModal();
+        }
+    });
 }
 
 function switchToSignup() {
@@ -1004,24 +1001,59 @@ window.viewerGoToPage = viewerGoToPage;
 // ============================================
 
 function toggleViewerFullscreen() {
+    console.log('[VIEWER] toggleViewerFullscreen chiamato');
+    
     // Solo desktop
-    if (window.innerWidth <= 768) return;
+    if (window.innerWidth <= 768) {
+        console.log('[VIEWER] Fullscreen disponibile solo su desktop');
+        return;
+    }
     
     const panel = document.getElementById('viewer-panel');
     const chartColumn = document.querySelector('.viewer-chart-column');
     const metaEl = document.getElementById('viewer-meta');
     const downloadBtn = document.getElementById('viewer-download-csv');
     
-    if (!panel) return;
+    if (!panel) {
+        console.error('[VIEWER] Panel non trovato!');
+        return;
+    }
+    
+    // Assicurati che il panel sia aperto prima di entrare in fullscreen
+    if (!panel.classList.contains('open')) {
+        console.log('[VIEWER] Aprendo panel prima di entrare in fullscreen');
+        panel.classList.add('open');
+        const toggleBtn = document.getElementById('viewer-toggle');
+        if (toggleBtn) toggleBtn.classList.add('hidden');
+        
+        // Carica dati se non ancora caricati
+        if (!viewerData) {
+            loadViewerData();
+        }
+    }
     
     const isFullscreen = panel.classList.contains('fullscreen');
+    console.log('[VIEWER] Stato fullscreen attuale:', isFullscreen);
     
     if (isFullscreen) {
         // Esci da fullscreen
+        console.log('[VIEWER] Uscendo da fullscreen');
         panel.classList.remove('fullscreen');
+        
+        // Ripristina icona pulsante fullscreen (entra)
+        const fullscreenBtn = document.getElementById('viewer-fullscreen-btn');
+        if (fullscreenBtn) {
+            fullscreenBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M3 3h5v2H5v3H3V3zm12 0h-5v2h3v3h2V3zm-5 14h5v-5h-2v3h-3v2zm-7 0v-5h2v3h3v2H3z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+            fullscreenBtn.title = "Apri a tutto schermo (solo desktop)";
+        }
+        
         if (chartColumn) chartColumn.classList.add('hidden');
         if (metaEl) metaEl.classList.add('hidden');
-        if (downloadBtn) downloadBtn.classList.add('hidden');
+        // Download CSV nascosto di default con CSS, non serve rimuovere classe
         
         // Ricarica tabella senza colonna grafico
         if (viewerData) {
@@ -1029,10 +1061,29 @@ function toggleViewerFullscreen() {
         }
     } else {
         // Entra in fullscreen
+        console.log('[VIEWER] Entrando in fullscreen');
         panel.classList.add('fullscreen');
+        
+        // Cambia icona pulsante fullscreen (esci)
+        const fullscreenBtn = document.getElementById('viewer-fullscreen-btn');
+        if (fullscreenBtn) {
+            fullscreenBtn.innerHTML = `
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                    <path d="M7 7L13 13M13 7L7 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
+            fullscreenBtn.title = "Esci da schermo intero";
+        }
+        
         if (chartColumn) chartColumn.classList.remove('hidden');
-        if (metaEl) metaEl.classList.remove('hidden');
-        if (downloadBtn) downloadBtn.classList.remove('hidden');
+        if (metaEl) {
+            metaEl.classList.remove('hidden');
+            // Aggiorna meta se abbiamo i dati
+            if (viewerData && viewerData.meta) {
+                updateViewerMeta(viewerData.meta);
+            }
+        }
+        // Download CSV visibile automaticamente in fullscreen tramite CSS
         
         // Ricarica tabella con colonna grafico e funzionalità avanzate
         if (viewerData) {
