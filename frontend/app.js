@@ -278,7 +278,8 @@ function setupEventListeners() {
     if (viewerClose) {
         addUniversalEventListener(viewerClose, closeViewer);
     }
-    document.getElementById('viewer-search')?.addEventListener('input', handleViewerSearch);
+    // Setup ricerca viewer - usa listener universale per mobile
+    setupViewerSearch();
     setupViewerFilters();
     
     // Viewer Fullscreen - sempre disponibile, ma funziona solo su desktop
@@ -1057,6 +1058,28 @@ function closeViewer() {
 }
 
 
+function setupViewerSearch() {
+    // Setup ricerca viewer - usa listener universale per mobile
+    const searchInput = document.getElementById('viewer-search');
+    if (searchInput) {
+        // Rimuovi listener esistenti per evitare duplicati
+        const newInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newInput, searchInput);
+        
+        // Collega listener universale per supporto mobile
+        addUniversalEventListener(newInput, (e) => {
+            handleViewerSearch(e);
+        });
+        
+        // Collega anche listener standard come fallback
+        newInput.addEventListener('input', handleViewerSearch);
+        
+        console.log('[VIEWER] Event listener ricerca collegato');
+    } else {
+        console.warn('[VIEWER] Campo ricerca non trovato durante setup');
+    }
+}
+
 function setupViewerFilters() {
     // Setup dropdown buttons
     const filterButtons = document.querySelectorAll('.filter-dropdown-btn');
@@ -1129,6 +1152,13 @@ function resetViewerFilters() {
         supplier: null
     };
     
+    // Reset ricerca
+    viewerSearchQuery = '';
+    const searchInput = document.getElementById('viewer-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
     // Rimuovi classe active da tutti gli item
     document.querySelectorAll('.filter-item').forEach(item => {
         item.classList.remove('active');
@@ -1186,8 +1216,13 @@ async function loadViewerData() {
         // Update meta info se in fullscreen
         updateViewerMeta(data.meta || {});
         
-        // Render table
-        renderViewerTable(data.rows || []);
+        // Se c'è una query di ricerca, applica i filtri (inclusa la ricerca)
+        // Altrimenti renderizza tutti i dati
+        if (viewerSearchQuery) {
+            applyViewerFilters();
+        } else {
+            renderViewerTable(data.rows || []);
+        }
     } catch (error) {
         console.error('Errore caricamento viewer:', error);
         const errorMsg = error.message || 'Errore nel caricamento dei dati';
@@ -1270,30 +1305,42 @@ function setupFilterItems() {
 }
 
 function applyViewerFilters() {
-    if (!viewerData || !viewerData.rows) return;
+    if (!viewerData || !viewerData.rows) {
+        console.warn('[VIEWER] applyViewerFilters chiamato ma viewerData non disponibile');
+        return;
+    }
 
     let filtered = [...viewerData.rows];
+    console.log('[VIEWER] Applicazione filtri - righe iniziali:', filtered.length, 'query ricerca:', viewerSearchQuery);
 
     // Apply filters
     Object.keys(viewerFilters).forEach(key => {
         if (viewerFilters[key]) {
+            const beforeCount = filtered.length;
             filtered = filtered.filter(row => {
                 const rowValue = row[key] || row[key.toLowerCase()];
                 return String(rowValue) === String(viewerFilters[key]);
             });
+            console.log(`[VIEWER] Filtro ${key}="${viewerFilters[key]}" - da ${beforeCount} a ${filtered.length} righe`);
         }
     });
 
     // Apply search
-    if (viewerSearchQuery) {
-        const query = viewerSearchQuery.toLowerCase();
+    if (viewerSearchQuery && viewerSearchQuery.trim()) {
+        const query = viewerSearchQuery.toLowerCase().trim();
+        const beforeCount = filtered.length;
         filtered = filtered.filter(row => {
-            return Object.values(row).some(val => 
-                String(val).toLowerCase().includes(query)
-            );
+            // Cerca in tutti i valori dell'oggetto row
+            const matches = Object.values(row).some(val => {
+                if (val === null || val === undefined) return false;
+                return String(val).toLowerCase().includes(query);
+            });
+            return matches;
         });
+        console.log(`[VIEWER] Ricerca "${query}" - da ${beforeCount} a ${filtered.length} righe`);
     }
 
+    console.log('[VIEWER] Render tabella con', filtered.length, 'righe filtrate');
     renderViewerTable(filtered);
 }
 
@@ -1303,8 +1350,14 @@ function handleViewerSearch(e) {
     // Debounce ricerca (300ms)
     clearTimeout(viewerSearchTimeout);
     viewerSearchTimeout = setTimeout(() => {
-        viewerSearchQuery = e.target.value;
-        applyViewerFilters();
+        const searchValue = e.target ? e.target.value : (e.currentTarget ? e.currentTarget.value : '');
+        console.log('[VIEWER] Ricerca:', searchValue, 'viewerData disponibile:', !!viewerData);
+        viewerSearchQuery = searchValue;
+        if (viewerData && viewerData.rows) {
+            applyViewerFilters();
+        } else {
+            console.warn('[VIEWER] viewerData non disponibile, ricerca non applicata');
+        }
     }, 300);
 }
 
@@ -1315,7 +1368,11 @@ function renderViewerTable(rows) {
     
     if (rows.length === 0) {
         const colspan = isFullscreen ? 7 : 6;
-        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">Nessun inventario disponibile. Carica un file CSV per iniziare.</td></tr>`;
+        // Mostra messaggio diverso se c'è una ricerca attiva
+        const message = viewerSearchQuery && viewerSearchQuery.trim()
+            ? `Nessun risultato trovato per "${viewerSearchQuery}"`
+            : 'Nessun inventario disponibile. Carica un file CSV per iniziare.';
+        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">${escapeHtml(message)}</td></tr>`;
         return;
     }
 
