@@ -467,17 +467,13 @@ function showChatPage() {
 // CHAT
 // ============================================
 
-async function handleChatSubmit(e) {
-    e.preventDefault();
-    const input = document.getElementById('chat-input');
-    const message = input.value.trim();
-
+async function sendChatMessage(message, showUserMessage = true) {
     if (!message || !authToken) return;
 
-    // Add user message to chat
-    addChatMessage('user', message);
-    input.value = '';
-    input.style.height = 'auto';
+    // Add user message to chat solo se richiesto
+    if (showUserMessage) {
+        addChatMessage('user', message);
+    }
 
     // Show loading
     const loadingId = addChatMessage('ai', '', true);
@@ -529,6 +525,20 @@ async function handleChatSubmit(e) {
         removeChatMessage(loadingId);
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
     }
+}
+
+async function handleChatSubmit(e) {
+    e.preventDefault();
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+
+    if (!message || !authToken) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+
+    // Invia messaggio mostrando anche il messaggio utente
+    await sendChatMessage(message, true);
 }
 
 function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
@@ -616,20 +626,23 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         if (buttons && buttons.length > 0) {
             const buttonElements = messageEl.querySelectorAll('.chat-button');
             buttonElements.forEach(btn => {
-                btn.addEventListener('click', () => {
+                btn.addEventListener('click', async () => {
                     const wineId = btn.dataset.wineId;
                     const wineText = btn.dataset.wineText;
                     const movementType = btn.dataset.movementType;
                     const quantity = btn.dataset.quantity;
                     
-                    const input = document.getElementById('chat-input');
-                    
-                    // Se è un pulsante di conferma movimento, invia messaggio con formato speciale
+                    // Se è un pulsante di conferma movimento, processa direttamente senza mostrare messaggio
                     if (movementType && quantity && wineId) {
-                        // Formato: [movement:consumo/rifornimento] [wine_id:123] [quantity:3]
-                        input.value = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
-                    } else if (wineId) {
-                        // Pulsante normale: ricerca vino con ID
+                        // Invia direttamente all'API senza mostrare il messaggio nella chat
+                        const message = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
+                        await sendChatMessage(message, false); // false = non mostrare messaggio utente
+                        return;
+                    }
+                    
+                    // Pulsante normale: ricerca vino con ID
+                    const input = document.getElementById('chat-input');
+                    if (wineId) {
                         input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
                     } else {
                         // Fallback: solo testo
