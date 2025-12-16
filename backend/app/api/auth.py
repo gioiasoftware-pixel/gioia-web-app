@@ -205,13 +205,18 @@ async def login(login_request: LoginRequest):
     password = login_request.password
     remember_me = login_request.remember_me
     
-    # Trova utente per email
+    logger.info(f"[AUTH] Tentativo login: email={email}")
+    
+    # Trova utente per email (get_user_by_email già normalizza in lowercase)
     user = await db_manager.get_user_by_email(email)
     if not user:
+        logger.warning(f"[AUTH] Login fallito: email non trovata: {email}")
         raise HTTPException(
             status_code=401,
             detail="Email o password non corretti"
         )
+    
+    logger.info(f"[AUTH] Utente trovato: user_id={user.id}, email_db={user.email}, has_password={bool(user.password_hash)}")
     
     # Verifica password
     if not user.password_hash:

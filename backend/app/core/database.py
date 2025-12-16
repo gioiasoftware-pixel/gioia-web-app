@@ -120,12 +120,18 @@ class DatabaseManager:
             return result.scalar_one_or_none()
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
-        """Trova utente per email"""
+        """Trova utente per email (normalizza sempre in lowercase)"""
+        email_normalized = email.lower().strip()
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(User).where(User.email == email.lower().strip())
+                select(User).where(User.email == email_normalized)
             )
-            return result.scalar_one_or_none()
+            user = result.scalar_one_or_none()
+            if user:
+                logger.debug(f"[DB] Utente trovato per email: {email_normalized}, user_id={user.id}")
+            else:
+                logger.debug(f"[DB] Nessun utente trovato per email: {email_normalized}")
+            return user
     
     async def get_user_wines(self, telegram_id: int) -> List[Wine]:
         """Ottiene vini utente da tabelle dinamiche"""
