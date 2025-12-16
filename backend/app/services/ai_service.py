@@ -113,13 +113,15 @@ INFORMAZIONI UTENTE:
             if self._is_inventory_list_request(user_message):
                 logger.info(f"[AI_SERVICE] Richiesta lista inventario rilevata, bypass AI")
                 inventory_response = await self._build_inventory_list_response(telegram_id, limit=50)
+                # _build_inventory_list_response ora restituisce sempre HTML
                 return {
                     "message": inventory_response,
                     "metadata": {
                         "type": "inventory_list",
                         "model": None
                     },
-                    "buttons": None
+                    "buttons": None,
+                    "is_html": True
                 }
             
             # 2b. Richieste di riepilogo movimenti
@@ -430,6 +432,182 @@ INFORMAZIONI UTENTE:
             return ""
         return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;").replace("'", "&#x27;")
     
+    def _generate_inventory_list_html(self, wines: list, total_count: int) -> str:
+        """
+        Genera HTML per lista inventario completa.
+        Stile gio-ia: card con lista vini.
+        """
+        html = '<div class="inventory-list-card">'
+        html += '<div class="inventory-list-header">'
+        html += f'<h3 class="inventory-list-title">Il tuo inventario</h3>'
+        html += f'<span class="inventory-list-count">{total_count} vini</span>'
+        html += '</div>'
+        
+        html += '<div class="inventory-list-body">'
+        for idx, wine in enumerate(wines[:50], start=1):
+            html += '<div class="inventory-list-item">'
+            html += f'<span class="inventory-list-item-number">{idx}.</span>'
+            html += '<div class="inventory-list-item-content">'
+            html += f'<span class="inventory-list-item-name">{self._escape_html(wine.name)}</span>'
+            if wine.producer:
+                html += f'<span class="inventory-list-item-producer">{self._escape_html(wine.producer)}</span>'
+            html += '</div>'
+            html += '<div class="inventory-list-item-meta">'
+            if wine.vintage:
+                html += f'<span class="inventory-list-item-vintage">{wine.vintage}</span>'
+            if wine.quantity is not None:
+                html += f'<span class="inventory-list-item-qty">{wine.quantity} bott.</span>'
+            if wine.selling_price:
+                html += f'<span class="inventory-list-item-price">€{wine.selling_price:.2f}</span>'
+            html += '</div>'
+            html += '</div>'
+        
+        if total_count > 50:
+            html += f'<div class="inventory-list-footer">... e altri {total_count - 50} vini</div>'
+        
+        html += '</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _generate_stats_card_html(self, total_wines: int, total_bottles: int, avg_price: float = None, min_price: float = None, max_price: float = None, low_stock_count: int = 0) -> str:
+        """
+        Genera HTML per card statistiche inventario.
+        Stile gio-ia: card con metriche.
+        """
+        html = '<div class="stats-card">'
+        html += '<div class="stats-card-header">'
+        html += '<h3 class="stats-card-title">Riepilogo Inventario</h3>'
+        html += '</div>'
+        
+        html += '<div class="stats-card-body">'
+        html += '<div class="stats-grid">'
+        
+        # Totale vini
+        html += '<div class="stat-item">'
+        html += '<span class="stat-label">Totale Vini</span>'
+        html += f'<span class="stat-value">{total_wines}</span>'
+        html += '</div>'
+        
+        # Totale bottiglie
+        html += '<div class="stat-item">'
+        html += '<span class="stat-label">Totale Bottiglie</span>'
+        html += f'<span class="stat-value">{total_bottles}</span>'
+        html += '</div>'
+        
+        # Prezzo medio
+        if avg_price is not None:
+            html += '<div class="stat-item">'
+            html += '<span class="stat-label">Prezzo Medio</span>'
+            html += f'<span class="stat-value price">€{avg_price:.2f}</span>'
+            html += '</div>'
+        
+        # Prezzo min
+        if min_price is not None:
+            html += '<div class="stat-item">'
+            html += '<span class="stat-label">Prezzo Min</span>'
+            html += f'<span class="stat-value">€{min_price:.2f}</span>'
+            html += '</div>'
+        
+        # Prezzo max
+        if max_price is not None:
+            html += '<div class="stat-item">'
+            html += '<span class="stat-label">Prezzo Max</span>'
+            html += f'<span class="stat-value price">€{max_price:.2f}</span>'
+            html += '</div>'
+        
+        # Scorte basse
+        if low_stock_count > 0:
+            html += '<div class="stat-item warning">'
+            html += '<span class="stat-label">Scorte Basse</span>'
+            html += f'<span class="stat-value warning">{low_stock_count} vini</span>'
+            html += '</div>'
+        
+        html += '</div>'
+        html += '</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _generate_wines_list_html(self, wines: list, query: str = None, show_buttons: bool = True) -> tuple[str, list]:
+        """
+        Genera HTML per lista vini multipli (2-10 o >10).
+        Restituisce (html, buttons).
+        Stile gio-ia: card con lista compatta.
+        """
+        num_wines = len(wines)
+        buttons = []
+        
+        html = '<div class="wines-list-card">'
+        html += '<div class="wines-list-header">'
+        if query:
+            html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
+            html += f'<span class="wines-list-query">per "{self._escape_html(query)}"</span>'
+        else:
+            html += f'<h3 class="wines-list-title">Trovati {num_wines} vini</h3>'
+        html += '</div>'
+        
+        html += '<div class="wines-list-body">'
+        
+        # Mostra fino a 10 vini nella lista
+        display_wines = wines[:10]
+        for wine in display_wines:
+            html += '<div class="wines-list-item">'
+            html += f'<span class="wines-list-item-name">{self._escape_html(wine.name)}</span>'
+            if wine.producer:
+                html += f'<span class="wines-list-item-producer">{self._escape_html(wine.producer)}</span>'
+            if wine.vintage:
+                html += f'<span class="wines-list-item-vintage">{wine.vintage}</span>'
+            if wine.quantity is not None:
+                html += f'<span class="wines-list-item-qty">{wine.quantity} bott.</span>'
+            html += '</div>'
+            
+            # Prepara buttons per 2-10 vini
+            if show_buttons and 2 <= num_wines <= 10:
+                buttons.append({
+                    "id": wine.id,
+                    "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+                })
+        
+        html += '</div>'
+        
+        # Footer con suggerimento
+        if num_wines > 10:
+            html += f'<div class="wines-list-footer">... e altri {num_wines - 10} vini. Usa il viewer a destra per vedere tutti.</div>'
+        elif num_wines >= 2:
+            html += '<div class="wines-list-footer">💡 Seleziona quale vuoi vedere per maggiori dettagli.</div>'
+        
+        html += '</div>'
+        
+        return html, buttons
+    
+    def _generate_empty_state_html(self, message: str) -> str:
+        """
+        Genera HTML per stato vuoto (inventario vuoto, nessun risultato, ecc.).
+        Stile gio-ia: card semplice con messaggio.
+        """
+        html = '<div class="empty-state-card">'
+        html += '<div class="empty-state-icon">📋</div>'
+        html += f'<div class="empty-state-message">{self._escape_html(message)}</div>'
+        html += '</div>'
+        
+        return html
+    
+    def _generate_error_message_html(self, error_message: str) -> str:
+        """
+        Genera HTML per messaggio di errore.
+        Stile gio-ia: card con stile errore.
+        """
+        html = '<div class="error-card">'
+        html += '<div class="error-card-header">'
+        html += '<div class="error-card-icon">⚠️</div>'
+        html += '<h3 class="error-card-title">Errore</h3>'
+        html += '</div>'
+        html += f'<div class="error-card-message">{self._escape_html(error_message)}</div>'
+        html += '</div>'
+        
+        return html
+    
     # ========== RILEVAMENTO RICHIESTE SPECIFICHE ==========
     
     def _is_inventory_list_request(self, prompt: str) -> bool:
@@ -673,7 +851,7 @@ INFORMAZIONI UTENTE:
                         'vintage': 'annata'
                     }
                     field_name = field_names.get(field, field)
-                    return f"❌ Non ho trovato vini con {field_name} specificato nel tuo inventario."
+                    return self._generate_error_message_html(f"Non ho trovato vini con {field_name} specificato nel tuo inventario.")
                 
                 target_value = value_row[0]
                 
@@ -691,7 +869,7 @@ INFORMAZIONI UTENTE:
                 rows = result.fetchall()
                 
                 if not rows:
-                    return f"❌ Errore: valore trovato ma nessun vino corrispondente."
+                    return self._generate_error_message_html("Errore: valore trovato ma nessun vino corrispondente.")
                 
                 # Costruisci oggetti Wine
                 from app.core.database import Wine
@@ -729,8 +907,9 @@ INFORMAZIONI UTENTE:
                     html_card = self._generate_wine_card_html(wines[0])
                     return html_card
                 
-                # Più vini: formatta come testo
-                return self._format_wines_response(wines)
+                # Più vini: genera HTML card
+                html_card, _ = self._generate_wines_list_html(wines, query=None, show_buttons=False)
+                return html_card
                 
         except Exception as e:
             logger.error(f"[INFORMATIONAL_QUERY] Errore gestione query informativa: {e}", exc_info=True)
@@ -739,33 +918,18 @@ INFORMAZIONI UTENTE:
     async def _build_inventory_list_response(self, telegram_id: int, limit: int = 50) -> str:
         """
         Costruisce risposta formattata per lista inventario.
-        Copia logica da telegram-ai-bot.
+        Restituisce HTML invece di testo markdown.
         """
         try:
             wines = await db_manager.get_user_wines(telegram_id)
             if not wines:
-                return "📋 Il tuo inventario è vuoto."
+                return self._generate_empty_state_html("Il tuo inventario è vuoto.")
             
-            wine_list = []
-            for idx, wine in enumerate(wines[:limit], start=1):
-                wine_str = f"{idx}. **{wine.name}**"
-                if wine.producer:
-                    wine_str += f" ({wine.producer})"
-                if wine.vintage:
-                    wine_str += f" {wine.vintage}"
-                if wine.quantity is not None:
-                    wine_str += f" — {wine.quantity} bott."
-                if wine.selling_price:
-                    wine_str += f" - €{wine.selling_price:.2f}"
-                wine_list.append(wine_str)
-            
-            response = f"📋 **Il tuo inventario** ({len(wines)} vini)\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            response += "\n".join(wine_list)
-            response += "\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            return response
+            # Genera HTML card per lista inventario
+            return self._generate_inventory_list_html(wines[:limit], len(wines))
         except Exception as e:
             logger.error(f"[INVENTORY_LIST] Errore costruzione lista: {e}", exc_info=True)
-            return "❌ Errore nel recupero dell'inventario. Riprova."
+            return self._generate_error_message_html("Errore nel recupero dell'inventario. Riprova.")
     
     # ========== CASCADING RETRY SEARCH ==========
     
@@ -1260,7 +1424,8 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
             if tool_name == "get_wine_info":
                 query = (tool_args.get("wine_query") or "").strip()
                 if not query:
-                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                    error_html = self._generate_error_message_html("Richiesta incompleta: specifica il vino.")
+                    return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
                     telegram_id=telegram_id,
@@ -1278,22 +1443,9 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         html_card = self._generate_wine_card_html(wine)
                         return {"success": True, "message": html_card, "use_template": False, "buttons": None, "is_html": True}
                     else:
-                        # Più vini: genera buttons
-                        buttons = [
-                            {
-                                "id": wine.id,
-                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
-                            }
-                            for wine in wines[:10]
-                        ]
-                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
-                        for wine in wines[:10]:
-                            response += f"• **{wine.name}**"
-                            if wine.producer:
-                                response += f" ({wine.producer})"
-                            response += "\n"
-                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
-                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
+                        # Più vini: genera HTML card con buttons
+                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True)
+                        return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 
                 return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
             
@@ -1301,7 +1453,8 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
             if tool_name == "get_wine_price":
                 query = (tool_args.get("wine_query") or "").strip()
                 if not query:
-                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                    error_html = self._generate_error_message_html("Richiesta incompleta: specifica il vino.")
+                    return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
                     telegram_id=telegram_id,
@@ -1317,30 +1470,19 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         html_card = self._generate_wine_card_html(wines[0])
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
-                        # Più vini: lista con buttons
-                        buttons = [
-                            {
-                                "id": wine.id,
-                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "")
-                            }
-                            for wine in wines[:10]
-                        ]
-                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
-                        for wine in wines[:10]:
-                            response += f"• **{wine.name}**"
-                            if wine.producer:
-                                response += f" ({wine.producer})"
-                            response += "\n"
-                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
-                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
+                        # Più vini: genera HTML card con buttons
+                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True)
+                        return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 
-                return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
+                error_html = self._generate_error_message_html(f"Non ho trovato vini per '{query}' nel tuo inventario.")
+                return {"success": False, "error": error_html, "is_html": True}
             
             # get_wine_quantity
             if tool_name == "get_wine_quantity":
                 query = (tool_args.get("wine_query") or "").strip()
                 if not query:
-                    return {"success": False, "error": "Richiesta incompleta: specifica il vino."}
+                    error_html = self._generate_error_message_html("Richiesta incompleta: specifica il vino.")
+                    return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
                     telegram_id=telegram_id,
@@ -1356,24 +1498,12 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         html_card = self._generate_wine_card_html(wines[0])
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
-                        # Più vini: lista con buttons
-                        buttons = [
-                            {
-                                "id": wine.id,
-                                "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "")
-                            }
-                            for wine in wines[:10]
-                        ]
-                        response = f"🔍 Ho trovato **{len(wines)} vini** che corrispondono a '{query}':\n\n"
-                        for wine in wines[:10]:
-                            response += f"• **{wine.name}**"
-                            if wine.producer:
-                                response += f" ({wine.producer})"
-                            response += "\n"
-                        response += "\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
-                        return {"success": True, "message": response, "use_template": False, "buttons": buttons}
+                        # Più vini: genera HTML card con buttons
+                        html_card, buttons = self._generate_wines_list_html(wines, query, show_buttons=True)
+                        return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
                 
-                return {"success": False, "error": f"❌ Non ho trovato vini per '{query}' nel tuo inventario."}
+                error_html = self._generate_error_message_html(f"Non ho trovato vini per '{query}' nel tuo inventario.")
+                return {"success": False, "error": error_html, "is_html": True}
             
             # get_wine_by_criteria
             if tool_name == "get_wine_by_criteria":
@@ -1407,19 +1537,22 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     prices = [w.selling_price for w in wines if w.selling_price]
                     low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
                     
-                    response = f"📊 **Riepilogo Inventario**\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                    response += f"🍷 **Totale vini:** {len(wines)}\n"
-                    response += f"📦 **Totale bottiglie:** {total_bottles}\n"
-                    if prices:
-                        response += f"💰 **Prezzo medio:** €{sum(prices)/len(prices):.2f}\n"
-                        response += f"💰 **Prezzo min:** €{min(prices):.2f}\n"
-                        response += f"💰 **Prezzo max:** €{max(prices):.2f}\n"
-                    if low_stock:
-                        response += f"⚠️ **Scorte basse:** {len(low_stock)} vini\n"
-                    response += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-                    return {"success": True, "message": response, "use_template": False}
+                    avg_price = sum(prices)/len(prices) if prices else None
+                    min_price = min(prices) if prices else None
+                    max_price = max(prices) if prices else None
+                    
+                    html_card = self._generate_stats_card_html(
+                        total_wines=len(wines),
+                        total_bottles=total_bottles,
+                        avg_price=avg_price,
+                        min_price=min_price,
+                        max_price=max_price,
+                        low_stock_count=len(low_stock)
+                    )
+                    return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                 
-                return {"success": True, "message": "📊 Il tuo inventario è vuoto.", "use_template": False}
+                empty_html = self._generate_empty_state_html("Il tuo inventario è vuoto.")
+                return {"success": True, "message": empty_html, "use_template": False, "is_html": True}
             
             # register_consumption / register_replenishment
             if tool_name in ("register_consumption", "register_replenishment"):
@@ -1427,7 +1560,8 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 quantity = tool_args.get("quantity")
                 
                 if not wine_name or not quantity or quantity <= 0:
-                    return {"success": False, "error": "Richiesta incompleta: specifica vino e quantità valida."}
+                    error_html = self._generate_error_message_html("Richiesta incompleta: specifica vino e quantità valida.")
+                    return {"success": False, "error": error_html, "is_html": True}
                 
                 movement_type = "consumo" if tool_name == "register_consumption" else "rifornimento"
                 
@@ -1481,18 +1615,22 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
                         error_msg = result.get('error', 'Errore sconosciuto')
-                        return {"success": False, "error": f"❌ Errore: {error_msg}"}
+                        error_html = self._generate_error_message_html(f"Errore: {error_msg}")
+                        return {"success": False, "error": error_html, "is_html": True}
                 except Exception as e:
                     logger.error(f"[TOOLS] Errore processamento movimento: {e}", exc_info=True)
-                    return {"success": False, "error": f"Errore durante il processamento: {str(e)[:200]}"}
+                    error_html = self._generate_error_message_html(f"Errore durante il processamento: {str(e)[:200]}")
+                    return {"success": False, "error": error_html, "is_html": True}
             
             # Tool non riconosciuto
             logger.warning(f"[TOOLS] Tool '{tool_name}' non riconosciuto")
-            return {"success": False, "error": f"Funzione '{tool_name}' non ancora implementata."}
+            error_html = self._generate_error_message_html(f"Funzione '{tool_name}' non ancora implementata.")
+            return {"success": False, "error": error_html, "is_html": True}
             
         except Exception as e:
             logger.error(f"[TOOLS] Errore esecuzione tool '{tool_name}': {e}", exc_info=True)
-            return {"success": False, "error": f"Errore durante l'esecuzione: {str(e)[:200]}"}
+            error_html = self._generate_error_message_html(f"Errore durante l'esecuzione: {str(e)[:200]}")
+            return {"success": False, "error": error_html, "is_html": True}
     
     async def _call_openai_with_tools(
         self,
@@ -1689,13 +1827,13 @@ INFORMAZIONI UTENTE:
                         )
                         if found_wines:
                             logger.info(f"[FALLBACK] Trovati {len(found_wines)} vini per '{wine_search_term}' (livello: {level_used})")
-                            specific_wine_info = self._format_wines_response(found_wines)
+                            specific_wine_info, _ = self._format_wines_response(found_wines, query=wine_search_term)
                         else:
                             logger.info(f"[FALLBACK] Nessun vino trovato dopo cascading retry per '{wine_search_term}'")
-                            specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
+                            specific_wine_info = self._generate_error_message_html(f"Non ho trovato vini per '{wine_search_term}' nel tuo inventario.")
                     except Exception as e:
                         logger.error(f"[FALLBACK] Errore ricerca vini con cascading retry: {e}", exc_info=True)
-                        specific_wine_info = f"❌ Errore temporaneo nella ricerca. Riprova tra qualche minuto."
+                        specific_wine_info = self._generate_error_message_html("Errore temporaneo nella ricerca. Riprova tra qualche minuto.")
                 
                 # Statistiche inventario (solo se non abbiamo già trovato vini specifici)
                 if not specific_wine_info:
@@ -1714,62 +1852,24 @@ INFORMAZIONI UTENTE:
             logger.error(f"[FALLBACK] Errore accesso database: {e}", exc_info=True)
             # Continua comunque con risposta generica
     
-    def _format_wines_response(self, found_wines: list) -> str:
+    def _format_wines_response(self, found_wines: list, query: str = None) -> tuple[str, bool]:
         """
-        Formatta risposta per vini trovati, simile a format_wines_response_by_count del telegram bot.
-        Restituisce messaggio formattato e prepara metadata per pulsanti se necessario.
+        Formatta risposta per vini trovati usando HTML.
+        Restituisce (html, is_html).
         """
         if not found_wines:
-            return "❌ Nessun vino trovato."
+            return self._generate_error_message_html("Nessun vino trovato."), True
         
         num_wines = len(found_wines)
         
-        # Caso 1: 1 solo vino → info completo
+        # Caso 1: 1 solo vino → card HTML completa
         if num_wines == 1:
-            wine = found_wines[0]
-            response_parts = [f"✅ **{wine.name}**"]
-            if wine.producer:
-                response_parts.append(f"Produttore: {wine.producer}")
-            if wine.vintage:
-                response_parts.append(f"Annata: {wine.vintage}")
-            if wine.quantity is not None:
-                response_parts.append(f"Quantità: {wine.quantity} bottiglie")
-            if wine.selling_price:
-                response_parts.append(f"Prezzo vendita: €{wine.selling_price:.2f}")
-            return "\n".join(response_parts)
+            html_card = self._generate_wine_card_html(found_wines[0])
+            return html_card, True
         
-        # Caso 2: 2-10 vini → lista con suggerimento selezione
-        if 2 <= num_wines <= 10:
-            wine_list = []
-            for wine in found_wines:
-                wine_str = f"• **{wine.name}**"
-                if wine.producer:
-                    wine_str += f" ({wine.producer})"
-                if wine.vintage:
-                    wine_str += f" {wine.vintage}"
-                if wine.quantity is not None:
-                    wine_str += f" - {wine.quantity} bottiglie"
-                wine_list.append(wine_str)
-            
-            response = f"🔍 Ho trovato **{num_wines} vini** che corrispondono alla tua ricerca:\n\n"
-            response += "\n".join(wine_list)
-            response += "\n\n💡 Seleziona quale vuoi vedere per maggiori dettagli."
-            return response
-        
-        # Caso 3: >10 vini → messaggio informativo
-        wine_list = []
-        for wine in found_wines[:10]:
-            wine_str = f"• **{wine.name}**"
-            if wine.producer:
-                wine_str += f" ({wine.producer})"
-            wine_list.append(wine_str)
-        
-        response = f"🔍 Ho trovato **{num_wines} vini** che corrispondono alla tua ricerca.\n\n"
-        response += "Ecco i primi 10:\n\n"
-        response += "\n".join(wine_list)
-        response += f"\n\n... e altri {num_wines - 10} vini.\n\n"
-        response += "💡 Usa il viewer a destra per vedere e filtrare tutti i vini."
-        return response
+        # Caso 2 e 3: 2+ vini → lista HTML con buttons se 2-10
+        html_card, buttons = self._generate_wines_list_html(found_wines, query, show_buttons=(2 <= num_wines <= 10))
+        return html_card, True
     
     async def _simple_ai_response_complete(
         self,
@@ -1788,7 +1888,10 @@ INFORMAZIONI UTENTE:
         # Se abbiamo già una risposta formattata con vini trovati, restituiscila direttamente
         if specific_wine_info and found_wines and len(found_wines) > 0:
             buttons = None
-            if 2 <= len(found_wines) <= 10:
+            is_html = specific_wine_info.strip().startswith('<div')
+            
+            # Se è HTML e ci sono 2-10 vini, genera buttons
+            if is_html and 2 <= len(found_wines) <= 10:
                 buttons = [
                     {
                         "id": wine.id,
@@ -1804,11 +1907,13 @@ INFORMAZIONI UTENTE:
                     "model": self.openai_model,
                     "wines_found": len(found_wines)
                 },
-                "buttons": buttons
+                "buttons": buttons,
+                "is_html": is_html
             }
         
         # Se abbiamo un messaggio di errore ma non vini, restituiscilo comunque
         if specific_wine_info and not found_wines:
+            is_html = specific_wine_info.strip().startswith('<div')
             return {
                 "message": specific_wine_info,
                 "metadata": {
@@ -1816,7 +1921,8 @@ INFORMAZIONI UTENTE:
                     "model": self.openai_model,
                     "wines_found": 0
                 },
-                "buttons": None
+                "buttons": None,
+                "is_html": is_html
             }
         
         # Altrimenti usa AI per generare risposta
