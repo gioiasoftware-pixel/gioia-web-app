@@ -48,21 +48,37 @@ async def send_message(
     
     logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}, telegram_id={telegram_id}: {chat_message.message[:50]}...")
     
-    # Processa messaggio con AI service
-    result = await ai_service.process_message(
-        user_message=chat_message.message,
-        telegram_id=ai_telegram_id,
-        conversation_history=None  # TODO: recuperare da database se conversation_id fornito
-    )
-    
-    # TODO: Salvare messaggio e risposta nel database per storia conversazione
-    
-    return ChatResponse(
-        message=result["message"],
-        conversation_id=chat_message.conversation_id,
-        metadata=result.get("metadata", {}),
-        buttons=result.get("buttons")  # Includi pulsanti se presenti
-    )
+    try:
+        # Processa messaggio con AI service
+        result = await ai_service.process_message(
+            user_message=chat_message.message,
+            telegram_id=ai_telegram_id,
+            conversation_history=None  # TODO: recuperare da database se conversation_id fornito
+        )
+        
+        # Verifica che result sia valido
+        if not result or not isinstance(result, dict):
+            logger.error(f"[CHAT] AI service ha restituito risultato non valido: {result}")
+            result = {
+                "message": "⚠️ Errore temporaneo dell'AI. Riprova tra qualche minuto.",
+                "metadata": {"error": "invalid_response"},
+                "buttons": None
+            }
+        
+        # TODO: Salvare messaggio e risposta nel database per storia conversazione
+        
+        return ChatResponse(
+            message=result.get("message", "⚠️ Nessuna risposta disponibile"),
+            conversation_id=chat_message.conversation_id,
+            metadata=result.get("metadata", {}),
+            buttons=result.get("buttons")  # Includi pulsanti se presenti
+        )
+    except Exception as e:
+        logger.error(f"[CHAT] Errore processamento messaggio: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore interno: {str(e)}"
+        )
 
 
 @router.get("/health")

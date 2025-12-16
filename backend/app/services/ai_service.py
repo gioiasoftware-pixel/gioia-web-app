@@ -294,17 +294,22 @@ INFORMAZIONI UTENTE:
                         else:
                             specific_wine_info = f"❌ Non ho trovato vini per '{wine_search_term}' nel tuo inventario."
                 
-                # Statistiche inventario
-                wines = await db_manager.get_user_wines(telegram_id)
-                if wines:
-                    user_context += f"\nINVENTARIO ATTUALE:\n"
-                    user_context += f"- Totale vini: {len(wines)}\n"
-                    user_context += f"- Quantità totale: {sum(w.quantity for w in wines if w.quantity) or 0} bottiglie\n"
-                    low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
-                    if low_stock:
-                        user_context += f"- Scorte basse: {len(low_stock)} vini\n"
+                # Statistiche inventario (solo se non abbiamo già trovato vini specifici)
+                if not specific_wine_info:
+                    try:
+                        wines = await db_manager.get_user_wines(telegram_id)
+                        if wines:
+                            user_context += f"\nINVENTARIO ATTUALE:\n"
+                            user_context += f"- Totale vini: {len(wines)}\n"
+                            user_context += f"- Quantità totale: {sum(w.quantity for w in wines if w.quantity) or 0} bottiglie\n"
+                            low_stock = [w for w in wines if w.quantity is not None and w.min_quantity is not None and w.quantity <= w.min_quantity]
+                            if low_stock:
+                                user_context += f"- Scorte basse: {len(low_stock)} vini\n"
+                    except Exception as e:
+                        logger.warning(f"[FALLBACK] Errore recupero statistiche inventario: {e}")
         except Exception as e:
             logger.error(f"[FALLBACK] Errore accesso database: {e}", exc_info=True)
+            # Continua comunque con risposta generica
     
     def _format_wines_response(self, found_wines: list) -> str:
         """
@@ -363,6 +368,29 @@ INFORMAZIONI UTENTE:
         response += "💡 Usa il viewer a destra per vedere e filtrare tutti i vini."
         return response
         
+        # Se abbiamo già una risposta formattata con vini trovati, restituiscila direttamente
+        if specific_wine_info and found_wines:
+            buttons = None
+            if 2 <= len(found_wines) <= 10:
+                buttons = [
+                    {
+                        "id": wine.id,
+                        "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+                    }
+                    for wine in found_wines[:10]
+                ]
+            
+            return {
+                "message": specific_wine_info,
+                "metadata": {
+                    "type": "fallback_ai_response",
+                    "model": self.openai_model,
+                    "wines_found": len(found_wines)
+                },
+                "buttons": buttons
+            }
+        
+        # Altrimenti usa AI per generare risposta
         system_prompt = """Sei Gio.ia-bot, un assistente AI specializzato nella gestione inventario vini.
 Sei gentile, professionale e parli in italiano.
 
@@ -395,8 +423,10 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
             message_content = response.choices[0].message.content
             
             # Se abbiamo info vini, combina con risposta AI
-            if specific_wine_info and not message_content.startswith("✅"):
+            if specific_wine_info and not message_content.startswith("✅") and not message_content.startswith("🔍"):
                 message_content = specific_wine_info + "\n\n" + message_content
+            elif specific_wine_info:
+                message_content = specific_wine_info
             
             # Prepara metadata per pulsanti se ci sono 2-10 vini
             buttons = None
@@ -420,7 +450,15 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
             }
         except Exception as e:
             logger.error(f"[FALLBACK] Errore chiamata OpenAI: {e}", exc_info=True)
-            raise
+            # Restituisci comunque una risposta valida anche se OpenAI fallisce
+            return {
+                "message": specific_wine_info if specific_wine_info else "⚠️ Errore temporaneo dell'AI. Riprova tra qualche minuto.",
+                "metadata": {
+                    "type": "fallback_error",
+                    "error": str(e)
+                },
+                "buttons": None
+            }
 
 
 # Istanza globale
