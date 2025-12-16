@@ -1703,9 +1703,127 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 filters = tool_args.get("filters") or {}
                 limit = int(tool_args.get("limit", 50))
                 
-                # TODO: implementare search_wines_filtered in db_manager
-                logger.info(f"[TOOLS] search_wines con filtri: {filters} - TODO: implementare search_wines_filtered")
-                return {"success": False, "error": "Ricerca filtrata in fase di implementazione. Usa ricerca semplice per ora."}
+                logger.info(f"[TOOLS] search_wines con filtri: {filters}")
+                
+                # Costruisci query di ricerca combinando i filtri testuali
+                search_terms = []
+                
+                # Filtri testuali (cercati con search_wines migliorata)
+                if filters.get("producer"):
+                    search_terms.append(filters["producer"])
+                if filters.get("name_contains"):
+                    search_terms.append(filters["name_contains"])
+                if filters.get("region"):
+                    search_terms.append(filters["region"])
+                if filters.get("country"):
+                    search_terms.append(filters["country"])
+                if filters.get("wine_type"):
+                    # Normalizza tipo vino
+                    wine_type_map = {
+                        "rosso": "rosso", "rossi": "rosso",
+                        "bianco": "bianco", "bianchi": "bianco",
+                        "rosato": "rosato", "rosati": "rosato",
+                        "spumante": "spumante", "spumanti": "spumante"
+                    }
+                    wine_type = wine_type_map.get(filters["wine_type"].lower(), filters["wine_type"])
+                    search_terms.append(wine_type)
+                if filters.get("classification"):
+                    search_terms.append(filters["classification"])
+                
+                # Se ci sono filtri testuali, usa search_wines
+                if search_terms:
+                    search_query = " ".join(search_terms)
+                    logger.info(f"[TOOLS] Ricerca combinata: '{search_query}'")
+                    wines, retry_query_used, level_used = await self._cascading_retry_search(
+                        telegram_id=telegram_id,
+                        original_query=search_query,
+                        search_func=db_manager.search_wines,
+                        search_func_args={"telegram_id": telegram_id, "search_term": search_query, "limit": limit * 2},
+                        original_filters=filters
+                    )
+                else:
+                    # Solo filtri numerici: recupera tutti i vini e filtra
+                    wines = await db_manager.get_user_wines(telegram_id)
+                    wines = wines[:limit * 2]
+                
+                # Applica filtri numerici e di tipo esatto
+                filtered_wines = []
+                for wine in wines:
+                    # Filtro tipo vino (match esatto)
+                    if filters.get("wine_type"):
+                        wine_type_map = {
+                            "rosso": "rosso", "rossi": "rosso",
+                            "bianco": "bianco", "bianchi": "bianco",
+                            "rosato": "rosato", "rosati": "rosato",
+                            "spumante": "spumante", "spumanti": "spumante"
+                        }
+                        expected_type = wine_type_map.get(filters["wine_type"].lower(), filters["wine_type"].lower())
+                        wine_type_actual = (wine.wine_type or "").lower()
+                        if expected_type not in wine_type_actual and wine_type_actual not in expected_type:
+                            continue
+                    
+                    # Filtro regione (match esatto o parziale)
+                    if filters.get("region"):
+                        wine_region = (wine.region or "").lower()
+                        filter_region = filters["region"].lower()
+                        if filter_region not in wine_region and wine_region not in filter_region:
+                            continue
+                    
+                    # Filtro paese (match esatto o parziale)
+                    if filters.get("country"):
+                        wine_country = (wine.country or "").lower()
+                        filter_country = filters["country"].lower()
+                        if filter_country not in wine_country and wine_country not in filter_country:
+                            continue
+                    
+                    # Filtro produttore (match esatto o parziale)
+                    if filters.get("producer"):
+                        wine_producer = (wine.producer or "").lower()
+                        filter_producer = filters["producer"].lower()
+                        if filter_producer not in wine_producer and wine_producer not in filter_producer:
+                            continue
+                    
+                    # Filtri numerici
+                    if filters.get("price_min") is not None:
+                        if not wine.selling_price or wine.selling_price < filters["price_min"]:
+                            continue
+                    
+                    if filters.get("price_max") is not None:
+                        if not wine.selling_price or wine.selling_price > filters["price_max"]:
+                            continue
+                    
+                    if filters.get("vintage_min") is not None:
+                        if not wine.vintage or wine.vintage < filters["vintage_min"]:
+                            continue
+                    
+                    if filters.get("vintage_max") is not None:
+                        if not wine.vintage or wine.vintage > filters["vintage_max"]:
+                            continue
+                    
+                    if filters.get("quantity_min") is not None:
+                        if not wine.quantity or wine.quantity < filters["quantity_min"]:
+                            continue
+                    
+                    if filters.get("quantity_max") is not None:
+                        if not wine.quantity or wine.quantity > filters["quantity_max"]:
+                            continue
+                    
+                    filtered_wines.append(wine)
+                
+                # Limita risultati
+                filtered_wines = filtered_wines[:limit]
+                
+                if filtered_wines:
+                    logger.info(f"[TOOLS] ✅ Trovati {len(filtered_wines)} vini con filtri applicati")
+                    html_card, buttons = self._generate_wines_list_html(
+                        filtered_wines, 
+                        search_query if search_terms else "ricerca filtrata",
+                        show_buttons=(2 <= len(filtered_wines) <= 10)
+                    )
+                    return {"success": True, "message": html_card, "use_template": False, "buttons": buttons, "is_html": True}
+                else:
+                    error_html = self._generate_error_message_html("Non ho trovato vini che corrispondono ai filtri specificati.")
+                    return {"success": False, "error": error_html, "is_html": True}
             
             # get_inventory_stats
             if tool_name == "get_inventory_stats":
