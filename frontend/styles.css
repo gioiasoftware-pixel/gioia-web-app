@@ -1560,7 +1560,9 @@ body {
 /* Wine Card Bookmarks (Segnalibri) */
 .wine-card-bookmarks {
     position: absolute;
-    right: -1px;
+    /* Posiziona i segnalibri in modo che spuntino solo quanto necessario (circa 20px) */
+    /* I segnalibri sono larghi 48px, quindi right: -28px fa spuntare solo 20px */
+    right: -28px;
     bottom: 0;
     display: flex;
     flex-direction: column;
