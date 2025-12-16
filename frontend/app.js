@@ -963,7 +963,13 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
     }
     
     // Attendi che il viewer sia aperto e i dati caricati
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Aspetta fino a quando viewerData è disponibile (max 5 secondi)
+    let attempts = 0;
+    const maxAttempts = 50; // 50 * 100ms = 5 secondi max
+    while (!viewerData && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
     
     // Carica dati vino per ottenere nome e produttore
     try {
@@ -980,12 +986,36 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
         const wine = await response.json();
         const searchQuery = `${wine.name}${wine.producer ? ' ' + wine.producer : ''}`;
         
-        // Imposta ricerca nel viewer
-        const searchInput = document.getElementById('viewer-search');
-        if (searchInput) {
-            searchInput.value = searchQuery;
-            viewerSearchQuery = searchQuery;
-            applyViewerFilters();
+        console.log('[VIEWER] Impostazione ricerca per:', searchQuery);
+        
+        // Funzione helper per settare la ricerca
+        const setSearch = () => {
+            const searchInput = document.getElementById('viewer-search');
+            if (searchInput) {
+                console.log('[VIEWER] Campo ricerca trovato, imposto valore:', searchQuery);
+                searchInput.value = searchQuery;
+                viewerSearchQuery = searchQuery;
+                // Trigger evento input per assicurarsi che il debounce funzioni
+                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                // Applica filtri immediatamente (bypass debounce)
+                if (viewerData && viewerData.rows) {
+                    applyViewerFilters();
+                }
+                return true;
+            }
+            return false;
+        };
+        
+        // Prova a settare la ricerca immediatamente
+        if (!setSearch()) {
+            // Se l'input non esiste ancora, aspetta e riprova
+            console.warn('[VIEWER] Campo ricerca non trovato, riprovo tra 200ms');
+            await new Promise(resolve => setTimeout(resolve, 200));
+            if (!setSearch()) {
+                // Ultimo tentativo dopo un altro attimo
+                await new Promise(resolve => setTimeout(resolve, 300));
+                setSearch();
+            }
         }
         
         // Apri fullscreen se siamo su desktop

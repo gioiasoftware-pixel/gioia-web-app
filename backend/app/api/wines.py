@@ -53,23 +53,24 @@ async def get_wine(
             raise HTTPException(status_code=404, detail="Vino non trovato")
         
         # Converti wine object in dict
+        # Usa getattr per gestire attributi che potrebbero non esistere
         wine_dict = {
             "id": wine.id,
             "name": wine.name,
-            "producer": wine.producer,
-            "quantity": wine.quantity,
-            "selling_price": float(wine.selling_price) if wine.selling_price else None,
-            "cost_price": float(wine.cost_price) if wine.cost_price else None,
-            "vintage": wine.vintage,
-            "region": wine.region,
-            "country": wine.country,
-            "wine_type": wine.wine_type,
-            "supplier": wine.supplier,
-            "grape_variety": wine.grape_variety,
-            "classification": wine.classification,
-            "alcohol_content": wine.alcohol_content,
-            "description": wine.description,
-            "notes": wine.notes,
+            "producer": getattr(wine, 'producer', None),
+            "quantity": getattr(wine, 'quantity', 0),
+            "selling_price": float(wine.selling_price) if getattr(wine, 'selling_price', None) else None,
+            "cost_price": float(wine.cost_price) if getattr(wine, 'cost_price', None) else None,
+            "vintage": getattr(wine, 'vintage', None),
+            "region": getattr(wine, 'region', None),
+            "country": getattr(wine, 'country', None),
+            "wine_type": getattr(wine, 'wine_type', None),
+            "supplier": getattr(wine, 'supplier', None),  # Potrebbe non esistere nel modello Wine
+            "grape_variety": getattr(wine, 'grape_variety', None),
+            "classification": getattr(wine, 'classification', None),
+            "alcohol_content": getattr(wine, 'alcohol_content', None),
+            "description": getattr(wine, 'description', None),
+            "notes": getattr(wine, 'notes', None),
         }
         
         return wine_dict
