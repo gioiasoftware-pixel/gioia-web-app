@@ -1620,9 +1620,28 @@ async function loadConversationMessages(conversationId) {
         
         // Renderizza messaggi
         messages.forEach(msg => {
-            // Determina se è HTML (controlla se inizia con <div)
-            const isHtml = msg.content && msg.content.trim().startsWith('<div');
-            addChatMessage(msg.role, msg.content, false, false, null, isHtml);
+            // Determina se è HTML (controlla se contiene tag HTML comuni)
+            // Controlla sia per contenuto non escapato che escapato
+            const content = msg.content || '';
+            const trimmedContent = content.trim();
+            const isHtml = trimmedContent.startsWith('<div') || 
+                          trimmedContent.startsWith('&lt;div') ||
+                          trimmedContent.includes('class="wine-card"') ||
+                          trimmedContent.includes('class="wines-list-card"') ||
+                          trimmedContent.includes('class="movement-card"') ||
+                          trimmedContent.includes('class="inventory-list-card"') ||
+                          trimmedContent.includes('class="stats-card"');
+            
+            // Se è HTML escapato, decodifica
+            let finalContent = content;
+            if (isHtml && trimmedContent.startsWith('&lt;')) {
+                // Decodifica HTML escapato
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                finalContent = tempDiv.textContent || content;
+            }
+            
+            addChatMessage(msg.role, finalContent, false, false, null, isHtml);
         });
         
         // Scrolla in fondo
