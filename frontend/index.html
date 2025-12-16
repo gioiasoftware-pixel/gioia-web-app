@@ -80,21 +80,43 @@
 
     <!-- Chat Page (hidden initially) -->
     <div id="chat-page" class="chat-page hidden">
-        <!-- Header -->
-        <header class="chat-header">
-            <div class="chat-header-left">
-                <div class="logo-container">
-                    <img src="/static/assets/logo.png" alt="Gio.ia Logo" class="logo" onerror="this.style.display='none'">
-                </div>
-                <h1 class="chat-title">Gio.ia</h1>
+        <!-- Sidebar Chat List -->
+        <aside id="chat-sidebar" class="chat-sidebar">
+            <div class="chat-sidebar-header">
+                <button id="new-chat-btn" class="btn btn-primary btn-small">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                    Nuova chat
+                </button>
             </div>
-            <div class="chat-header-right">
-                <button id="logout-btn" class="btn btn-secondary">Esci</button>
+            <div class="chat-sidebar-list" id="chat-sidebar-list">
+                <div class="chat-sidebar-loading">Caricamento chat...</div>
             </div>
-        </header>
+        </aside>
 
-        <!-- Main Chat Container -->
-        <div class="chat-container">
+        <!-- Main Content -->
+        <div class="chat-main-content">
+            <!-- Header -->
+            <header class="chat-header">
+                <div class="chat-header-left">
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <div class="logo-container">
+                        <img src="/static/assets/logo.png" alt="Gio.ia Logo" class="logo" onerror="this.style.display='none'">
+                    </div>
+                    <h1 class="chat-title">Gio.ia</h1>
+                </div>
+                <div class="chat-header-right">
+                    <button id="logout-btn" class="btn btn-secondary">Esci</button>
+                </div>
+            </header>
+
+            <!-- Main Chat Container -->
+            <div class="chat-container">
             <!-- Chat Messages Area -->
             <div class="chat-messages-container" id="chat-messages">
                 <div class="welcome-message">
@@ -119,6 +141,7 @@
                     </button>
                 </form>
             </div>
+        </div>
         </div>
 
         <!-- Viewer Panel (draggable sidebar) -->

@@ -480,7 +480,7 @@ class DatabaseManager:
                 logger.error(f"Errore verifica tabelle dinamiche: {e}", exc_info=True)
                 return False, None
     
-    async def log_chat_message(self, telegram_id: int, role: str, content: str) -> bool:
+    async def log_chat_message(self, telegram_id: int, role: str, content: str, conversation_id: Optional[int] = None) -> bool:
         """
         Registra un messaggio di chat nella tabella dinamica LOG interazione.
         Compatibile con sistema Telegram bot.
@@ -489,6 +489,7 @@ class DatabaseManager:
             telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
             role: 'user' o 'assistant'
             content: Contenuto del messaggio
+            conversation_id: ID conversazione (opzionale, per chat multiple)
         
         Returns:
             True se salvato con successo, False altrimenti
@@ -504,26 +505,55 @@ class DatabaseManager:
                 # Normalizza ruolo su tipi ammessi (stesso sistema Telegram bot)
                 interaction_type = 'chat_user' if role == 'user' or role == 'chat_user' else 'chat_assistant'
                 
-                insert_query = sql_text(f"""
-                    INSERT INTO {table_name}
-                    (user_id, interaction_type, interaction_data, created_at)
-                    VALUES (:user_id, :interaction_type, :interaction_data, CURRENT_TIMESTAMP)
-                """)
+                # Verifica se la colonna conversation_id esiste, altrimenti non la usa
+                # (per retrocompatibilità con tabelle esistenti)
+                has_conversation_id = False
+                try:
+                    check_column_query = sql_text(f"""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = :table_name 
+                        AND column_name = 'conversation_id'
+                    """)
+                    result = await session.execute(check_column_query, {"table_name": table_name.replace('"', '')})
+                    has_conversation_id = result.fetchone() is not None
+                except:
+                    pass
                 
-                await session.execute(insert_query, {
-                    "user_id": user.id,
-                    "interaction_type": interaction_type,
-                    "interaction_data": content[:8000] if content else None  # Limite 8000 caratteri
-                })
+                if has_conversation_id and conversation_id:
+                    insert_query = sql_text(f"""
+                        INSERT INTO {table_name}
+                        (user_id, interaction_type, interaction_data, conversation_id, created_at)
+                        VALUES (:user_id, :interaction_type, :interaction_data, :conversation_id, CURRENT_TIMESTAMP)
+                    """)
+                    await session.execute(insert_query, {
+                        "user_id": user.id,
+                        "interaction_type": interaction_type,
+                        "interaction_data": content[:8000] if content else None,
+                        "conversation_id": conversation_id
+                    })
+                else:
+                    # Fallback per tabelle senza conversation_id
+                    insert_query = sql_text(f"""
+                        INSERT INTO {table_name}
+                        (user_id, interaction_type, interaction_data, created_at)
+                        VALUES (:user_id, :interaction_type, :interaction_data, CURRENT_TIMESTAMP)
+                    """)
+                    await session.execute(insert_query, {
+                        "user_id": user.id,
+                        "interaction_type": interaction_type,
+                        "interaction_data": content[:8000] if content else None
+                    })
+                
                 await session.commit()
-                logger.debug(f"[DB] Messaggio chat salvato: role={role}, telegram_id={telegram_id}, content_len={len(content) if content else 0}")
+                logger.debug(f"[DB] Messaggio chat salvato: role={role}, telegram_id={telegram_id}, conversation_id={conversation_id}, content_len={len(content) if content else 0}")
                 return True
             except Exception as e:
                 logger.error(f"[DB] Errore salvando chat log in {table_name}: {e}", exc_info=True)
                 await session.rollback()
                 return False
     
-    async def get_recent_chat_messages(self, telegram_id: int, limit: int = 10) -> List[Dict[str, Any]]:
+    async def get_recent_chat_messages(self, telegram_id: int, limit: int = 10, conversation_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Recupera ultimi messaggi chat (utente/assistant) dalla tabella LOG interazione.
         Compatibile con sistema Telegram bot.
@@ -531,6 +561,7 @@ class DatabaseManager:
         Args:
             telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
             limit: Numero massimo di messaggi da recuperare
+            conversation_id: ID conversazione (opzionale, filtra per conversazione specifica)
         
         Returns:
             Lista di dict con 'role' ('user' o 'assistant'), 'content' e 'created_at'
@@ -544,16 +575,43 @@ class DatabaseManager:
             
             table_name = f'"{telegram_id}/{user.business_name} LOG interazione"'
             try:
-                query = sql_text(f"""
-                    SELECT interaction_type, interaction_data, created_at
-                    FROM {table_name}
-                    WHERE user_id = :user_id
-                      AND interaction_type IN ('chat_user','chat_assistant')
-                    ORDER BY created_at DESC
-                    LIMIT :limit
-                """)
+                # Verifica se la colonna conversation_id esiste
+                has_conversation_id = False
+                try:
+                    check_column_query = sql_text(f"""
+                        SELECT column_name 
+                        FROM information_schema.columns 
+                        WHERE table_name = :table_name 
+                        AND column_name = 'conversation_id'
+                    """)
+                    result = await session.execute(check_column_query, {"table_name": table_name.replace('"', '')})
+                    has_conversation_id = result.fetchone() is not None
+                except:
+                    pass
                 
-                result = await session.execute(query, {"user_id": user.id, "limit": limit})
+                if has_conversation_id and conversation_id:
+                    query = sql_text(f"""
+                        SELECT interaction_type, interaction_data, created_at
+                        FROM {table_name}
+                        WHERE user_id = :user_id
+                          AND interaction_type IN ('chat_user','chat_assistant')
+                          AND conversation_id = :conversation_id
+                        ORDER BY created_at DESC
+                        LIMIT :limit
+                    """)
+                    result = await session.execute(query, {"user_id": user.id, "conversation_id": conversation_id, "limit": limit})
+                else:
+                    # Fallback per tabelle senza conversation_id o se conversation_id non specificato
+                    query = sql_text(f"""
+                        SELECT interaction_type, interaction_data, created_at
+                        FROM {table_name}
+                        WHERE user_id = :user_id
+                          AND interaction_type IN ('chat_user','chat_assistant')
+                        ORDER BY created_at DESC
+                        LIMIT :limit
+                    """)
+                    result = await session.execute(query, {"user_id": user.id, "limit": limit})
+                
                 rows = result.fetchall()
                 
                 history = []
@@ -567,11 +625,146 @@ class DatabaseManager:
                 
                 # Ritorna in ordine cronologico (dal più vecchio al più recente)
                 history.reverse()
-                logger.debug(f"[DB] Recuperati {len(history)} messaggi chat per telegram_id={telegram_id}")
+                logger.debug(f"[DB] Recuperati {len(history)} messaggi chat per telegram_id={telegram_id}, conversation_id={conversation_id}")
                 return history
             except Exception as e:
                 logger.error(f"[DB] Errore leggendo chat history da {table_name}: {e}", exc_info=True)
                 return []
+    
+    async def create_conversation(self, user_id: int, telegram_id: Optional[int] = None, title: Optional[str] = None) -> Optional[int]:
+        """
+        Crea una nuova conversazione.
+        
+        Args:
+            user_id: ID utente
+            telegram_id: ID Telegram (opzionale, per compatibilità)
+            title: Titolo conversazione (opzionale, default: "Nuova chat")
+        
+        Returns:
+            ID conversazione creata o None se errore
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                insert_query = sql_text("""
+                    INSERT INTO conversations (user_id, telegram_id, title, created_at, updated_at, last_message_at)
+                    VALUES (:user_id, :telegram_id, :title, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    RETURNING id
+                """)
+                result = await session.execute(insert_query, {
+                    "user_id": user_id,
+                    "telegram_id": telegram_id,
+                    "title": title or "Nuova chat"
+                })
+                conversation_id = result.scalar()
+                await session.commit()
+                logger.info(f"[DB] Creata conversazione id={conversation_id} per user_id={user_id}")
+                return conversation_id
+            except Exception as e:
+                logger.error(f"[DB] Errore creando conversazione: {e}", exc_info=True)
+                await session.rollback()
+                return None
+    
+    async def get_user_conversations(self, user_id: int, telegram_id: Optional[int] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """
+        Recupera lista conversazioni dell'utente ordinate per ultimo messaggio.
+        
+        Args:
+            user_id: ID utente
+            telegram_id: ID Telegram (opzionale, per filtraggio)
+            limit: Numero massimo di conversazioni
+        
+        Returns:
+            Lista di dict con id, title, created_at, updated_at, last_message_at
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                if telegram_id:
+                    query = sql_text("""
+                        SELECT id, title, created_at, updated_at, last_message_at
+                        FROM conversations
+                        WHERE user_id = :user_id AND (telegram_id = :telegram_id OR telegram_id IS NULL)
+                        ORDER BY last_message_at DESC
+                        LIMIT :limit
+                    """)
+                    result = await session.execute(query, {"user_id": user_id, "telegram_id": telegram_id, "limit": limit})
+                else:
+                    query = sql_text("""
+                        SELECT id, title, created_at, updated_at, last_message_at
+                        FROM conversations
+                        WHERE user_id = :user_id
+                        ORDER BY last_message_at DESC
+                        LIMIT :limit
+                    """)
+                    result = await session.execute(query, {"user_id": user_id, "limit": limit})
+                
+                rows = result.fetchall()
+                conversations = []
+                for row in rows:
+                    conversations.append({
+                        "id": row.id,
+                        "title": row.title,
+                        "created_at": row.created_at.isoformat() if row.created_at else None,
+                        "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+                        "last_message_at": row.last_message_at.isoformat() if row.last_message_at else None
+                    })
+                
+                logger.debug(f"[DB] Recuperate {len(conversations)} conversazioni per user_id={user_id}")
+                return conversations
+            except Exception as e:
+                logger.error(f"[DB] Errore recuperando conversazioni: {e}", exc_info=True)
+                return []
+    
+    async def update_conversation_title(self, conversation_id: int, title: str) -> bool:
+        """
+        Aggiorna il titolo di una conversazione.
+        
+        Args:
+            conversation_id: ID conversazione
+            title: Nuovo titolo
+        
+        Returns:
+            True se aggiornato con successo
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                update_query = sql_text("""
+                    UPDATE conversations
+                    SET title = :title, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :conversation_id
+                """)
+                await session.execute(update_query, {"conversation_id": conversation_id, "title": title})
+                await session.commit()
+                logger.debug(f"[DB] Aggiornato titolo conversazione id={conversation_id}")
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore aggiornando titolo conversazione: {e}", exc_info=True)
+                await session.rollback()
+                return False
+    
+    async def update_conversation_last_message(self, conversation_id: int) -> bool:
+        """
+        Aggiorna il timestamp dell'ultimo messaggio di una conversazione.
+        
+        Args:
+            conversation_id: ID conversazione
+        
+        Returns:
+            True se aggiornato con successo
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                update_query = sql_text("""
+                    UPDATE conversations
+                    SET last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :conversation_id
+                """)
+                await session.execute(update_query, {"conversation_id": conversation_id})
+                await session.commit()
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore aggiornando last_message_at conversazione: {e}", exc_info=True)
+                await session.rollback()
+                return False
 
 
 # Istanza globale

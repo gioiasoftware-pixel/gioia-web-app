@@ -16,6 +16,8 @@ let viewerFilters = {
 let viewerSearchQuery = '';
 let viewerCurrentPage = 1;
 let viewerPageSize = 20;
+let currentConversationId = null;
+let conversations = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -71,6 +73,10 @@ function setupEventListeners() {
 
     // Logout
     document.getElementById('logout-btn')?.addEventListener('click', handleLogout);
+
+    // Chat sidebar
+    document.getElementById('new-chat-btn')?.addEventListener('click', handleNewChat);
+    document.getElementById('sidebar-toggle')?.addEventListener('click', toggleSidebar);
 
     // Viewer
     document.getElementById('viewer-toggle')?.addEventListener('click', toggleViewer);
@@ -203,7 +209,10 @@ async function loadUserInfo() {
 function handleLogout() {
     authToken = null;
     currentUser = null;
+    currentConversationId = null;
+    conversations = [];
     localStorage.removeItem('auth_token');
+    localStorage.removeItem('current_conversation_id');
     showAuthPage();
 }
 
@@ -215,6 +224,14 @@ function showAuthPage() {
 function showChatPage() {
     document.getElementById('auth-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
+    // Carica conversazioni e seleziona quella corrente
+    loadConversations();
+    // Carica conversation_id dal localStorage
+    const savedConversationId = localStorage.getItem('current_conversation_id');
+    if (savedConversationId) {
+        currentConversationId = parseInt(savedConversationId);
+        loadConversationMessages(currentConversationId);
+    }
 }
 
 // ============================================
@@ -615,4 +632,187 @@ function viewerGoToPage(page) {
 
 // Make function available globally for onclick handlers
 window.viewerGoToPage = viewerGoToPage;
+
+// ============================================
+// CONVERSATIONS MANAGEMENT
+// ============================================
+
+async function loadConversations() {
+    if (!authToken) return;
+    
+    const sidebarList = document.getElementById('chat-sidebar-list');
+    sidebarList.innerHTML = '<div class="chat-sidebar-loading">Caricamento chat...</div>';
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore caricamento conversazioni');
+        }
+        
+        conversations = await response.json();
+        renderConversationsList();
+    } catch (error) {
+        console.error('Errore caricamento conversazioni:', error);
+        sidebarList.innerHTML = '<div class="chat-sidebar-error">Errore caricamento chat</div>';
+    }
+}
+
+function renderConversationsList() {
+    const sidebarList = document.getElementById('chat-sidebar-list');
+    
+    if (conversations.length === 0) {
+        sidebarList.innerHTML = '<div class="chat-sidebar-empty">Nessuna chat ancora</div>';
+        return;
+    }
+    
+    sidebarList.innerHTML = conversations.map(conv => `
+        <div class="chat-sidebar-item ${conv.id === currentConversationId ? 'active' : ''}" 
+             data-conversation-id="${conv.id}">
+            <div class="chat-sidebar-item-title">${escapeHtml(conv.title || 'Nuova chat')}</div>
+            <div class="chat-sidebar-item-time">${formatConversationTime(conv.last_message_at || conv.updated_at)}</div>
+        </div>
+    `).join('');
+    
+    // Aggiungi event listeners
+    sidebarList.querySelectorAll('.chat-sidebar-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const conversationId = parseInt(item.dataset.conversationId);
+            selectConversation(conversationId);
+        });
+    });
+}
+
+function formatConversationTime(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Adesso';
+    if (diffMins < 60) return `${diffMins}m fa`;
+    if (diffHours < 24) return `${diffHours}h fa`;
+    if (diffDays < 7) return `${diffDays}g fa`;
+    
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
+async function handleNewChat() {
+    if (!authToken) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat/conversations`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify({ title: null }),  // Titolo generato dal primo messaggio
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore creazione nuova chat');
+        }
+        
+        const data = await response.json();
+        currentConversationId = data.conversation_id;
+        localStorage.setItem('current_conversation_id', currentConversationId.toString());
+        
+        // Pulisci chat corrente
+        clearChatMessages();
+        
+        // Ricarica lista conversazioni
+        await loadConversations();
+        
+        // Scrolla alla nuova conversazione
+        const newItem = document.querySelector(`[data-conversation-id="${currentConversationId}"]`);
+        if (newItem) {
+            newItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    } catch (error) {
+        console.error('Errore creazione nuova chat:', error);
+        alert('Errore creazione nuova chat');
+    }
+}
+
+async function selectConversation(conversationId) {
+    if (conversationId === currentConversationId) return;
+    
+    currentConversationId = conversationId;
+    localStorage.setItem('current_conversation_id', conversationId.toString());
+    
+    // Aggiorna UI sidebar
+    document.querySelectorAll('.chat-sidebar-item').forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.conversationId) === conversationId);
+    });
+    
+    // Carica messaggi conversazione
+    await loadConversationMessages(conversationId);
+}
+
+async function loadConversationMessages(conversationId) {
+    if (!authToken || !conversationId) return;
+    
+    // Pulisci messaggi correnti
+    clearChatMessages();
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/messages?limit=50`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore caricamento messaggi');
+        }
+        
+        const data = await response.json();
+        const messages = data.messages || [];
+        
+        // Renderizza messaggi
+        messages.forEach(msg => {
+            // Determina se è HTML (controlla se inizia con <div)
+            const isHtml = msg.content && msg.content.trim().startsWith('<div');
+            addChatMessage(msg.role, msg.content, false, false, null, isHtml);
+        });
+        
+        // Scrolla in fondo
+        const messagesContainer = document.getElementById('chat-messages');
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    } catch (error) {
+        console.error('Errore caricamento messaggi:', error);
+        addChatMessage('ai', 'Errore caricamento messaggi', false, true);
+    }
+}
+
+function clearChatMessages() {
+    const messagesContainer = document.getElementById('chat-messages');
+    // Rimuovi tutti i messaggi tranne il welcome message
+    const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+    messagesContainer.innerHTML = '';
+    if (welcomeMessage) {
+        messagesContainer.appendChild(welcomeMessage);
+    } else {
+        // Ricrea welcome message se non esiste
+        messagesContainer.innerHTML = `
+            <div class="welcome-message">
+                <h2>Ciao! Come posso aiutarti?</h2>
+                <p>Chiedimi informazioni sul tuo inventario vini</p>
+            </div>
+        `;
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('chat-sidebar');
+    sidebar.classList.toggle('open');
+}
 
