@@ -482,13 +482,22 @@ async function handleChatSubmit(e) {
     const loadingId = addChatMessage('ai', '', true);
 
     try {
+        // Invia sempre il conversation_id corrente (se esiste)
+        // Se non esiste, il backend ne creerà uno nuovo
+        const requestBody = { 
+            message,
+            conversation_id: currentConversationId || null
+        };
+        
+        console.log('[CHAT] Invio messaggio con conversation_id:', currentConversationId);
+        
         const response = await fetch(`${API_BASE_URL}/api/chat/message`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`,
             },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify(requestBody),
         });
 
         const data = await response.json();
@@ -497,10 +506,23 @@ async function handleChatSubmit(e) {
             throw new Error(data.detail || 'Errore durante l\'invio del messaggio');
         }
 
+        // Aggiorna conversation_id se restituito (potrebbe essere nuovo o esistente)
+        if (data.conversation_id) {
+            const newConversationId = data.conversation_id;
+            if (newConversationId !== currentConversationId) {
+                console.log('[CHAT] Nuovo conversation_id ricevuto:', newConversationId, 'precedente:', currentConversationId);
+                currentConversationId = newConversationId;
+                localStorage.setItem('current_conversation_id', currentConversationId.toString());
+                
+                // Ricarica lista conversazioni per mostrare la nuova conversazione nella sidebar
+                await loadConversations();
+            }
+        }
+
         // Remove loading and add AI response
         removeChatMessage(loadingId);
         // Debug: verifica is_html
-        console.log('Chat response data:', { message: data.message?.substring(0, 100), is_html: data.is_html, buttons: data.buttons });
+        console.log('Chat response data:', { message: data.message?.substring(0, 100), is_html: data.is_html, buttons: data.buttons, conversation_id: data.conversation_id });
         addChatMessage('ai', data.message || data.response || 'Nessuna risposta', false, false, data.buttons, data.is_html === true);
     } catch (error) {
         removeChatMessage(loadingId);
@@ -564,13 +586,28 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         
         // Se isHtml è true, renderizza HTML direttamente (per card)
         // Altrimenti escape HTML per sicurezza
-        const contentHtml = isHtml ? content : escapeHtml(content);
-        const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
-        
-        // Debug
+        let contentHtml;
         if (isHtml) {
-            console.log('Rendering HTML card:', content.substring(0, 200));
+            // Se è HTML, inserisci direttamente senza escape
+            // Ma assicurati che non sia già escapato
+            if (content.includes('&lt;') || content.includes('&gt;')) {
+                // Decodifica HTML escapato
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                contentHtml = tempDiv.textContent || content;
+                // Se dopo la decodifica non inizia con <div, prova a parsare come HTML
+                if (!contentHtml.trim().startsWith('<')) {
+                    contentHtml = content; // Usa originale se decodifica non funziona
+                }
+            } else {
+                contentHtml = content; // Usa direttamente se non escapato
+            }
+            console.log('[CHAT] Rendering HTML card, content length:', content.length, 'starts with <div:', contentHtml.trim().startsWith('<div'));
+        } else {
+            contentHtml = escapeHtml(content);
         }
+        
+        const contentClass = isHtml ? 'chat-message-content has-card' : 'chat-message-content';
         
         messageEl.innerHTML = `
             ${avatarHtml}
