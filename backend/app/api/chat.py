@@ -245,6 +245,27 @@ async def update_conversation_title(
         raise HTTPException(status_code=500, detail="Errore aggiornando titolo")
 
 
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Cancella una conversazione.
+    """
+    try:
+        user_id = current_user["user_id"]
+        success = await db_manager.delete_conversation(conversation_id, user_id)
+        if not success:
+            raise HTTPException(status_code=404, detail="Conversazione non trovata")
+        return {"success": True, "message": "Conversazione cancellata"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CHAT] Errore cancellando conversazione: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Errore cancellando conversazione")
+
+
 @router.get("/health")
 async def chat_health():
     """Health check per servizio chat"""

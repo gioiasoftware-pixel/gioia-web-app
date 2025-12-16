@@ -840,6 +840,43 @@ class DatabaseManager:
                 logger.error(f"[DB] Errore aggiornando last_message_at conversazione: {e}", exc_info=True)
                 await session.rollback()
                 return False
+    
+    async def delete_conversation(self, conversation_id: int, user_id: int) -> bool:
+        """
+        Cancella una conversazione e tutti i suoi messaggi.
+        
+        Args:
+            conversation_id: ID conversazione
+            user_id: ID utente (per sicurezza, verifica che la conversazione appartenga all'utente)
+        
+        Returns:
+            True se cancellata con successo
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                # Verifica che la conversazione appartenga all'utente
+                check_query = sql_text("""
+                    SELECT id FROM conversations
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                result = await session.execute(check_query, {"conversation_id": conversation_id, "user_id": user_id})
+                if not result.fetchone():
+                    logger.warning(f"[DB] Conversazione {conversation_id} non trovata o non appartiene a user_id={user_id}")
+                    return False
+                
+                # Cancella la conversazione (i messaggi nella tabella LOG interazione rimangono ma senza conversation_id)
+                delete_query = sql_text("""
+                    DELETE FROM conversations
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                await session.execute(delete_query, {"conversation_id": conversation_id, "user_id": user_id})
+                await session.commit()
+                logger.info(f"[DB] Cancellata conversazione id={conversation_id} per user_id={user_id}")
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore cancellando conversazione: {e}", exc_info=True)
+                await session.rollback()
+                return False
 
 
 # Istanza globale
