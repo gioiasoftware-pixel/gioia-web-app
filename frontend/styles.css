@@ -1174,7 +1174,14 @@ body {
     border-bottom: 1px solid var(--color-border);
     overflow-y: auto;
     flex-shrink: 0;
-    max-height: 300px;
+    max-height: 250px;
+}
+
+.filters-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
 }
 
 .filters-title {
@@ -1183,11 +1190,43 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: var(--color-black);
-    margin-bottom: 16px;
+    margin: 0;
+}
+
+.reset-filters-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--color-light-gray);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.reset-filters-btn:hover {
+    background: var(--color-granaccia);
+    color: var(--color-white);
+    border-color: var(--color-granaccia);
+}
+
+.reset-filters-btn svg {
+    width: 14px;
+    height: 14px;
+    transition: transform 0.2s;
+}
+
+.reset-filters-btn:hover svg {
+    transform: rotate(-180deg);
 }
 
 .filter-section {
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .filter-header {
@@ -1204,6 +1243,7 @@ body {
     cursor: pointer;
     text-align: left;
     font-family: inherit;
+    transition: color 0.2s;
 }
 
 .filter-header:hover {
@@ -1214,7 +1254,7 @@ body {
     width: 12px;
     height: 12px;
     color: var(--color-text-light);
-    transition: transform 0.2s;
+    transition: transform 0.2s ease;
     flex-shrink: 0;
 }
 
@@ -1223,8 +1263,11 @@ body {
 }
 
 .filter-content {
-    margin-top: 8px;
-    padding-left: 4px;
+    margin-top: 6px;
+    padding-left: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+    transition: max-height 0.3s ease, opacity 0.2s ease;
 }
 
 .filter-content.hidden {
@@ -1239,25 +1282,34 @@ body {
     cursor: pointer;
     font-size: 13px;
     color: var(--color-text-secondary);
-    transition: color 0.2s;
+    transition: color 0.2s, background-color 0.2s;
+    border-radius: 4px;
+    padding-left: 4px;
+    padding-right: 4px;
+    margin-left: -4px;
+    margin-right: -4px;
 }
 
 .filter-item:hover {
     color: var(--color-text-primary);
+    background-color: var(--color-light-gray);
 }
 
 .filter-item.active {
     color: var(--color-granaccia);
     font-weight: 600;
+    background-color: rgba(154, 24, 46, 0.1);
 }
 
 .filter-count {
     color: var(--color-text-light);
     font-weight: 400;
+    font-size: 12px;
 }
 
 .filter-item.active .filter-count {
     color: var(--color-granaccia);
+    font-weight: 600;
 }
 
 .viewer-table-container {

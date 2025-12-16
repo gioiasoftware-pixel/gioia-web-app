@@ -178,15 +178,23 @@
 
                 <!-- Viewer Filters -->
                 <div class="viewer-filters">
-                    <h3 class="filters-title">FILTRI</h3>
+                    <div class="filters-header-row">
+                        <h3 class="filters-title">FILTRI</h3>
+                        <button id="reset-filters-btn" class="reset-filters-btn" title="Reset tutti i filtri">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                <path d="M7 1V7M7 7L3 3M7 7L11 3M3 7C3 9.76142 5.23858 12 8 12C10.7614 12 13 9.76142 13 7C13 4.23858 10.7614 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Reset
+                        </button>
+                    </div>
                     <div class="filter-section">
                         <button class="filter-header" data-filter="type">
                             <span>TIPOLOGIA</span>
-                            <svg class="filter-icon expanded" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <svg class="filter-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
                                 <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
-                        <div class="filter-content" id="filter-type"></div>
+                        <div class="filter-content hidden" id="filter-type"></div>
                     </div>
                     <div class="filter-section">
                         <button class="filter-header" data-filter="vintage">

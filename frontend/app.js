@@ -655,20 +655,66 @@ function closeViewer() {
 function setupViewerFilters() {
     const filterHeaders = document.querySelectorAll('.filter-header');
     filterHeaders.forEach(header => {
-        header.addEventListener('click', () => {
+        addUniversalEventListener(header, () => {
             const filterType = header.dataset.filter;
             const content = document.getElementById(`filter-${filterType}`);
             const icon = header.querySelector('.filter-icon');
             
             if (content.classList.contains('hidden')) {
+                // Chiudi tutti gli altri filtri prima di aprire questo
+                document.querySelectorAll('.filter-content').forEach(c => {
+                    c.classList.add('hidden');
+                });
+                document.querySelectorAll('.filter-icon').forEach(i => {
+                    i.classList.remove('expanded');
+                });
+                
+                // Apri questo filtro
                 content.classList.remove('hidden');
                 icon.classList.add('expanded');
             } else {
+                // Chiudi questo filtro
                 content.classList.add('hidden');
                 icon.classList.remove('expanded');
             }
         });
     });
+    
+    // Setup reset filters button
+    const resetBtn = document.getElementById('reset-filters-btn');
+    if (resetBtn) {
+        addUniversalEventListener(resetBtn, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            resetViewerFilters();
+        });
+    }
+}
+
+function resetViewerFilters() {
+    // Reset tutti i filtri
+    viewerFilters = {
+        type: null,
+        vintage: null,
+        winery: null,
+        supplier: null
+    };
+    
+    // Rimuovi classe active da tutti gli item
+    document.querySelectorAll('.filter-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Chiudi tutti gli accordion
+    document.querySelectorAll('.filter-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    document.querySelectorAll('.filter-icon').forEach(icon => {
+        icon.classList.remove('expanded');
+    });
+    
+    // Riapplica filtri (che ora sono vuoti)
+    applyViewerFilters();
 }
 
 async function loadViewerData() {
