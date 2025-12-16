@@ -1657,7 +1657,7 @@ body {
 
 .wine-card-edit-form-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 20px;
 }
@@ -2238,6 +2238,11 @@ body {
 
     .wine-card-body {
         grid-template-columns: 1fr;
+    }
+    
+    /* Su mobile, mantieni comunque layout orizzontale per il form di modifica */
+    .wine-card-edit-form-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .movement-card-stats {
