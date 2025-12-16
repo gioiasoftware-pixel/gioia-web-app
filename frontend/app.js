@@ -334,7 +334,7 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         }
         
         messageEl.innerHTML = `
-            <div class="chat-message-avatar">${avatar}</div>
+            ${avatarHtml}
             <div class="${contentClass}" style="${isError ? 'color: var(--color-granaccia);' : ''}">${contentHtml}${buttonsHtml}</div>
         `;
         
@@ -743,8 +743,8 @@ async function selectConversation(conversationId) {
 async function loadConversationMessages(conversationId) {
     if (!authToken || !conversationId) return;
     
-    // Pulisci messaggi correnti
-    clearChatMessages();
+    // Pulisci messaggi correnti SENZA mantenere il welcome message
+    clearChatMessages(false);
     
     try {
         const response = await fetch(`${API_BASE_URL}/api/chat/conversations/${conversationId}/messages?limit=50`, {
@@ -759,6 +759,12 @@ async function loadConversationMessages(conversationId) {
         
         const data = await response.json();
         const messages = data.messages || [];
+        
+        // Se non ci sono messaggi, mostra welcome message
+        if (messages.length === 0) {
+            clearChatMessages(true);
+            return;
+        }
         
         // Renderizza messaggi
         messages.forEach(msg => {
@@ -776,15 +782,12 @@ async function loadConversationMessages(conversationId) {
     }
 }
 
-function clearChatMessages() {
+function clearChatMessages(keepWelcome = true) {
     const messagesContainer = document.getElementById('chat-messages');
-    // Rimuovi tutti i messaggi tranne il welcome message
-    const welcomeMessage = messagesContainer.querySelector('.welcome-message');
     messagesContainer.innerHTML = '';
-    if (welcomeMessage) {
-        messagesContainer.appendChild(welcomeMessage);
-    } else {
-        // Ricrea welcome message se non esiste
+    
+    // Mantieni o ricrea welcome message solo se richiesto
+    if (keepWelcome) {
         messagesContainer.innerHTML = `
             <div class="welcome-message">
                 <h2>Ciao! Come posso aiutarti?</h2>
