@@ -370,7 +370,11 @@ function setupEventListeners() {
     // Chat sidebar
     const newChatBtn = document.getElementById('new-chat-btn');
     if (newChatBtn) {
-        addUniversalEventListener(newChatBtn, handleNewChat);
+        // Usa pointer events per mobile
+        newChatBtn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            handleNewChat();
+        });
     }
     
     // Setup pulsante hamburger - STEP 4: Usa pointer events
@@ -386,10 +390,13 @@ function setupEventListeners() {
     // Gestisci resize window per mobile/desktop
     window.addEventListener('resize', handleWindowResize);
 
-    // Viewer - usa listener universale per mobile
+    // Viewer toggle - usa pointer events per mobile
     const viewerToggle = document.getElementById('viewer-toggle');
     if (viewerToggle) {
-        addUniversalEventListener(viewerToggle, toggleViewer);
+        viewerToggle.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            toggleViewer();
+        });
     }
     const viewerClose = document.getElementById('viewer-close');
     if (viewerClose) {
@@ -404,20 +411,24 @@ function setupEventListeners() {
     
     const viewerDownloadBtn = document.getElementById('viewer-download-csv');
     if (viewerDownloadBtn) {
-        addUniversalEventListener(viewerDownloadBtn, (e) => {
-            e.preventDefault();
+        // Usa pointer events per mobile
+        viewerDownloadBtn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
             handleViewerDownloadCSV();
         });
     }
     
-    // Modal movimenti
+    // Modal movimenti - usa pointer events per mobile
     const movementsModalClose = document.getElementById('viewer-movements-modal-close');
     if (movementsModalClose) {
-        addUniversalEventListener(movementsModalClose, closeMovementsModal);
+        movementsModalClose.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            closeMovementsModal();
+        });
     }
     const movementsModal = document.getElementById('viewer-movements-modal');
     if (movementsModal) {
-        addUniversalEventListener(movementsModal, (e) => {
+        movementsModal.addEventListener('pointerup', (e) => {
             if (e.target === movementsModal) {
                 closeMovementsModal();
             }
@@ -774,11 +785,12 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         
         messageEl.appendChild(contentDiv);
         
-        // Aggiungi event listeners ai pulsanti
+        // Aggiungi event listeners ai pulsanti - usa pointer events per mobile
         if (buttons && buttons.length > 0) {
             const buttonElements = messageEl.querySelectorAll('.chat-button');
             buttonElements.forEach(btn => {
-                btn.addEventListener('click', async () => {
+                btn.addEventListener('pointerup', async (e) => {
+                    e.stopPropagation();
                     const wineId = btn.dataset.wineId;
                     const wineText = btn.dataset.wineText;
                     const movementType = btn.dataset.movementType;
@@ -880,13 +892,13 @@ function setupWineCardBookmarks(messageEl) {
     inventoryBookmark.dataset.action = 'inventory';
     inventoryBookmark.dataset.wineId = wineId;
     
-    // Aggiungi event listeners
-    addUniversalEventListener(editBookmark, (e) => {
+    // Aggiungi event listeners - usa pointer events per mobile
+    editBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         handleWineCardEdit(wineCard, wineId);
     });
     
-    addUniversalEventListener(inventoryBookmark, (e) => {
+    inventoryBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         handleWineCardShowInInventory(wineCard, wineId);
     });
@@ -1901,8 +1913,8 @@ function setupViewerFilters() {
     // Setup reset filters button
     const resetBtn = document.getElementById('reset-filters-btn');
     if (resetBtn) {
-        addUniversalEventListener(resetBtn, (e) => {
-            e.preventDefault();
+        // Usa pointer events per mobile
+        resetBtn.addEventListener('pointerup', (e) => {
             e.stopPropagation();
             resetViewerFilters();
         });
@@ -2028,7 +2040,8 @@ function setupFilterItems() {
     console.log('[FILTERS] Setup', filterItems.length, 'filter items');
     
     filterItems.forEach(item => {
-        addUniversalEventListener(item, (e) => {
+        // Usa pointer events per mobile
+        item.addEventListener('pointerup', (e) => {
             e.stopPropagation();
             const dropdownContent = item.closest('.filter-dropdown-content');
             if (!dropdownContent) {
@@ -2129,8 +2142,10 @@ function handleViewerSearch(e) {
 
 function renderViewerTable(rows) {
     const tableBody = document.getElementById('viewer-table-body');
+    const mobileCardsContainer = document.getElementById('viewer-mobile-cards');
     const panel = document.getElementById('viewer-panel');
     const isFullscreen = panel && panel.classList.contains('fullscreen');
+    const isMobile = window.innerWidth <= 768;
     
     if (rows.length === 0) {
         const colspan = isFullscreen ? 7 : 6;
@@ -2139,6 +2154,9 @@ function renderViewerTable(rows) {
             ? `Nessun risultato trovato per "${viewerSearchQuery}"`
             : 'Nessun inventario disponibile. Carica un file CSV per iniziare.';
         tableBody.innerHTML = `<tr><td colspan="${colspan}" class="loading" style="color: var(--color-text-secondary); padding: 40px !important;">${escapeHtml(message)}</td></tr>`;
+        if (mobileCardsContainer) {
+            mobileCardsContainer.innerHTML = `<div style="padding: 40px; text-align: center; color: var(--color-text-secondary);">${escapeHtml(message)}</div>`;
+        }
         return;
     }
 
@@ -2147,6 +2165,84 @@ function renderViewerTable(rows) {
     const end = start + viewerPageSize;
     const paginatedRows = rows.slice(start, end);
     const totalPages = Math.ceil(rows.length / viewerPageSize);
+    
+    // Genera card mobile se siamo su mobile
+    if (isMobile && mobileCardsContainer) {
+        let mobileHtml = '';
+        paginatedRows.forEach((row, index) => {
+            const wineId = row.id || `wine-${index}`;
+            const wineNameRaw = row.name || row.Nome || '';
+            const wineName = escapeHtml(wineNameRaw);
+            const winery = escapeHtml(row.winery || row.Cantina || '');
+            const qty = row.qty || row.Quantità || row.quantità || 0;
+            const price = (row.price || row.Prezzo || row.prezzo || 0).toFixed(2);
+            const supplier = escapeHtml(row.supplier || row.Fornitore || row.fornitore || '');
+            const isCritical = row.critical || row['Scorta critica'] || false;
+            
+            mobileHtml += `
+            <div class="viewer-wine-card-mobile" data-wine-id="${wineId}">
+                <div class="viewer-wine-card-mobile-header">
+                    <h3 class="viewer-wine-card-mobile-title">${wineName}</h3>
+                    <div class="viewer-wine-card-mobile-actions">
+                        <button type="button" class="viewer-chart-btn" data-wine-name="${wineNameRaw.replace(/"/g, '&quot;')}" title="Visualizza grafico movimenti">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 12L10 9L14 13L21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button type="button" class="viewer-edit-btn" data-wine-id="${wineId}" data-wine-name="${wineName}" title="Modifica vino">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="viewer-wine-card-mobile-body">
+                    <div class="viewer-wine-card-mobile-field">
+                        <span class="viewer-wine-card-mobile-field-label">Cantina</span>
+                        <span class="viewer-wine-card-mobile-field-value">${winery || '-'}</span>
+                    </div>
+                    <div class="viewer-wine-card-mobile-field">
+                        <span class="viewer-wine-card-mobile-field-label">Quantità</span>
+                        <span class="viewer-wine-card-mobile-field-value">${qty}</span>
+                    </div>
+                    <div class="viewer-wine-card-mobile-field">
+                        <span class="viewer-wine-card-mobile-field-label">Prezzo</span>
+                        <span class="viewer-wine-card-mobile-field-value">€${price}</span>
+                    </div>
+                    <div class="viewer-wine-card-mobile-field">
+                        <span class="viewer-wine-card-mobile-field-label">Fornitore</span>
+                        <span class="viewer-wine-card-mobile-field-value">${supplier || '-'}</span>
+                    </div>
+                </div>
+                ${isCritical ? '<div style="margin-top: 12px;"><span class="critical-badge">Scorta Critica</span></div>' : ''}
+            </div>
+            `;
+        });
+        mobileCardsContainer.innerHTML = mobileHtml;
+        
+        // Attacca event listeners per i pulsanti nelle card mobile con pointer events
+        mobileCardsContainer.querySelectorAll('.viewer-chart-btn').forEach(btn => {
+            btn.addEventListener('pointerup', (e) => {
+                e.stopPropagation();
+                const wineName = btn.dataset.wineName || '';
+                if (wineName) {
+                    showMovementsChart(wineName);
+                }
+            });
+        });
+        
+        mobileCardsContainer.querySelectorAll('.viewer-edit-btn').forEach(btn => {
+            btn.addEventListener('pointerup', (e) => {
+                e.stopPropagation();
+                const wineId = btn.dataset.wineId;
+                if (wineId) {
+                    handleViewerWineEdit(parseInt(wineId));
+                }
+            });
+        });
+    }
 
     // Genera HTML righe
     let html = '';
@@ -2177,7 +2273,7 @@ function renderViewerTable(rows) {
             </td>
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell" style="text-align: center;">
-                <button class="viewer-edit-btn" data-wine-id="${row.id || ''}" data-wine-name="${wineName}" title="Modifica vino" type="button" onclick="event.stopPropagation(); handleViewerWineEdit(${row.id || 'null'});">
+                <button class="viewer-edit-btn" data-wine-id="${row.id || ''}" data-wine-name="${wineName}" title="Modifica vino" type="button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -2285,6 +2381,17 @@ function renderViewerTable(rows) {
         // STEP 4: Usa pointer events invece di touch/click
         btn.addEventListener('pointerup', handler);
     });
+    
+    // Setup click su pulsanti modifica - usa pointer events per mobile
+    document.querySelectorAll('.viewer-edit-btn').forEach(btn => {
+        btn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            const wineId = btn.dataset.wineId;
+            if (wineId) {
+                handleViewerWineEdit(parseInt(wineId));
+            }
+        });
+    });
 
     // Setup click su righe per espansione (solo fullscreen)
     if (isFullscreen) {
@@ -2342,8 +2449,9 @@ function renderViewerPagination(totalPages) {
     const buttons = [];
     
     // Previous button
+    const prevDisabled = viewerCurrentPage === 1 ? 'disabled' : '';
     buttons.push(`
-        <button class="pagination-btn" ${viewerCurrentPage === 1 ? 'disabled' : ''} onclick="viewerGoToPage(${viewerCurrentPage - 1})">
+        <button type="button" class="pagination-btn" ${prevDisabled} data-page="${viewerCurrentPage - 1}">
             ←
         </button>
     `);
@@ -2351,8 +2459,9 @@ function renderViewerPagination(totalPages) {
     // Page numbers
     for (let i = 1; i <= totalPages; i++) {
         if (i === 1 || i === totalPages || (i >= viewerCurrentPage - 2 && i <= viewerCurrentPage + 2)) {
+            const activeClass = i === viewerCurrentPage ? 'active' : '';
             buttons.push(`
-                <button class="pagination-btn ${i === viewerCurrentPage ? 'active' : ''}" onclick="viewerGoToPage(${i})">
+                <button type="button" class="pagination-btn ${activeClass}" data-page="${i}">
                     ${i}
                 </button>
             `);
@@ -2362,13 +2471,25 @@ function renderViewerPagination(totalPages) {
     }
 
     // Next button
+    const nextDisabled = viewerCurrentPage === totalPages ? 'disabled' : '';
     buttons.push(`
-        <button class="pagination-btn" ${viewerCurrentPage === totalPages ? 'disabled' : ''} onclick="viewerGoToPage(${viewerCurrentPage + 1})">
+        <button type="button" class="pagination-btn" ${nextDisabled} data-page="${viewerCurrentPage + 1}">
             →
         </button>
     `);
 
     pagination.innerHTML = buttons.join('');
+    
+    // Attacca event listeners con pointer events per mobile
+    pagination.querySelectorAll('.pagination-btn:not([disabled])').forEach(btn => {
+        btn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            const page = parseInt(btn.dataset.page);
+            if (page && !btn.disabled) {
+                viewerGoToPage(page);
+            }
+        });
+    });
 }
 
 function viewerGoToPage(page) {
@@ -2815,15 +2936,24 @@ function renderConversationsList() {
         </div>
     `).join('');
     
-    // Aggiungi event listeners con supporto universale mobile
+    // Aggiungi event listeners con pointer events per mobile
     sidebarList.querySelectorAll('.chat-sidebar-item').forEach(item => {
-        addUniversalEventListener(item, (e) => {
+        item.addEventListener('pointerup', (e) => {
             // Non selezionare se il click è sul pulsante di cancellazione
             if (e.target.closest('.chat-sidebar-item-delete')) {
                 return;
             }
             const conversationId = parseInt(item.dataset.conversationId);
             selectConversation(conversationId);
+        });
+    });
+    
+    // Aggiungi event listeners per delete button
+    sidebarList.querySelectorAll('.chat-sidebar-item-delete').forEach(btn => {
+        btn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            const conversationId = parseInt(btn.dataset.conversationId);
+            deleteConversation(conversationId);
         });
     });
 }
@@ -3090,7 +3220,8 @@ function loadSidebarState() {
 function closeSidebarOnOverlayClick() {
     const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
-        addUniversalEventListener(overlay, (e) => {
+        // Usa pointer events per mobile
+        overlay.addEventListener('pointerup', (e) => {
             const sidebar = document.getElementById('chat-sidebar');
             if (sidebar && sidebar.classList.contains('open')) {
                 sidebar.classList.remove('open');
