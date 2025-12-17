@@ -2751,16 +2751,18 @@ function renderConversationsList() {
              data-conversation-id="${conv.id}">
             <div class="chat-sidebar-item-content">
                 <div class="chat-sidebar-item-title">${escapeHtml(conv.title || 'Nuova chat')}</div>
-                <div class="chat-sidebar-item-time">${formatConversationTime(conv.last_message_at || conv.updated_at)}</div>
+                <div class="chat-sidebar-item-time-wrapper">
+                    <div class="chat-sidebar-item-time">${formatConversationTime(conv.last_message_at || conv.updated_at)}</div>
+                    <button class="chat-sidebar-item-delete" 
+                            data-conversation-id="${conv.id}"
+                            title="Cancella chat"
+                            onclick="event.stopPropagation(); deleteConversation(${conv.id});">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
             </div>
-            <button class="chat-sidebar-item-delete" 
-                    data-conversation-id="${conv.id}"
-                    title="Cancella chat"
-                    onclick="event.stopPropagation(); deleteConversation(${conv.id});">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-            </button>
         </div>
     `).join('');
     
