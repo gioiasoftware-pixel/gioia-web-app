@@ -515,23 +515,32 @@ function setupEventListeners() {
             sidebarToggle.classList.add('clicked');
         });
         
+        // SOLUZIONE BLINDATA: Listener robusto con log dettagliati
         sidebarToggle.addEventListener('pointerup', (e) => {
-            debugLog('SIDEBAR: pointerup rilevato DIRETTAMENTE sul pulsante, chiamando toggleSidebar', 'info', 'SIDEBAR');
+            const isOpen = isMobile ? 
+                (document.getElementById('chatSidebar')?.classList.contains('is-open') || false) :
+                (document.getElementById('chat-sidebar')?.classList.contains('collapsed') || false);
+            
+            console.log('[SIDEBAR] btn pointerup. isOpen:', isOpen);
+            debugLog(`SIDEBAR: pointerup rilevato DIRETTAMENTE sul pulsante, isOpen=${isOpen}`, 'info', 'SIDEBAR');
             debugLog(`SIDEBAR: Evento pointerup - clientX=${e.clientX}, clientY=${e.clientY}, target=${e.target.tagName}#${e.target.id}`, 'info', 'SIDEBAR');
+            
             e.stopPropagation(); // Ferma propagazione
             e.preventDefault(); // Previeni qualsiasi comportamento di default
+            
             // Rimuovi feedback dopo breve delay per mostrare il colore
             setTimeout(() => {
                 sidebarToggle.classList.remove('clicked');
             }, 200);
+            
             // Chiama toggleSidebar con try-catch per catturare errori
             try {
                 toggleSidebar();
             } catch (error) {
+                console.error('[SIDEBAR] ERRORE in toggleSidebar:', error);
                 debugLog(`ERRORE in toggleSidebar: ${error.message}`, 'error', 'SIDEBAR');
-                console.error('Errore toggleSidebar:', error);
             }
-        });
+        }, { passive: false });
         
         // Gestisci anche pointercancel per mobile
         sidebarToggle.addEventListener('pointercancel', (e) => {
@@ -3439,10 +3448,54 @@ function toggleSidebar() {
             sidebar.classList.add('is-open');
             overlay.classList.add('is-open');
             document.documentElement.classList.add('no-scroll');
-            const transform = window.getComputedStyle(sidebar).transform;
-            const display = window.getComputedStyle(sidebar).display;
-            console.log('[SIDEBAR] OPEN', { transform, display });
-            debugLog(`Sidebar aperta (is-open aggiunto), transform=${transform}, display=${display}`, 'info', 'SIDEBAR');
+            
+            // Debug dettagliato posizione e stili
+            const computedStyle = window.getComputedStyle(sidebar);
+            const rect = sidebar.getBoundingClientRect();
+            const transform = computedStyle.transform;
+            const display = computedStyle.display;
+            const left = computedStyle.left;
+            const width = computedStyle.width;
+            const zIndex = computedStyle.zIndex;
+            const hasIsOpen = sidebar.classList.contains('is-open');
+            
+            console.log('[SIDEBAR] OPEN', { 
+                transform, 
+                display, 
+                left, 
+                width, 
+                zIndex,
+                hasIsOpen,
+                rect: {
+                    left: rect.left,
+                    top: rect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    visible: rect.width > 0 && rect.left >= 0
+                }
+            });
+            
+            debugLog(`Sidebar aperta (is-open aggiunto)`, 'info', 'SIDEBAR');
+            debugLog(`  transform=${transform}, display=${display}`, 'info', 'SIDEBAR');
+            debugLog(`  left=${left}, width=${width}, zIndex=${zIndex}`, 'info', 'SIDEBAR');
+            debugLog(`  rect: left=${rect.left}, width=${rect.width}, visible=${rect.width > 0 && rect.left >= 0}`, 'info', 'SIDEBAR');
+            
+            // Verifica dopo animazione
+            setTimeout(() => {
+                const finalRect = sidebar.getBoundingClientRect();
+                const finalTransform = window.getComputedStyle(sidebar).transform;
+                const finalLeft = window.getComputedStyle(sidebar).left;
+                console.log('[SIDEBAR] Dopo 300ms:', {
+                    transform: finalTransform,
+                    left: finalLeft,
+                    rect: {
+                        left: finalRect.left,
+                        width: finalRect.width,
+                        visible: finalRect.width > 0 && finalRect.left >= 0
+                    }
+                });
+                debugLog(`Dopo 300ms: transform=${finalTransform}, left=${finalLeft}, visible=${finalRect.width > 0 && finalRect.left >= 0}`, 'info', 'SIDEBAR');
+            }, 300);
         }
     } else {
         // DESKTOP: usa classe 'collapsed' per collassare/espandere
@@ -3489,23 +3542,23 @@ function loadSidebarState() {
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // MOBILE: Assicurati che sidebar mobile sia SEMPRE chiusa di default
+        // MOBILE: Assicurati che sidebar mobile sia SEMPRE chiusa di default (no is-open)
         const sidebarMobile = document.getElementById('chatSidebar');
         const overlayMobile = document.getElementById('sidebarOverlay');
         
+        console.log('[SIDEBAR] loadSidebarState MOBILE init', { sidebarMobile, overlayMobile });
+        
         if (sidebarMobile) {
-            // Assicurati che sia hidden (chiusa)
-            if (!sidebarMobile.hasAttribute('hidden')) {
-                sidebarMobile.setAttribute('hidden', '');
-                debugLog('loadSidebarState MOBILE: Sidebar chiusa di default (hidden aggiunto)', 'info', 'SIDEBAR');
-            }
+            // Rimuovi is-open se presente (chiudi sidebar)
+            sidebarMobile.classList.remove('is-open');
+            document.documentElement.classList.remove('no-scroll');
+            console.log('[SIDEBAR] Sidebar chiusa di default (is-open rimosso)');
+            debugLog('loadSidebarState MOBILE: Sidebar chiusa di default (is-open rimosso)', 'info', 'SIDEBAR');
         }
         
         if (overlayMobile) {
-            // Assicurati che overlay sia hidden
-            if (!overlayMobile.hasAttribute('hidden')) {
-                overlayMobile.setAttribute('hidden', '');
-            }
+            // Rimuovi is-open se presente
+            overlayMobile.classList.remove('is-open');
         }
     } else {
         // DESKTOP: usa collapsed

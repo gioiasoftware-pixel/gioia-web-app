@@ -63,6 +63,12 @@ html, body {
     touch-action: pan-y pinch-zoom; /* Permette scroll verticale e zoom, blocca gesture orizzontali */
 }
 
+/* Blocca scroll quando sidebar è aperta (soluzione blindata) */
+html.no-scroll,
+body.no-scroll {
+    overflow: hidden;
+}
+
 button, a, input, textarea, select, label {
     touch-action: manipulation; /* Previene double-tap zoom, migliora responsività */
     -webkit-tap-highlight-color: rgba(154, 24, 46, 0.1); /* Highlight discreto */
