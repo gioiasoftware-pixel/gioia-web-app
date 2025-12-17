@@ -1063,20 +1063,18 @@ function setupWineCardBookmarks(messageEl) {
     inventoryBookmark.dataset.action = 'inventory';
     inventoryBookmark.dataset.wineId = wineId;
     
-    // SOLUZIONE 3: Aggiungi listener direttamente sui bookmarks quando vengono creati
-    // Questi listener sono aggiunti anche nella funzione addChatMessage quando viene inserita la card,
-    // ma li aggiungiamo anche qui per sicurezza quando i bookmarks vengono aggiunti dopo
+    // SOLUZIONE 2: Listener sui bookmarks (funzionano normalmente perché non sono nel contesto scroll)
     editBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        debugLog(`SOLUZIONE 3: Click su bookmark edit (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
+        debugLog(`SOLUZIONE 2: Click su bookmark edit (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
         handleWineCardEdit(wineCard, wineId);
     });
     
     inventoryBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        debugLog(`SOLUZIONE 3: Click su bookmark inventory (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
+        debugLog(`SOLUZIONE 2: Click su bookmark inventory (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
         handleWineCardShowInInventory(wineCard, wineId);
     });
     

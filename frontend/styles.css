@@ -1248,7 +1248,8 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     -webkit-overflow-scrolling: touch; /* Scroll fluido su iOS */
 }
 
-.welcome-message {
+/* Welcome message dentro il wrapper scroll */
+.chat-messages-scroll-wrapper .welcome-message {
     text-align: center;
     padding: 48px 24px;
     color: var(--color-text-secondary);
