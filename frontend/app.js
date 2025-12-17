@@ -3408,54 +3408,41 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    debugLog('========== toggleSidebar chiamato ==========', 'info', 'SIDEBAR');
     const isMobile = window.innerWidth <= 768;
-    debugLog(`toggleSidebar: isMobile=${isMobile}, window.innerWidth=${window.innerWidth}`, 'info', 'SIDEBAR');
     
     if (isMobile) {
-        // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
+        // SOLUZIONE BLINDATA: Usa classi is-open invece di hidden
         const sidebar = document.getElementById('chatSidebar');
         const overlay = document.getElementById('sidebarOverlay');
         
+        console.log('[SIDEBAR] toggleSidebar MOBILE chiamato', { sidebar, overlay });
         debugLog(`toggleSidebar MOBILE: sidebar=${sidebar ? 'TROVATA' : 'NON TROVATA'}, overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
         
-        if (!sidebar) {
-            debugLog('ERRORE: Sidebar mobile non trovata! Cercando alternative...', 'error', 'SIDEBAR');
-            // Prova a cercare in altri modi
-            const altSidebar = document.querySelector('.mSidebar');
-            debugLog(`toggleSidebar: alternativa .mSidebar=${altSidebar ? 'TROVATA' : 'NON TROVATA'}`, 'warn', 'SIDEBAR');
+        if (!sidebar || !overlay) {
+            console.error('[SIDEBAR] Missing elements. Check IDs.');
+            debugLog('ERRORE: Sidebar o overlay non trovati!', 'error', 'SIDEBAR');
             return;
         }
         
-        const wasOpen = !sidebar.hasAttribute('hidden');
-        const currentDisplay = window.getComputedStyle(sidebar).display;
-        debugLog(`toggleSidebar MOBILE: wasOpen=${wasOpen}, currentDisplay=${currentDisplay}, hasHidden=${sidebar.hasAttribute('hidden')}`, 'info', 'SIDEBAR');
+        const isOpen = sidebar.classList.contains('is-open');
+        console.log('[SIDEBAR] Stato attuale isOpen:', isOpen);
         
-        if (wasOpen) {
-            // Chiudi sidebar: aggiungi hidden
-            sidebar.setAttribute('hidden', '');
-            if (overlay) overlay.setAttribute('hidden', '');
-            const newDisplay = window.getComputedStyle(sidebar).display;
-            debugLog(`Sidebar chiusa: hidden aggiunto, display=${newDisplay}`, 'info', 'SIDEBAR');
+        if (isOpen) {
+            // Chiudi sidebar
+            sidebar.classList.remove('is-open');
+            overlay.classList.remove('is-open');
+            document.documentElement.classList.remove('no-scroll');
+            console.log('[SIDEBAR] CLOSE');
+            debugLog('Sidebar chiusa (is-open rimosso)', 'info', 'SIDEBAR');
         } else {
-            // Apri sidebar: rimuovi hidden
-            sidebar.removeAttribute('hidden');
-            if (overlay) {
-                overlay.removeAttribute('hidden');
-                debugLog(`Overlay: hidden rimosso, display=${window.getComputedStyle(overlay).display}`, 'info', 'SIDEBAR');
-            }
-            const newDisplay = window.getComputedStyle(sidebar).display;
-            debugLog(`Sidebar aperta: hidden rimosso, display=${newDisplay}`, 'info', 'SIDEBAR');
-            
-            // Verifica che sia visibile e che l'overlay sia cliccabile
-            setTimeout(() => {
-                const finalDisplay = window.getComputedStyle(sidebar).display;
-                const rect = sidebar.getBoundingClientRect();
-                const overlayDisplay = overlay ? window.getComputedStyle(overlay).display : 'N/A';
-                const overlayPointerEvents = overlay ? window.getComputedStyle(overlay).pointerEvents : 'N/A';
-                debugLog(`Sidebar dopo 100ms: display=${finalDisplay}, width=${rect.width}, visible=${rect.width > 0}`, 'info', 'SIDEBAR');
-                debugLog(`Overlay dopo 100ms: display=${overlayDisplay}, pointer-events=${overlayPointerEvents}`, 'info', 'SIDEBAR');
-            }, 100);
+            // Apri sidebar
+            sidebar.classList.add('is-open');
+            overlay.classList.add('is-open');
+            document.documentElement.classList.add('no-scroll');
+            const transform = window.getComputedStyle(sidebar).transform;
+            const display = window.getComputedStyle(sidebar).display;
+            console.log('[SIDEBAR] OPEN', { transform, display });
+            debugLog(`Sidebar aperta (is-open aggiunto), transform=${transform}, display=${display}`, 'info', 'SIDEBAR');
         }
     } else {
         // DESKTOP: usa classe 'collapsed' per collassare/espandere
@@ -3474,6 +3461,7 @@ function toggleSidebar() {
 // NUOVA ARCHITETTURA: Overlay gestito tramite hidden, non più creato/rimosso dinamicamente
 // L'overlay esiste già nel DOM e viene mostrato/nascosto con hidden
 function setupSidebarOverlay() {
+    // SOLUZIONE BLINDATA: Listener robusto sull'overlay
     const overlay = document.getElementById('sidebarOverlay');
     debugLog(`setupSidebarOverlay: overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
     
@@ -3482,19 +3470,13 @@ function setupSidebarOverlay() {
         const newOverlay = overlay.cloneNode(true);
         overlay.parentNode.replaceChild(newOverlay, overlay);
         
-        // Aggiungi listener per chiudere sidebar quando si clicca sull'overlay
+        // Listener robusto per chiudere sidebar quando si clicca sull'overlay
         newOverlay.addEventListener('pointerup', (e) => {
+            console.log('[SIDEBAR] overlay pointerup, chiudo sidebar');
             debugLog('OVERLAY: pointerup rilevato, chiudo sidebar', 'info', 'SIDEBAR');
             e.stopPropagation();
             toggleSidebar();
-        });
-        
-        // Fallback con click
-        newOverlay.addEventListener('click', (e) => {
-            debugLog('OVERLAY: click rilevato (fallback), chiudo sidebar', 'info', 'SIDEBAR');
-            e.stopPropagation();
-            toggleSidebar();
-        });
+        }, { passive: true });
         
         debugLog('setupSidebarOverlay: Listener aggiunto all\'overlay', 'info', 'SIDEBAR');
     } else {

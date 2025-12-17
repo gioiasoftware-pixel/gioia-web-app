@@ -766,47 +766,55 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     /* ============================================
        OVERLAY MOBILE (.mOverlay) - Solo quando aperto
        ============================================ */
-    .mOverlay[hidden],
-    .mSidebar[hidden],
-    .mViewer[hidden],
-    .mModal[hidden] {
-        display: none !important;
-    }
-
+    /* ============================================
+       OVERLAY MOBILE - Soluzione blindata con transform
+       ============================================ */
     .mOverlay {
         position: fixed;
         inset: 0;
-        z-index: var(--z-overlay);
         background: rgba(0, 0, 0, 0.35);
-        pointer-events: auto;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease;
+        z-index: 9998; /* Sotto sidebar ma sopra tutto */
         touch-action: manipulation;
+    }
+    
+    .mOverlay.is-open {
+        opacity: 1;
+        pointer-events: auto;
     }
 
     /* ============================================
-       SIDEBAR MOBILE (.mSidebar) - Solo quando aperto
+       SIDEBAR MOBILE (.mSidebar) - Soluzione blindata con transform
        ============================================ */
     .mSidebar {
         position: fixed;
-        inset: 0 auto 0 0;
-        width: 80vw; /* 80% dello schermo come richiesto */
-        max-width: 400px;
-        z-index: var(--z-sidebar); /* z-index 40, sopra header (10) e overlay (30) */
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: min(80vw, 400px); /* 80% schermo, max 400px */
         background: var(--color-white);
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+        transform: translateX(-110%); /* Fuori schermo quando chiusa */
+        transition: transform 0.22s ease;
+        z-index: 9999; /* Sopra overlay e tutto */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         touch-action: pan-y;
-        display: flex !important; /* CRITICO: display flex quando NON hidden */
+        display: flex;
         flex-direction: column;
-        /* Animazione slide da sinistra */
-        transform: translateX(0);
-        transition: transform 0.3s ease-out;
     }
     
-    /* CRITICO: Quando hidden, deve essere display:none e fuori schermo */
-    .mSidebar[hidden] {
+    /* Quando aperta: slide dentro */
+    .mSidebar.is-open {
+        transform: translateX(0);
+    }
+    
+    /* Mantieni compatibilità con hidden per altri elementi */
+    .mViewer[hidden],
+    .mModal[hidden] {
         display: none !important;
-        transform: translateX(-100%); /* Fuori schermo quando chiusa */
     }
 
     .mSidebar .chat-sidebar-header {

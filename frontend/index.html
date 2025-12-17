@@ -87,7 +87,7 @@
         <div class="mApp mobile-only">
             <!-- Header Mobile - Solo logo e hamburger -->
             <header class="mHeader">
-                <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
@@ -127,9 +127,9 @@
                 </form>
             </footer>
 
-            <!-- Layer UI Mobile: esistono solo quando aperti (hidden quando chiusi) -->
-            <div class="mOverlay" id="sidebarOverlay" hidden></div>
-            <aside class="mSidebar" id="chatSidebar" hidden>
+            <!-- Layer UI Mobile: esistono solo quando aperti (classi is-open invece di hidden) -->
+            <div class="mOverlay" id="sidebarOverlay"></div>
+            <aside class="mSidebar" id="chatSidebar">
                 <div class="chat-sidebar-header">
                     <button type="button" id="new-chat-btn-mobile" class="btn btn-primary btn-small">
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
