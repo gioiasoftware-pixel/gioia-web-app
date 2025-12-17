@@ -261,15 +261,29 @@ document.addEventListener("pointerup", (e) => {
     const suspiciousLayers = els.filter(el => {
         const id = el.id || '';
         const className = el.className || '';
+        const tag = el.tagName.toLowerCase();
         const isInHeader = el.closest('.mHeader') || el.closest('.chat-header');
         
-        // Se è nell'header mobile, verifica che sia SOLO il pulsante hamburger
+        // ESCLUDI l'header stesso (.mHeader) - è legittimo e deve essere sempre visibile
+        if (tag === 'header' && (className.includes('mHeader') || className.includes('chat-header'))) {
+            return false; // L'header stesso è legittimo
+        }
+        
+        // Se è DENTRO l'header mobile, verifica che sia SOLO il pulsante hamburger
         if (isInHeader && window.innerWidth <= 768) {
-            // Se NON è il pulsante hamburger, è sospetto
-            if (id !== 'sidebar-toggle' && !el.closest('#sidebar-toggle')) {
-                return true; // Elemento dell'header che non dovrebbe intercettare
+            // Se è il pulsante hamburger o un suo figlio, è legittimo
+            if (id === 'sidebar-toggle' || el.closest('#sidebar-toggle')) {
+                return false; // È il pulsante hamburger, è legittimo
             }
-            return false; // È il pulsante hamburger, è legittimo
+            // Se è un altro elemento dell'header (logo, titolo), è sospetto solo se intercetta tap
+            // Ma logo e titolo hanno pointer-events: none, quindi non dovrebbero intercettare
+            // Se arrivano qui, significa che stanno intercettando - segnala
+            return true; // Elemento dell'header che non dovrebbe intercettare
+        }
+        
+        // ESCLUDI elementi legittimi sempre visibili
+        if (tag === 'main' || tag === 'footer' || className.includes('mMain') || className.includes('mComposer')) {
+            return false; // Elementi legittimi del layout
         }
         
         // Per altri elementi, verifica overlay/sidebar/viewer/modal
@@ -529,35 +543,6 @@ function setupEventListeners() {
     }
     // NUOVA ARCHITETTURA MOBILE: Setup overlay sidebar (esiste già nel DOM, gestito con hidden)
     setupSidebarOverlay();
-    
-    // NUOVA ARCHITETTURA MOBILE: Setup sidebar-toggle mobile (dentro .mHeader)
-    // Il sidebar-toggle desktop è già gestito sopra, qui aggiungiamo quello mobile
-    const sidebarToggleMobile = document.querySelector('.mHeader #sidebar-toggle');
-    if (sidebarToggleMobile) {
-        debugLog('SIDEBAR MOBILE: Pulsante hamburger trovato in .mHeader', 'info', 'SIDEBAR');
-        
-        // Se è lo stesso elemento del desktop, non aggiungere listener duplicati
-        if (sidebarToggleMobile !== sidebarToggle) {
-            sidebarToggleMobile.addEventListener('pointerup', (e) => {
-                debugLog('SIDEBAR MOBILE: pointerup rilevato sul pulsante mobile', 'info', 'SIDEBAR');
-                e.stopPropagation();
-                e.preventDefault();
-                toggleSidebar();
-            });
-            
-            // Fallback con click
-            sidebarToggleMobile.addEventListener('click', (e) => {
-                debugLog('SIDEBAR MOBILE: click rilevato sul pulsante mobile (fallback)', 'info', 'SIDEBAR');
-                e.stopPropagation();
-                e.preventDefault();
-                toggleSidebar();
-            });
-        } else {
-            debugLog('SIDEBAR MOBILE: Pulsante condiviso con desktop, listener già attaccati', 'info', 'SIDEBAR');
-        }
-    } else {
-        debugLog('SIDEBAR MOBILE: Pulsante hamburger NON trovato in .mHeader', 'warn', 'SIDEBAR');
-    }
     
     // NUOVA ARCHITETTURA MOBILE: Setup new-chat-btn mobile
     const newChatBtnMobile = document.getElementById('new-chat-btn-mobile');
