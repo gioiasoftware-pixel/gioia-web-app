@@ -2651,14 +2651,12 @@ function renderViewerTable(rows) {
             <td>${escapeHtml(row.supplier || row.Fornitore || row.fornitore || '')}</td>
             <td style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
                 ${(row.critical || row['Scorta critica'] || false) ? '<span class="critical-badge">Critica</span>' : ''}
-                ${isFullscreen ? `
                 <button class="viewer-chart-btn" data-wine-name="${wineNameRaw.replace(/"/g, '&quot;')}" title="Visualizza grafico movimenti" type="button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M7 12L10 9L14 13L21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                 </button>
-                ` : ''}
             </td>
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell" style="text-align: center;">
@@ -2744,18 +2742,53 @@ function renderViewerTable(rows) {
     // Setup click su pulsanti grafico - Usa event delegation per gestire pulsanti creati dinamicamente
     // Rimuovi listener precedenti se esistono
     const viewerPanel = document.getElementById('viewer-panel');
-    if (viewerPanel) {
+    const tableBody = document.getElementById('viewer-table-body');
+    
+    // Usa tableBody come container per event delegation (più specifico)
+    const container = tableBody || viewerPanel;
+    
+    if (container) {
         // Rimuovi listener precedenti se esistono (per evitare duplicati)
-        const oldHandler = viewerPanel._chartBtnHandler;
+        const oldHandler = container._chartBtnHandler;
         if (oldHandler) {
-            viewerPanel.removeEventListener('pointerup', oldHandler);
-            viewerPanel.removeEventListener('click', oldHandler);
+            container.removeEventListener('pointerup', oldHandler);
+            container.removeEventListener('click', oldHandler);
         }
         
         // Crea nuovo handler con event delegation
         const chartBtnHandler = (e) => {
+            // Verifica se il click è su un pulsante grafico o su un elemento dentro di esso (come SVG)
             const btn = e.target.closest('.viewer-chart-btn');
-            if (!btn) return;
+            if (!btn) {
+                // Se non è un pulsante, verifica se è un SVG dentro un pulsante
+                const svg = e.target.closest('svg');
+                if (svg) {
+                    const parentBtn = svg.closest('.viewer-chart-btn');
+                    if (parentBtn) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        let wineName = parentBtn.dataset.wineName;
+                        
+                        if (!wineName) {
+                            const row = parentBtn.closest('.viewer-wine-row') || parentBtn.closest('.viewer-wine-card-mobile');
+                            if (row) {
+                                const nameCell = row.querySelector('.viewer-wine-name-cell') || row.querySelector('.viewer-wine-card-mobile-title');
+                                if (nameCell) {
+                                    wineName = nameCell.textContent.trim();
+                                }
+                            }
+                        }
+                        
+                        if (wineName) {
+                            console.log('[VIEWER] Click su pulsante grafico (via SVG) per vino:', wineName);
+                            showMovementsChart(wineName);
+                        }
+                        return;
+                    }
+                }
+                return;
+            }
             
             e.stopPropagation();
             e.preventDefault();
@@ -2784,11 +2817,17 @@ function renderViewerTable(rows) {
         };
         
         // Salva handler per poterlo rimuovere in futuro
-        viewerPanel._chartBtnHandler = chartBtnHandler;
+        container._chartBtnHandler = chartBtnHandler;
         
         // Attacca listener con event delegation
-        viewerPanel.addEventListener('pointerup', chartBtnHandler);
-        viewerPanel.addEventListener('click', chartBtnHandler);
+        container.addEventListener('pointerup', chartBtnHandler, true); // Use capture phase
+        container.addEventListener('click', chartBtnHandler, true); // Use capture phase
+        
+        // Debug: verifica quanti pulsanti sono stati trovati
+        const chartButtons = container.querySelectorAll('.viewer-chart-btn');
+        console.log('[VIEWER] Pulsanti grafico trovati dopo render:', chartButtons.length);
+    } else {
+        console.error('[VIEWER] Container non trovato per event delegation (tableBody o viewerPanel)');
     }
     
     // Setup click su pulsanti modifica - usa pointer events per mobile
