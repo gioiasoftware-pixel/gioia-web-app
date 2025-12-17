@@ -84,7 +84,7 @@
     <!-- Chat Page (hidden initially) -->
     <div id="chat-page" class="chat-page hidden">
         <!-- MOBILE LAYOUT: Wrapper .mApp per architettura mobile pulita -->
-        <div class="mApp mobile-only">
+        <div id="mobile-layout" class="mApp layout-container" style="display: none;">
             <!-- Header Mobile - Solo logo e hamburger -->
             <header class="mHeader">
                 <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn">
@@ -157,7 +157,7 @@
         </div>
 
         <!-- DESKTOP LAYOUT: Mantiene struttura esistente per compatibilità -->
-        <div class="desktop-only">
+        <div id="desktop-layout" class="desktop-layout layout-container" style="display: none;">
             <!-- Sidebar Chat List (desktop: collapsed) -->
             <aside id="chat-sidebar" class="chat-sidebar">
                 <div class="chat-sidebar-header">

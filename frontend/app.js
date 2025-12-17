@@ -35,6 +35,94 @@ let currentConversationId = null;
 let conversations = [];
 
 // ============================================
+// LAYOUT MANAGER - Gestione separata layout desktop/mobile
+// ============================================
+
+/**
+ * Rileva se siamo su mobile o desktop basandosi sulla larghezza dello schermo
+ * @returns {boolean} true se mobile (<= 768px), false se desktop
+ */
+function isMobileView() {
+    return window.innerWidth <= 768;
+}
+
+/**
+ * Mostra il layout corretto in base alla dimensione dello schermo
+ * Nasconde completamente l'altro layout per evitare conflitti CSS
+ */
+function switchLayout() {
+    const mobileLayout = document.getElementById('mobile-layout');
+    const desktopLayout = document.getElementById('desktop-layout');
+    const isMobile = isMobileView();
+    
+    if (!mobileLayout || !desktopLayout) {
+        console.warn('Layout containers non trovati');
+        return;
+    }
+    
+    if (isMobile) {
+        // Mostra mobile, nascondi desktop
+        mobileLayout.style.display = 'grid'; // mApp usa grid
+        desktopLayout.style.display = 'none';
+    } else {
+        // Mostra desktop, nascondi mobile
+        mobileLayout.style.display = 'none';
+        desktopLayout.style.display = 'flex'; // desktop-layout usa flex
+    }
+    
+    // Log per debug (rimuovere in produzione se necessario)
+    console.log(`Layout switched to: ${isMobile ? 'MOBILE' : 'DESKTOP'} (width: ${window.innerWidth}px)`);
+}
+
+/**
+ * Inizializza il layout manager
+ * Chiama switchLayout all'avvio e al resize della finestra
+ */
+function initLayoutManager() {
+    // Assicurati che i layout esistano prima di procedere
+    const mobileLayout = document.getElementById('mobile-layout');
+    const desktopLayout = document.getElementById('desktop-layout');
+    
+    if (!mobileLayout || !desktopLayout) {
+        console.warn('Layout containers non trovati, retry dopo DOMContentLoaded');
+        // Retry dopo un breve delay se il DOM non è ancora pronto
+        setTimeout(() => {
+            if (document.getElementById('mobile-layout') && document.getElementById('desktop-layout')) {
+                switchLayout();
+            }
+        }, 100);
+        return;
+    }
+    
+    // Switch layout all'avvio
+    switchLayout();
+    
+    // Switch layout al resize (con debounce per performance)
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            switchLayout();
+            // Chiama anche la funzione esistente per gestire sidebar
+            if (typeof handleWindowResize === 'function') {
+                handleWindowResize();
+            }
+        }, 150); // Debounce di 150ms
+    });
+}
+
+/**
+ * Chiama switchLayout quando la chat page viene mostrata
+ * Utile dopo il login quando la pagina viene resa visibile
+ */
+function refreshLayoutOnShow() {
+    // Piccolo delay per assicurarsi che il DOM sia aggiornato
+    setTimeout(() => {
+        switchLayout();
+    }, 50);
+}
+
+// ============================================
 // UTILITY FUNCTIONS - Mobile Browser Support
 // ============================================
 
@@ -312,6 +400,9 @@ document.addEventListener("pointerup", (e) => {
 }, { capture: true });
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Inizializza il layout manager PRIMA di tutto
+    initLayoutManager();
+    
     // Check if user is already logged in
     authToken = localStorage.getItem('auth_token');
     
@@ -683,6 +774,9 @@ function showAuthPage() {
 function showChatPage() {
     document.getElementById('auth-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
+    
+    // CRITICO: Aggiorna il layout quando la pagina chat viene mostrata
+    refreshLayoutOnShow();
     
     // CRITICO: Attacca listener sidebar dopo che la pagina chat è visibile
     // Aspetta un frame per assicurarsi che il DOM sia renderizzato
