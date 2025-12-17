@@ -545,6 +545,71 @@ function setupEventListeners() {
             closeMovementsModal();
         }
     });
+    
+    // ============================================
+    // SOLUZIONE 1: EVENT DELEGATION su chat-messages-container
+    // ============================================
+    // Intercetta TUTTI gli eventi pointer sul container e determina quale elemento è stato toccato
+    const messagesContainer = document.getElementById('chat-messages');
+    if (messagesContainer) {
+        messagesContainer.addEventListener('pointerup', (e) => {
+            const target = e.target;
+            
+            // Trova quale elemento interattivo è stato toccato usando closest()
+            const bookmark = target.closest('.wine-card-bookmark');
+            const wineCard = target.closest('.wine-card[data-wine-id]');
+            const chatButton = target.closest('.chat-button');
+            
+            // Se è un bookmark, gestisci il click sul bookmark
+            if (bookmark) {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                const action = bookmark.dataset.action;
+                const wineId = bookmark.dataset.wineId;
+                const wineCardElement = bookmark.closest('.wine-card-wrapper')?.querySelector('.wine-card[data-wine-id]') 
+                    || bookmark.closest('.wine-card[data-wine-id]');
+                
+                if (wineCardElement && wineId) {
+                    debugLog(`EVENT DELEGATION: Click su bookmark ${action} per wine ${wineId}`, 'info', 'WINE_CARD');
+                    
+                    if (action === 'edit') {
+                        handleWineCardEdit(wineCardElement, wineId);
+                    } else if (action === 'inventory') {
+                        handleWineCardShowInInventory(wineCardElement, wineId);
+                    }
+                }
+                return;
+            }
+            
+            // Se è una wine card (ma non un bookmark), gestisci il click sulla card
+            // Nota: al momento non c'è un'azione specifica per click sulla card stessa,
+            // ma possiamo aggiungerla in futuro se necessario
+            if (wineCard && !bookmark) {
+                // Per ora non facciamo nulla, ma possiamo aggiungere logica qui
+                // Ad esempio: espandere la card, mostrare dettagli, etc.
+                debugLog(`EVENT DELEGATION: Click su wine card ${wineCard.dataset.wineId}`, 'info', 'WINE_CARD');
+                // Non fermiamo la propagazione qui, così lo scroll continua a funzionare
+                // Se in futuro vogliamo un'azione sul click della card, aggiungiamola qui
+                return;
+            }
+            
+            // Se è un chat-button, lascia che gestisca normalmente (già gestito altrove)
+            if (chatButton) {
+                // I chat-button hanno già i loro listener, ma assicuriamoci che funzionino
+                debugLog(`EVENT DELEGATION: Click su chat-button`, 'info', 'CHAT_BUTTON');
+                // Non fermiamo la propagazione, così il listener esistente può gestirlo
+                return;
+            }
+            
+            // Se nessuno dei sopra, lascia propagare normalmente (scroll, etc)
+            // Non facciamo nulla, così lo scroll continua a funzionare
+        }, { passive: false, capture: true }); // capture: true per intercettare PRIMA che arrivi ai figli
+        
+        debugLog('EVENT DELEGATION: Listener aggiunto su chat-messages-container', 'info', 'EVENT_DELEGATION');
+    } else {
+        debugLog('EVENT DELEGATION: ERRORE - chat-messages-container non trovato!', 'error', 'EVENT_DELEGATION');
+    }
 }
 
 function switchToSignup() {
@@ -998,14 +1063,21 @@ function setupWineCardBookmarks(messageEl) {
     inventoryBookmark.dataset.action = 'inventory';
     inventoryBookmark.dataset.wineId = wineId;
     
+    // NOTA: Gli event listeners sui bookmarks sono ora gestiti tramite EVENT DELEGATION
+    // sul chat-messages-container (Soluzione 1). Manteniamo questi come fallback,
+    // ma l'event delegation dovrebbe intercettare prima.
+    // 
     // Aggiungi event listeners - usa pointer events per mobile
+    // Questi listener funzioneranno come fallback se l'event delegation non funziona
     editBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
+        // L'event delegation dovrebbe gestire questo, ma manteniamo come fallback
         handleWineCardEdit(wineCard, wineId);
     });
     
     inventoryBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
+        // L'event delegation dovrebbe gestire questo, ma manteniamo come fallback
         handleWineCardShowInInventory(wineCard, wineId);
     });
     
