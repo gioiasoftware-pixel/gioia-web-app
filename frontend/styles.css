@@ -3216,6 +3216,23 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 
     .chat-messages-container {
         padding: 16px;
+        /* Su mobile: assicura che i figli ricevano gli eventi */
+        pointer-events: auto;
+    }
+    
+    /* Su mobile: tutti i figli devono ricevere eventi */
+    .chat-messages-container > * {
+        pointer-events: auto;
+    }
+    
+    /* Wine cards su mobile: sempre cliccabili */
+    .wine-card-wrapper,
+    .wine-card,
+    .wine-card-body {
+        pointer-events: auto !important;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 2; /* Sopra il container */
     }
 
     .chat-input-container {
