@@ -3183,66 +3183,40 @@ function toggleSidebar() {
     
     if (!sidebar) {
         console.error('[SIDEBAR] ERRORE: Sidebar non trovata!');
+        // Mostra alert visibile per debug
+        alert('ERRORE: Sidebar non trovata!');
         return;
     }
     
-    console.log('[SIDEBAR] Sidebar elemento trovato:', sidebar);
-    
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
-    console.log('[SIDEBAR] isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
-    console.log('[SIDEBAR] Sidebar classes PRIMA:', sidebar.className);
-    console.log('[SIDEBAR] Sidebar computed style PRIMA:');
-    const computedBefore = window.getComputedStyle(sidebar);
-    console.log('  - position:', computedBefore.position);
-    console.log('  - transform:', computedBefore.transform);
-    console.log('  - width:', computedBefore.width);
-    console.log('  - left:', computedBefore.left);
-    console.log('  - z-index:', computedBefore.zIndex);
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
         const wasOpen = sidebar.classList.contains('open');
-        console.log('[SIDEBAR] Stato PRIMA - era aperta:', wasOpen);
         
         sidebar.classList.toggle('open');
         
         const isNowOpen = sidebar.classList.contains('open');
-        console.log('[SIDEBAR] Stato DOPO - ora è aperta:', isNowOpen);
-        console.log('[SIDEBAR] Sidebar classes DOPO:', sidebar.className);
+        
+        // DEBUG VISIVO: mostra alert temporaneo per vedere se funziona
+        // RIMUOVI QUESTO DOPO IL TEST
+        setTimeout(() => {
+            const computedTransform = window.getComputedStyle(sidebar).transform;
+            const transformValue = computedTransform === 'none' ? 'translateX(0)' : computedTransform;
+            alert(`Sidebar toggle:\nEra aperta: ${wasOpen}\nOra è aperta: ${isNowOpen}\nTransform: ${transformValue}\nClasses: ${sidebar.className}`);
+        }, 100);
         
         // Forza il reflow per assicurare che il CSS venga applicato
         sidebar.offsetHeight;
-        
-        // Verifica immediatamente dopo
-        const computedAfter = window.getComputedStyle(sidebar);
-        console.log('[SIDEBAR] Sidebar computed style DOPO:');
-        console.log('  - position:', computedAfter.position);
-        console.log('  - transform:', computedAfter.transform);
-        console.log('  - width:', computedAfter.width);
-        console.log('  - left:', computedAfter.left);
-        console.log('  - z-index:', computedAfter.zIndex);
-        
-        // Verifica dopo un breve delay per vedere se l'animazione parte
-        setTimeout(() => {
-            const computedDelayed = window.getComputedStyle(sidebar);
-            console.log('[SIDEBAR] Sidebar computed style DOPO 100ms:');
-            console.log('  - transform:', computedDelayed.transform);
-            console.log('  - visibility:', computedDelayed.visibility);
-            console.log('  - display:', computedDelayed.display);
-        }, 100);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
             if (isNowOpen) {
                 overlay.classList.add('active');
-                console.log('[SIDEBAR] Overlay attivato');
             } else {
                 overlay.classList.remove('active');
-                console.log('[SIDEBAR] Overlay disattivato');
             }
-        } else {
-            console.warn('[SIDEBAR] Overlay non trovato!');
         }
     } else {
         // Su desktop: usa classe 'collapsed' per collassare/espandere
@@ -3250,10 +3224,7 @@ function toggleSidebar() {
         // Salva stato nel localStorage solo su desktop
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
-        console.log('[SIDEBAR] Desktop - sidebar collapsed:', isCollapsed);
     }
-    
-    console.log('[SIDEBAR] ========== Fine toggleSidebar ==========');
 }
 
 // Carica stato sidebar al caricamento pagina (solo desktop)
