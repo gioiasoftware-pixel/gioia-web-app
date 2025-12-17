@@ -3216,23 +3216,46 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 
     .chat-messages-container {
         padding: 16px;
-        /* Su mobile: assicura che i figli ricevano gli eventi */
-        pointer-events: auto;
+        /* Su mobile: il container non deve intercettare eventi sui figli */
     }
     
-    /* Su mobile: tutti i figli devono ricevere eventi */
+    /* Su mobile: TUTTI i figli devono ricevere eventi con z-index */
     .chat-messages-container > * {
-        pointer-events: auto;
+        pointer-events: auto !important;
+        position: relative;
+        z-index: 1;
     }
     
-    /* Wine cards su mobile: sempre cliccabili */
-    .wine-card-wrapper,
-    .wine-card,
+    /* Wine cards su mobile: sempre cliccabili con z-index più alto */
+    .wine-card-wrapper {
+        pointer-events: auto !important;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 20 !important; /* Molto sopra altri elementi */
+    }
+    
+    .wine-card {
+        pointer-events: auto !important;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 21 !important; /* Sopra il wrapper */
+    }
+    
     .wine-card-body {
         pointer-events: auto !important;
         touch-action: manipulation;
         position: relative;
-        z-index: 2; /* Sopra il container */
+        z-index: 22 !important; /* Sopra la card */
+    }
+    
+    /* Assicura che elementi interattivi nelle wine cards siano cliccabili */
+    .wine-card button,
+    .wine-card .wine-card-bookmark,
+    .wine-card .wine-card-edit-btn {
+        pointer-events: auto !important;
+        touch-action: manipulation;
+        position: relative;
+        z-index: 23 !important;
     }
 
     .chat-input-container {
@@ -3252,6 +3275,14 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         min-height: 44px;
         z-index: 1001;
         position: relative;
+        /* IMPORTANTE: solo quando visibile può intercettare */
+        pointer-events: auto;
+    }
+    
+    /* Quando nascosto su mobile: non deve intercettare */
+    .viewer-toggle-btn.hidden {
+        pointer-events: none;
+        display: none;
     }
     
     .viewer-close-btn {
