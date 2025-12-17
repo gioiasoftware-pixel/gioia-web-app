@@ -731,15 +731,26 @@ function attachSidebarToggleListeners() {
     }
     
     console.log('[SIDEBAR] attachSidebarToggleListeners: Pulsante trovato, attacco listener');
+    console.log('[SIDEBAR] Pulsante details:', {
+        id: sidebarToggle.id,
+        tagName: sidebarToggle.tagName,
+        type: sidebarToggle.type,
+        className: sidebarToggle.className,
+        rect: sidebarToggle.getBoundingClientRect(),
+        parentElement: sidebarToggle.parentElement?.tagName + '#' + (sidebarToggle.parentElement?.id || 'no-id')
+    });
     
-    // Listener pointerup principale
-    sidebarToggle.addEventListener('pointerup', function(e) {
+    // Listener pointerup principale - CON CAPTURE per essere sicuri di catturarlo
+    const pointerupHandler = function(e) {
         console.log('[SIDEBAR] ========== pointerup EVENTO CATTURATO ==========');
         console.log('[SIDEBAR] Evento:', {
             type: e.type,
             clientX: e.clientX,
             clientY: e.clientY,
-            target: e.target.tagName + '#' + (e.target.id || 'no-id')
+            target: e.target.tagName + '#' + (e.target.id || 'no-id'),
+            currentTarget: e.currentTarget.tagName + '#' + (e.currentTarget.id || 'no-id'),
+            button: e.button,
+            pointerType: e.pointerType
         });
         
         const sidebar = document.getElementById('chatSidebar');
@@ -751,23 +762,50 @@ function attachSidebarToggleListeners() {
         e.preventDefault();
         
         try {
+            console.log('[SIDEBAR] Chiamando toggleSidebar()...');
             toggleSidebar();
         } catch (error) {
             console.error('[SIDEBAR] ERRORE:', error);
         }
-    }, { passive: false });
+    };
     
-    // Fallback click
-    sidebarToggle.addEventListener('click', function(e) {
+    sidebarToggle.addEventListener('pointerup', pointerupHandler, { passive: false, capture: true });
+    console.log('[SIDEBAR] Listener pointerup ATTACCATO (capture: true)');
+    
+    // Fallback click - ANCHE CON CAPTURE
+    const clickHandler = function(e) {
         console.log('[SIDEBAR] ========== click EVENTO CATTURATO (fallback) ==========');
         e.stopPropagation();
         e.preventDefault();
         toggleSidebar();
-    });
+    };
+    
+    sidebarToggle.addEventListener('click', clickHandler, { passive: false, capture: true });
+    console.log('[SIDEBAR] Listener click ATTACCATO (capture: true)');
+    
+    // Fallback touchend per Safari iOS
+    const touchendHandler = function(e) {
+        console.log('[SIDEBAR] ========== touchend EVENTO CATTURATO (Safari) ==========');
+        e.stopPropagation();
+        e.preventDefault();
+        toggleSidebar();
+    };
+    
+    sidebarToggle.addEventListener('touchend', touchendHandler, { passive: false, capture: true });
+    console.log('[SIDEBAR] Listener touchend ATTACCATO (capture: true)');
     
     // Marca come attaccato
     sidebarToggle.dataset.listenerAttached = 'true';
-    console.log('[SIDEBAR] Listener attaccati con successo!');
+    console.log('[SIDEBAR] ✅ TUTTI I LISTENER ATTACCATI CON SUCCESSO!');
+    
+    // Test immediato: verifica che il pulsante sia cliccabile
+    const testRect = sidebarToggle.getBoundingClientRect();
+    console.log('[SIDEBAR] Test posizione pulsante:', {
+        visible: testRect.width > 0 && testRect.height > 0,
+        inViewport: testRect.top >= 0 && testRect.left >= 0 && testRect.bottom <= window.innerHeight && testRect.right <= window.innerWidth,
+        pointerEvents: window.getComputedStyle(sidebarToggle).pointerEvents,
+        zIndex: window.getComputedStyle(sidebarToggle).zIndex
+    });
 }
 
 // ============================================

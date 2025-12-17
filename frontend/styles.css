@@ -795,26 +795,38 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
        SIDEBAR MOBILE (.mSidebar) - Soluzione blindata con transform
        ============================================ */
     .mSidebar {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
-        width: min(80vw, 400px); /* 80% schermo, max 400px */
-        background: var(--color-white);
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 80vw; /* 80% schermo */
+        max-width: 400px; /* Max 400px per fallback browser che non supportano min() */
+        background: var(--color-white) !important;
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
-        transform: translateX(-110%); /* Fuori schermo quando chiusa */
+        transform: translateX(-110%) !important; /* Fuori schermo quando chiusa */
         transition: transform 0.22s ease;
-        z-index: 9999; /* Sopra overlay e tutto */
+        z-index: 9999 !important; /* Sopra overlay e tutto */
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         touch-action: pan-y;
-        display: flex;
+        display: flex !important;
         flex-direction: column;
+        /* Assicura che sia sempre nel viewport */
+        visibility: visible;
+        opacity: 1;
     }
     
-    /* Quando aperta: slide dentro */
+    /* Quando aperta: slide dentro - CRITICO: !important per sovrascrivere qualsiasi altro CSS */
     .mSidebar.is-open {
-        transform: translateX(0);
+        transform: translateX(0) !important;
+        left: 0 !important;
+    }
+    
+    /* Fallback per browser che non supportano min() - usa max-width */
+    @supports not (width: min(80vw, 400px)) {
+        .mSidebar {
+            width: 80vw;
+        }
     }
     
     /* Mantieni compatibilità con hidden per altri elementi */
