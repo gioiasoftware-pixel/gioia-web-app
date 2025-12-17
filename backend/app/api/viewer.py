@@ -102,6 +102,7 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
             # Recupera tutti i vini
             query_wines = sql_text(f"""
                 SELECT 
+                    id,
                     name,
                     producer,
                     vintage,
@@ -123,6 +124,7 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
             rows = []
             for wine in wines_rows:
                 rows.append({
+                    "id": wine.id,  # ID necessario per modifiche
                     "name": wine.name or "-",
                     "winery": wine.producer or "-",
                     "vintage": wine.vintage,

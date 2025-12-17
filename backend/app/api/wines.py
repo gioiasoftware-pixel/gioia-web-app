@@ -106,6 +106,11 @@ async def update_wine(
         # Prepara dati da aggiornare (solo campi non None)
         update_data = wine_update.dict(exclude_unset=True)
         
+        # Escludi 'name' dall'aggiornamento (non modificabile)
+        if 'name' in update_data:
+            logger.warning(f"Campo 'name' escluso dall'aggiornamento per wine_id={wine_id} (non modificabile)")
+            del update_data['name']
+        
         if not update_data:
             return {"message": "Nessun dato da aggiornare", "wine_id": wine_id}
         
@@ -120,22 +125,60 @@ async def update_wine(
         errors = []
         
         for field, value in update_data.items():
-            # Converti None in stringa vuota per il processor
-            value_str = str(value) if value is not None else ""
-            
-            result = await processor_client.update_wine_field(
-                telegram_id=telegram_id,
-                business_name=business_name,
-                wine_id=wine_id,
-                field=field,
-                value=value_str
-            )
-            
-            if result.get("status") == "success" or result.get("success"):
-                updated_fields.append(field)
+            # Gestione speciale per quantity: usa endpoint con movimento
+            if field == 'quantity':
+                try:
+                    # Valida che quantity sia un intero
+                    quantity_int = int(value) if value is not None else None
+                    if quantity_int is None or quantity_int < 0:
+                        errors.append(f"{field}: Quantità deve essere un intero >= 0")
+                        continue
+                    
+                    result = await processor_client.update_wine_field_with_movement(
+                        telegram_id=telegram_id,
+                        business_name=business_name,
+                        wine_id=wine_id,
+                        new_quantity=quantity_int
+                    )
+                    
+                    if result.get("status") == "success" or result.get("success"):
+                        updated_fields.append(field)
+                        if result.get("movement_created"):
+                            logger.info(
+                                f"Quantità aggiornata con movimento per wine_id={wine_id}: "
+                                f"{result.get('quantity_before')} → {result.get('quantity_after')} "
+                                f"({result.get('movement_type')})"
+                            )
+                    else:
+                        error_msg = result.get("error", "Errore sconosciuto")
+                        errors.append(f"{field}: {error_msg}")
+                except ValueError:
+                    errors.append(f"{field}: Valore non valido (deve essere un numero intero)")
+                except Exception as e:
+                    logger.error(f"Errore aggiornamento quantity per wine_id={wine_id}: {e}", exc_info=True)
+                    errors.append(f"{field}: {str(e)}")
             else:
-                error_msg = result.get("error", "Errore sconosciuto")
-                errors.append(f"{field}: {error_msg}")
+                # Altri campi: usa endpoint normale
+                try:
+                    # Converti None in stringa vuota per il processor
+                    value_str = str(value) if value is not None else ""
+                    
+                    result = await processor_client.update_wine_field(
+                        telegram_id=telegram_id,
+                        business_name=business_name,
+                        wine_id=wine_id,
+                        field=field,
+                        value=value_str
+                    )
+                    
+                    if result.get("status") == "success" or result.get("success"):
+                        updated_fields.append(field)
+                    else:
+                        error_msg = result.get("error", "Errore sconosciuto")
+                        errors.append(f"{field}: {error_msg}")
+                except Exception as e:
+                    logger.error(f"Errore aggiornamento campo {field} per wine_id={wine_id}: {e}", exc_info=True)
+                    errors.append(f"{field}: {str(e)}")
         
         if errors:
             logger.warning(f"Alcuni campi non sono stati aggiornati per vino {wine_id}: {errors}")

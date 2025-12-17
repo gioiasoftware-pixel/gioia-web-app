@@ -1039,6 +1039,121 @@ body {
     #viewer-movements-chart-container .error-state {
         color: var(--color-granaccia);
     }
+
+    /* Modal modifica vino viewer */
+    .viewer-edit-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10002;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .viewer-edit-modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+    }
+
+    .viewer-edit-modal-content {
+        position: relative;
+        background-color: var(--color-white);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        z-index: 10003;
+    }
+
+    .viewer-edit-modal-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .viewer-edit-modal-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        margin: 0;
+    }
+
+    .viewer-edit-modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+        transition: color 0.2s;
+    }
+
+    .viewer-edit-modal-close:hover {
+        color: var(--color-text-primary);
+    }
+
+    .viewer-edit-modal-body {
+        padding: 24px 32px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .viewer-edit-form .wine-card-edit-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+
+    .viewer-edit-form .wine-card-edit-field.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .viewer-edit-form .wine-card-edit-input:disabled,
+    .viewer-edit-form .wine-card-edit-input[readonly] {
+        background-color: var(--color-bg-secondary);
+        color: var(--color-text-secondary);
+        cursor: not-allowed;
+    }
+
+    /* Pulsante modifica nella tabella viewer */
+    .viewer-edit-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+        transition: color 0.2s;
+        border-radius: 4px;
+    }
+
+    .viewer-edit-btn:hover {
+        color: var(--color-granaccia);
+        background-color: var(--color-bg-secondary);
+    }
+
+    .viewer-chart-action-cell {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
 }
 
 
@@ -2896,6 +3011,121 @@ body {
 
     #viewer-movements-chart-container .error-state {
         color: var(--color-granaccia);
+    }
+
+    /* Modal modifica vino viewer */
+    .viewer-edit-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10002;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .viewer-edit-modal-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        cursor: pointer;
+    }
+
+    .viewer-edit-modal-content {
+        position: relative;
+        background-color: var(--color-white);
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        z-index: 10003;
+    }
+
+    .viewer-edit-modal-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--color-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .viewer-edit-modal-header h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--color-text-primary);
+        margin: 0;
+    }
+
+    .viewer-edit-modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+        transition: color 0.2s;
+    }
+
+    .viewer-edit-modal-close:hover {
+        color: var(--color-text-primary);
+    }
+
+    .viewer-edit-modal-body {
+        padding: 24px 32px;
+        overflow-y: auto;
+        flex: 1;
+    }
+
+    .viewer-edit-form .wine-card-edit-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 16px;
+    }
+
+    .viewer-edit-form .wine-card-edit-field.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .viewer-edit-form .wine-card-edit-input:disabled,
+    .viewer-edit-form .wine-card-edit-input[readonly] {
+        background-color: var(--color-bg-secondary);
+        color: var(--color-text-secondary);
+        cursor: not-allowed;
+    }
+
+    /* Pulsante modifica nella tabella viewer */
+    .viewer-edit-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-secondary);
+        transition: color 0.2s;
+        border-radius: 4px;
+    }
+
+    .viewer-edit-btn:hover {
+        color: var(--color-granaccia);
+        background-color: var(--color-bg-secondary);
+    }
+
+    .viewer-chart-action-cell {
+        display: flex;
+        gap: 8px;
+        align-items: center;
     }
 }
 

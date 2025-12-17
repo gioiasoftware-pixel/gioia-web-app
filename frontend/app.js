@@ -955,9 +955,15 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
     const formData = new FormData(editForm);
     const data = {};
     
-    // Raccogli tutti i valori dal form
+    // Raccogli tutti i valori dal form (escludi 'name' che non è modificabile)
     editForm.querySelectorAll('input, textarea').forEach(input => {
         const name = input.name;
+        
+        // Salta campo 'name' - non modificabile
+        if (name === 'name') {
+            return;
+        }
+        
         const value = input.value.trim();
         
         if (name === 'quantity') {
@@ -1000,6 +1006,205 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
         addChatMessage('ai', `Errore: ${error.message}`, false, true);
     }
 }
+
+async function handleViewerWineEdit(wineId) {
+    if (!wineId || !authToken) {
+        console.error('[VIEWER] wineId o authToken mancante');
+        return;
+    }
+    
+    // Carica dati vino
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines/${wineId}`, {
+            headers: {
+                'Authorization': `Bearer ${authToken}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error('Errore caricamento dati vino');
+        }
+        
+        const wine = await response.json();
+        
+        // Crea modal per modifica
+        const modal = document.createElement('div');
+        modal.className = 'viewer-edit-modal';
+        modal.id = 'viewer-edit-modal';
+        modal.innerHTML = `
+            <div class="viewer-edit-modal-overlay" onclick="closeViewerEditModal()"></div>
+            <div class="viewer-edit-modal-content">
+                <div class="viewer-edit-modal-header">
+                    <h2>Modifica Vino: ${escapeHtml(wine.name || '')}</h2>
+                    <button class="viewer-edit-modal-close" onclick="closeViewerEditModal()" type="button">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="viewer-edit-modal-body">
+                    <form class="viewer-edit-form" id="viewer-edit-form">
+                        <div class="wine-card-edit-form-grid">
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Nome</label>
+                                <input type="text" class="wine-card-edit-input" name="name" value="${escapeHtml(String(wine.name || ''))}" readonly disabled title="Nome non modificabile">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Produttore</label>
+                                <input type="text" class="wine-card-edit-input" name="producer" value="${escapeHtml(String(wine.producer || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Quantità</label>
+                                <input type="number" class="wine-card-edit-input" name="quantity" value="${wine.quantity !== null && wine.quantity !== undefined ? wine.quantity : ''}" min="0">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Prezzo Vendita (€)</label>
+                                <input type="number" class="wine-card-edit-input" name="selling_price" value="${wine.selling_price !== null && wine.selling_price !== undefined ? wine.selling_price : ''}" step="0.01" min="0">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Prezzo Acquisto (€)</label>
+                                <input type="number" class="wine-card-edit-input" name="cost_price" value="${wine.cost_price !== null && wine.cost_price !== undefined ? wine.cost_price : ''}" step="0.01" min="0">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Annata</label>
+                                <input type="text" class="wine-card-edit-input" name="vintage" value="${escapeHtml(String(wine.vintage || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Regione</label>
+                                <input type="text" class="wine-card-edit-input" name="region" value="${escapeHtml(String(wine.region || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Paese</label>
+                                <input type="text" class="wine-card-edit-input" name="country" value="${escapeHtml(String(wine.country || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Tipo</label>
+                                <input type="text" class="wine-card-edit-input" name="wine_type" value="${escapeHtml(String(wine.wine_type || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Fornitore</label>
+                                <input type="text" class="wine-card-edit-input" name="supplier" value="${escapeHtml(String(wine.supplier || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Vitigno</label>
+                                <input type="text" class="wine-card-edit-input" name="grape_variety" value="${escapeHtml(String(wine.grape_variety || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Classificazione</label>
+                                <input type="text" class="wine-card-edit-input" name="classification" value="${escapeHtml(String(wine.classification || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field">
+                                <label class="wine-card-edit-label">Gradazione (% vol)</label>
+                                <input type="text" class="wine-card-edit-input" name="alcohol_content" value="${escapeHtml(String(wine.alcohol_content || ''))}">
+                            </div>
+                            <div class="wine-card-edit-field full-width">
+                                <label class="wine-card-edit-label">Descrizione</label>
+                                <textarea class="wine-card-edit-textarea" name="description">${escapeHtml(String(wine.description || ''))}</textarea>
+                            </div>
+                            <div class="wine-card-edit-field full-width">
+                                <label class="wine-card-edit-label">Note</label>
+                                <textarea class="wine-card-edit-textarea" name="notes">${escapeHtml(String(wine.notes || ''))}</textarea>
+                            </div>
+                        </div>
+                        <div class="wine-card-edit-actions">
+                            <button class="wine-card-edit-btn cancel" type="button" onclick="closeViewerEditModal()">Annulla</button>
+                            <button class="wine-card-edit-btn save" type="button" onclick="saveViewerWineEdit(${wineId}, event)">Salva</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Chiudi modal con ESC
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeViewerEditModal();
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+        modal._escHandler = handleEsc;
+        
+    } catch (error) {
+        console.error('Errore caricamento dati vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
+}
+
+function closeViewerEditModal() {
+    const modal = document.getElementById('viewer-edit-modal');
+    if (modal) {
+        if (modal._escHandler) {
+            document.removeEventListener('keydown', modal._escHandler);
+        }
+        modal.remove();
+    }
+}
+
+async function saveViewerWineEdit(wineId, event) {
+    event.preventDefault();
+    const form = document.getElementById('viewer-edit-form');
+    if (!form) return;
+    
+    const data = {};
+    
+    // Raccogli tutti i valori dal form (escludi 'name')
+    form.querySelectorAll('input, textarea').forEach(input => {
+        const name = input.name;
+        
+        // Salta campo 'name' - non modificabile
+        if (name === 'name') {
+            return;
+        }
+        
+        const value = input.value.trim();
+        
+        if (name === 'quantity') {
+            data[name] = value === '' ? null : parseInt(value);
+        } else if (name === 'selling_price' || name === 'cost_price') {
+            data[name] = value === '' ? null : parseFloat(value);
+        } else {
+            data[name] = value === '' ? null : value;
+        }
+    });
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines/${wineId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore salvataggio' }));
+            throw new Error(errorData.detail || 'Errore salvataggio');
+        }
+        
+        const result = await response.json();
+        
+        // Chiudi modal
+        closeViewerEditModal();
+        
+        // Ricarica snapshot viewer
+        await loadViewerData();
+        
+        // Mostra messaggio successo
+        addChatMessage('ai', 'Vino aggiornato con successo!', false, false);
+        
+    } catch (error) {
+        console.error('Errore salvataggio vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
+}
+
+// Make functions available globally
+window.handleViewerWineEdit = handleViewerWineEdit;
+window.closeViewerEditModal = closeViewerEditModal;
+window.saveViewerWineEdit = saveViewerWineEdit;
 
 async function handleWineCardShowInInventory(wineCard, wineId) {
     // Apri il viewer se non è già aperto
@@ -1441,13 +1646,20 @@ function renderViewerTable(rows) {
             <td>${(row.critical || row['Scorta critica'] || false) ? '<span class="critical-badge">Critica</span>' : ''}</td>
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell">
-                <button class="viewer-chart-btn" data-wine-name="${wineName}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart('${wineName}');">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 10V4H15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="viewer-chart-btn" data-wine-name="${wineName}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart('${wineName}');">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M21 10V4H15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="viewer-edit-btn" data-wine-id="${row.id || ''}" data-wine-name="${wineName}" title="Modifica vino" type="button" onclick="event.stopPropagation(); handleViewerWineEdit(${row.id || 'null'});">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11.6667 3.33333L14.1667 5.83333M2.5 17.5L13.1583 6.84167C13.5 6.5 13.6667 6.33333 13.875 6.33333C14.0833 6.33333 14.25 6.5 14.5917 6.84167L17.5 9.75C17.8417 10.0917 18.0083 10.2583 18.0083 10.4667C18.0083 10.675 17.8417 10.8417 17.5 11.1833L6.84167 21.8417H2.5V17.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
             </td>
             ` : ''}
         </tr>

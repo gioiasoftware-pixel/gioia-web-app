@@ -234,6 +234,56 @@ class ProcessorClient:
             logger.error(f"[PROCESSOR_CLIENT] Errore update_wine_field: {e}", exc_info=True)
             return {"status": "error", "error": str(e)}
     
+    async def update_wine_field_with_movement(
+        self,
+        telegram_id: int,
+        business_name: str,
+        wine_id: int,
+        new_quantity: int
+    ) -> Dict[str, Any]:
+        """
+        Aggiorna campo quantity creando automaticamente un movimento nel log.
+        Mantiene il flusso di tracciabilità come se fosse fatto in chat.
+        """
+        logger.info(
+            f"[PROCESSOR_CLIENT] update_wine_field_with_movement: telegram_id={telegram_id}, "
+            f"wine_id={wine_id}, new_quantity={new_quantity}"
+        )
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=30.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.post(
+                    f"{self.base_url}/admin/update-wine-field-with-movement",
+                    data={
+                        "telegram_id": telegram_id,
+                        "business_name": business_name,
+                        "wine_id": wine_id,
+                        "field": "quantity",
+                        "new_value": str(new_quantity)
+                    }
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
+                    if result.get("status") == "success":
+                        logger.info(
+                            f"[PROCESSOR_CLIENT] update_wine_field_with_movement successo: "
+                            f"wine_id={wine_id}, movement_created={result.get('movement_created', False)}, "
+                            f"movement_type={result.get('movement_type', 'N/A')}"
+                        )
+                    return result
+        except aiohttp.ClientResponseError as e:
+            logger.error(
+                f"[PROCESSOR_CLIENT] Errore update_wine_field_with_movement: HTTP {e.status} - {e.message}"
+            )
+            return {"status": "error", "error": f"HTTP {e.status}: {e.message[:200]}"}
+        except Exception as e:
+            logger.error(
+                f"[PROCESSOR_CLIENT] Errore update_wine_field_with_movement: {e}",
+                exc_info=True
+            )
+            return {"status": "error", "error": str(e)}
+    
     async def delete_tables(self, telegram_id: int, business_name: str) -> Dict[str, Any]:
         """Elimina tabelle utente."""
         logger.info(f"[PROCESSOR_CLIENT] delete_tables: telegram_id={telegram_id}, business_name={business_name}")
