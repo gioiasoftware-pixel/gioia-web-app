@@ -871,67 +871,8 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                 }
                 
                 console.log('[CHAT] HTML parsato e inserito, nodi:', contentDiv.children.length);
-                
-                // ============================================
-                // SOLUZIONE 3: TOUCH HANDLER DIRETTO sulle Wine Cards
-                // ============================================
-                // Aggiungi listener pointerup direttamente sulle wine cards appena inserite
-                // Questo bypassa completamente la propagazione degli eventi
-                const wineCards = contentDiv.querySelectorAll('.wine-card[data-wine-id]');
-                wineCards.forEach(card => {
-                    const wineId = card.dataset.wineId;
-                    if (!wineId) return;
-                    
-                    debugLog(`SOLUZIONE 3: Aggiungo listener diretto su wine card ${wineId}`, 'info', 'WINE_CARD');
-                    
-                    // Listener diretto sulla card - intercetta TUTTI gli eventi pointer sulla card
-                    card.addEventListener('pointerup', (e) => {
-                        e.stopPropagation();
-                        e.preventDefault();
-                        
-                        debugLog(`SOLUZIONE 3: pointerup rilevato su wine card ${wineId}`, 'info', 'WINE_CARD');
-                        
-                        // Determina cosa è stato toccato
-                        const target = e.target;
-                        const bookmark = target.closest('.wine-card-bookmark');
-                        const cardBody = target.closest('.wine-card-body');
-                        const cardHeader = target.closest('.wine-card-header');
-                        
-                        if (bookmark) {
-                            // Click su bookmark
-                            const action = bookmark.dataset.action;
-                            debugLog(`SOLUZIONE 3: Click su bookmark ${action}`, 'info', 'WINE_CARD');
-                            
-                            if (action === 'edit') {
-                                handleWineCardEdit(card, wineId);
-                            } else if (action === 'inventory') {
-                                handleWineCardShowInInventory(card, wineId);
-                            }
-                        } else if (cardBody || cardHeader || target.closest('.wine-card')) {
-                            // Click sulla card stessa (non su bookmark)
-                            debugLog(`SOLUZIONE 3: Click su wine card body/header`, 'info', 'WINE_CARD');
-                            // Per ora non facciamo nulla, ma possiamo aggiungere logica qui se necessario
-                        }
-                    }, { passive: false });
-                    
-                    // Anche sui bookmarks direttamente (se esistono già nel DOM)
-                    const bookmarks = card.querySelectorAll('.wine-card-bookmark');
-                    bookmarks.forEach(bookmark => {
-                        bookmark.addEventListener('pointerup', (e) => {
-                            e.stopPropagation();
-                            e.preventDefault();
-                            
-                            const action = bookmark.dataset.action;
-                            debugLog(`SOLUZIONE 3: Click diretto su bookmark ${action}`, 'info', 'WINE_CARD');
-                            
-                            if (action === 'edit') {
-                                handleWineCardEdit(card, wineId);
-                            } else if (action === 'inventory') {
-                                handleWineCardShowInInventory(card, wineId);
-                            }
-                        }, { passive: false });
-                    });
-                });
+                // SOLUZIONE 2: Non serve aggiungere listener qui, gli elementi sono nel wrapper scroll
+                // e i bookmarks hanno già i loro listener in setupWineCardBookmarks()
                 
             } catch (error) {
                 console.error('[CHAT] Errore parsing HTML:', error);

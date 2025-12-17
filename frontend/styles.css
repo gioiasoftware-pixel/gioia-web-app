@@ -3227,38 +3227,29 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         max-width: 90%;
     }
 
+    /* SOLUZIONE 2: Container non scrollabile su mobile */
     .chat-messages-container {
+        /* Container NON scrollabile */
+        overflow: hidden;
+        padding: 0; /* Padding rimosso, gestito dal wrapper */
+    }
+    
+    /* Wrapper scroll su mobile */
+    .chat-messages-scroll-wrapper {
         padding: 16px;
-        /* Su mobile: il container non deve intercettare eventi sui figli */
+        /* Wrapper gestisce lo scroll */
+        overflow-y: auto;
+        touch-action: pan-y;
+        -webkit-overflow-scrolling: touch;
     }
     
-    /* Su mobile: TUTTI i figli devono ricevere eventi con z-index */
-    .chat-messages-container > * {
-        pointer-events: auto !important;
-        position: relative;
-        z-index: 1;
-    }
-    
-    /* Wine cards su mobile: sempre cliccabili con z-index più alto */
-    .wine-card-wrapper {
-        pointer-events: auto !important;
-        touch-action: manipulation;
-        position: relative;
-        z-index: 20 !important; /* Molto sopra altri elementi */
-    }
-    
-    .wine-card {
-        pointer-events: auto !important;
-        touch-action: manipulation;
-        position: relative;
-        z-index: 21 !important; /* Sopra il wrapper */
-    }
-    
+    /* Wine cards su mobile: sempre cliccabili, fuori dal contesto scroll */
+    .wine-card-wrapper,
+    .wine-card,
     .wine-card-body {
         pointer-events: auto !important;
         touch-action: manipulation;
         position: relative;
-        z-index: 22 !important; /* Sopra la card */
     }
     
     /* Assicura che elementi interattivi nelle wine cards siano cliccabili */
@@ -3267,8 +3258,6 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .wine-card .wine-card-edit-btn {
         pointer-events: auto !important;
         touch-action: manipulation;
-        position: relative;
-        z-index: 23 !important;
     }
 
     .chat-input-container {
