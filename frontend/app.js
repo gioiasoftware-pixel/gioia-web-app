@@ -785,7 +785,9 @@ async function handleChatSubmit(e) {
 }
 
 function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
+    // SOLUZIONE 2: Usa il wrapper scroll invece del container
     const messagesContainer = document.getElementById('chat-messages');
+    const scrollWrapper = document.getElementById('chat-messages-scroll-wrapper') || messagesContainer; // Fallback al container se wrapper non esiste
     const messageId = `msg-${Date.now()}-${Math.random()}`;
     const messageEl = document.createElement('div');
     messageEl.id = messageId;
@@ -987,8 +989,9 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         }
     }
 
-    messagesContainer.appendChild(messageEl);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    // SOLUZIONE 2: Inserisci nel wrapper scroll invece che direttamente nel container
+    scrollWrapper.appendChild(messageEl);
+    scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
 
     // Se è una card vino, aggiungi i segnalibri
     if (isHtml && role === 'ai') {

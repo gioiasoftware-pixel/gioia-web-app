@@ -1225,7 +1225,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     position: relative;
 }
 
+/* ============================================
+   SOLUZIONE 2: Wrapper Scroll Separato
+   ============================================ */
 .chat-messages-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    /* Container NON scrollabile - solo il wrapper interno scrolla */
+    overflow: hidden;
+}
+
+/* Wrapper interno che gestisce lo scroll */
+.chat-messages-scroll-wrapper {
     flex: 1;
     overflow-y: auto;
     padding: 24px;
