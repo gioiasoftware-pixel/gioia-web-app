@@ -884,7 +884,7 @@ async function handleWineCardEdit(wineCard, wineId) {
             <div class="wine-card-edit-form-grid">
                 <div class="wine-card-edit-field">
                     <label class="wine-card-edit-label">Nome</label>
-                    <input type="text" class="wine-card-edit-input" name="name" value="${escapeHtml(String(wineData.name))}" required>
+                    <input type="text" class="wine-card-edit-input" name="name" value="${escapeHtml(String(wineData.name))}" readonly disabled title="Nome non modificabile">
                 </div>
                 <div class="wine-card-edit-field">
                     <label class="wine-card-edit-label">Produttore</label>

@@ -1125,9 +1125,17 @@ body {
 
     .viewer-edit-form .wine-card-edit-input:disabled,
     .viewer-edit-form .wine-card-edit-input[readonly] {
-        background-color: var(--color-bg-secondary);
-        color: var(--color-text-secondary);
+        background-color: #e9ecef;
+        color: #6c757d;
         cursor: not-allowed;
+        opacity: 0.7;
+        border-color: #dee2e6;
+    }
+    
+    .viewer-edit-form .wine-card-edit-input:disabled:focus,
+    .viewer-edit-form .wine-card-edit-input[readonly]:focus {
+        border-color: #dee2e6;
+        box-shadow: none;
     }
 
     /* Pulsante modifica nella tabella viewer */
@@ -1822,6 +1830,22 @@ body {
 .wine-card-edit-textarea:focus {
     outline: none;
     border-color: var(--color-granaccia);
+}
+
+/* Stili per campi disabled/readonly (nome non modificabile) */
+.wine-card-edit-input:disabled,
+.wine-card-edit-input[readonly] {
+    background-color: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.7;
+    border-color: #dee2e6;
+}
+
+.wine-card-edit-input:disabled:focus,
+.wine-card-edit-input[readonly]:focus {
+    border-color: #dee2e6;
+    box-shadow: none;
 }
 
 .wine-card-edit-textarea {
@@ -3098,9 +3122,17 @@ body {
 
     .viewer-edit-form .wine-card-edit-input:disabled,
     .viewer-edit-form .wine-card-edit-input[readonly] {
-        background-color: var(--color-bg-secondary);
-        color: var(--color-text-secondary);
+        background-color: #e9ecef;
+        color: #6c757d;
         cursor: not-allowed;
+        opacity: 0.7;
+        border-color: #dee2e6;
+    }
+    
+    .viewer-edit-form .wine-card-edit-input:disabled:focus,
+    .viewer-edit-form .wine-card-edit-input[readonly]:focus {
+        border-color: #dee2e6;
+        box-shadow: none;
     }
 
     /* Pulsante modifica nella tabella viewer */
