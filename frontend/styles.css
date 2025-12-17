@@ -57,6 +57,25 @@ body {
     overflow-x: hidden;
 }
 
+/* STEP 3: CSS MOBILE SAFE (globale) */
+html, body {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y pinch-zoom; /* Permette scroll verticale e zoom, blocca gesture orizzontali */
+}
+
+button, a, input, textarea, select, label {
+    touch-action: manipulation; /* Previene double-tap zoom, migliora responsività */
+    -webkit-tap-highlight-color: rgba(154, 24, 46, 0.1); /* Highlight discreto */
+}
+
+/* Assicura che elementi interattivi siano sempre cliccabili */
+button, a, input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"], select, label {
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 .hidden {
     display: none !important;
 }
@@ -487,11 +506,14 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    /* IMPORTANTE: pointer-events solo quando attivo */
+    pointer-events: none;
 }
 
 .sidebar-overlay.active {
     display: block;
     opacity: 1;
+    pointer-events: auto; /* Solo quando attivo può intercettare */
 }
 
 /* Responsive: nascondi sidebar su mobile */

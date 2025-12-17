@@ -191,6 +191,16 @@ function addUniversalEventListener(element, handler, options = {}) {
 }
 
 // Initialize
+// DEBUG: Identifica elementi che intercettano i tap su mobile
+document.addEventListener("pointerup", (e) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const target = e.target;
+    if (el !== target) {
+        console.log("[DEBUG POINTER] Tapped element:", el, "Target:", target, "Different:", el !== target);
+        console.log("[DEBUG POINTER] Element classes:", el?.className, "Tag:", el?.tagName);
+    }
+}, { capture: true });
+
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is already logged in
     authToken = localStorage.getItem('auth_token');
@@ -329,47 +339,29 @@ function setupEventListeners() {
         });
     }
     
-    // Bottone aggiungi vino (mobile)
+    // Bottone aggiungi vino (mobile) - STEP 4: Usa pointer events
     const mobileAddWineBtn = document.getElementById('mobile-add-wine-btn');
     if (mobileAddWineBtn) {
-        // Usa sia touch che click per massima compatibilità
-        mobileAddWineBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
+        mobileAddWineBtn.addEventListener('pointerup', (e) => {
             e.stopPropagation();
-            openAddWineModal();
-        }, { passive: false });
-        mobileAddWineBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+            // NON preventDefault se non strettamente necessario
             openAddWineModal();
         });
     }
     
-    // Bottone inventario (mobile)
+    // Bottone inventario (mobile) - STEP 4: Usa pointer events
     const mobileViewerBtn = document.getElementById('mobile-viewer-btn');
     if (mobileViewerBtn) {
-        mobileViewerBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleViewer();
-        }, { passive: false });
-        mobileViewerBtn.addEventListener('click', (e) => {
-            e.preventDefault();
+        mobileViewerBtn.addEventListener('pointerup', (e) => {
             e.stopPropagation();
             toggleViewer();
         });
     }
     
-    // Bottone logout (mobile)
+    // Bottone logout (mobile) - STEP 4: Usa pointer events
     const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
     if (mobileLogoutBtn) {
-        mobileLogoutBtn.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleLogout();
-        }, { passive: false });
-        mobileLogoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
+        mobileLogoutBtn.addEventListener('pointerup', (e) => {
             e.stopPropagation();
             handleLogout();
         });
@@ -381,17 +373,10 @@ function setupEventListeners() {
         addUniversalEventListener(newChatBtn, handleNewChat);
     }
     
-    // Setup pulsante hamburger con supporto universale mobile
+    // Setup pulsante hamburger - STEP 4: Usa pointer events
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        // Usa eventi diretti per massima compatibilità Safari iOS
-        sidebarToggle.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSidebar();
-        }, { passive: false });
-        sidebarToggle.addEventListener('click', (e) => {
-            e.preventDefault();
+        sidebarToggle.addEventListener('pointerup', (e) => {
             e.stopPropagation();
             toggleSidebar();
         });
@@ -2271,11 +2256,11 @@ function renderViewerTable(rows) {
         }
     }
 
-    // Setup click su pulsanti grafico - supporto touch migliorato per Safari iOS
+    // Setup click su pulsanti grafico - STEP 4: Usa pointer events
     document.querySelectorAll('.viewer-chart-btn').forEach(btn => {
         const handler = (e) => {
             e.stopPropagation();
-            e.preventDefault();
+            // NON preventDefault se non strettamente necessario
             let wineName = btn.dataset.wineName;
             
             // Fallback: recupera nome dalla riga o card se data attribute non disponibile
@@ -2297,9 +2282,8 @@ function renderViewerTable(rows) {
             }
         };
         
-        // Usa eventi diretti per massima compatibilità Safari iOS
-        btn.addEventListener('touchend', handler, { passive: false });
-        btn.addEventListener('click', handler);
+        // STEP 4: Usa pointer events invece di touch/click
+        btn.addEventListener('pointerup', handler);
     });
 
     // Setup click su righe per espansione (solo fullscreen)

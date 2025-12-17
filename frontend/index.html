@@ -89,7 +89,7 @@
         <!-- Sidebar Chat List -->
         <aside id="chat-sidebar" class="chat-sidebar">
             <div class="chat-sidebar-header">
-                <button id="new-chat-btn" class="btn btn-primary btn-small">
+                <button type="button" id="new-chat-btn" class="btn btn-primary btn-small">
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                         <path d="M8 3V13M3 8H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
@@ -124,13 +124,13 @@
                         </label>
                     </div>
                     <!-- Desktop buttons -->
-                    <button id="add-wine-btn" class="btn btn-primary desktop-only" title="Aggiungi nuovo vino">
+                    <button type="button" id="add-wine-btn" class="btn btn-primary desktop-only" title="Aggiungi nuovo vino">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         </svg>
                         Aggiungi Vino
                     </button>
-                    <button id="logout-btn" class="btn btn-secondary desktop-only">Esci</button>
+                    <button type="button" id="logout-btn" class="btn btn-secondary desktop-only">Esci</button>
                 </div>
             </header>
             
@@ -142,14 +142,14 @@
                     </svg>
                     <span class="mobile-quick-action-label">Aggiungi</span>
                 </button>
-                <button id="mobile-viewer-btn" class="mobile-quick-action-btn" title="Apri inventario">
+                <button type="button" id="mobile-viewer-btn" class="mobile-quick-action-btn" title="Apri inventario">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M7 12L10 9L14 13L21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
                     <span class="mobile-quick-action-label">Inventario</span>
                 </button>
-                <button id="mobile-logout-btn" class="mobile-quick-action-btn" title="Esci">
+                <button type="button" id="mobile-logout-btn" class="mobile-quick-action-btn" title="Esci">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -204,7 +204,7 @@
                                 <path d="M3 3h5v2H5v3H3V3zm12 0h-5v2h3v3h2V3zm-5 14h5v-5h-2v3h-3v2zm-7 0v-5h2v3h3v2H3z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
-                        <button id="viewer-close" class="viewer-close-btn">&times;</button>
+                        <button type="button" id="viewer-close" class="viewer-close-btn">&times;</button>
                     </div>
                 </div>
 
@@ -230,7 +230,7 @@
                     </div>
                     <div class="filters-buttons-row">
                         <div class="filter-dropdown-wrapper">
-                            <button class="filter-dropdown-btn" data-filter="type" id="filter-btn-type">
+                            <button type="button" class="filter-dropdown-btn" data-filter="type" id="filter-btn-type">
                                 <span class="filter-btn-label">Tipologia</span>
                                 <span class="filter-btn-value" id="filter-value-type">Tutte</span>
                                 <svg class="filter-dropdown-icon" width="12" height="12" viewBox="0 0 12 12" fill="none">
