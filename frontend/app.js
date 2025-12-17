@@ -814,9 +814,28 @@ async function handleWineCardEdit(wineCard, wineId) {
         
         const wine = await response.json();
         
+        // Salva valori originali per confronto dopo salvataggio
+        const originalValues = {
+            producer: wine.producer || null,
+            quantity: wine.quantity !== null && wine.quantity !== undefined ? wine.quantity : null,
+            selling_price: wine.selling_price !== null && wine.selling_price !== undefined ? wine.selling_price : null,
+            cost_price: wine.cost_price !== null && wine.cost_price !== undefined ? wine.cost_price : null,
+            vintage: wine.vintage || null,
+            region: wine.region || null,
+            country: wine.country || null,
+            wine_type: wine.wine_type || null,
+            supplier: wine.supplier || null,
+            grape_variety: wine.grape_variety || null,
+            classification: wine.classification || null,
+            alcohol_content: wine.alcohol_content || null,
+            description: wine.description || null,
+            notes: wine.notes || null
+        };
+        
         // Crea form di modifica
         const editForm = document.createElement('div');
         editForm.className = 'wine-card-edit-form';
+        editForm.dataset.originalValues = JSON.stringify(originalValues);
         
         // Estrai valori esistenti dalla card
         const cardBody = wineCard.querySelector('.wine-card-body');
@@ -952,8 +971,11 @@ async function handleWineCardEdit(wineCard, wineId) {
 }
 
 async function saveWineCardEdit(wineId, editForm, wineCard) {
-    const formData = new FormData(editForm);
+    // Recupera valori originali
+    const originalValues = JSON.parse(editForm.dataset.originalValues || '{}');
+    
     const data = {};
+    const newValues = {};
     
     // Raccogli tutti i valori dal form (escludi 'name' che non è modificabile)
     editForm.querySelectorAll('input, textarea').forEach(input => {
@@ -965,13 +987,78 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
         }
         
         const value = input.value.trim();
+        let parsedValue = null;
         
         if (name === 'quantity') {
-            data[name] = value === '' ? null : parseInt(value);
+            parsedValue = value === '' ? null : parseInt(value);
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
         } else if (name === 'selling_price' || name === 'cost_price') {
-            data[name] = value === '' ? null : parseFloat(value);
+            parsedValue = value === '' ? null : parseFloat(value);
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
         } else {
-            data[name] = value === '' ? null : value;
+            parsedValue = value === '' ? null : value;
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
+        }
+    });
+    
+    // Confronta valori e crea lista modifiche
+    const changes = [];
+    const fieldLabels = {
+        producer: 'Produttore',
+        quantity: 'Quantità',
+        selling_price: 'Prezzo Vendita',
+        cost_price: 'Prezzo Acquisto',
+        vintage: 'Annata',
+        region: 'Regione',
+        country: 'Paese',
+        wine_type: 'Tipo',
+        supplier: 'Fornitore',
+        grape_variety: 'Vitigno',
+        classification: 'Classificazione',
+        alcohol_content: 'Gradazione',
+        description: 'Descrizione',
+        notes: 'Note'
+    };
+    
+    Object.keys(newValues).forEach(key => {
+        const oldVal = originalValues[key];
+        const newVal = newValues[key];
+        
+        // Normalizza per confronto (tratta null, undefined, '' come equivalenti)
+        const normalize = (val) => {
+            if (val === null || val === undefined || val === '') return null;
+            if (typeof val === 'number') return val;
+            return String(val).trim();
+        };
+        
+        const oldNormalized = normalize(oldVal);
+        const newNormalized = normalize(newVal);
+        
+        if (oldNormalized !== newNormalized) {
+            // Formatta valori per visualizzazione
+            const formatValue = (val, fieldName) => {
+                if (val === null || val === undefined || val === '') return '-';
+                if (fieldName === 'selling_price' || fieldName === 'cost_price') {
+                    // Converti a numero e formatta con virgola come separatore decimale
+                    const numVal = typeof val === 'string' ? parseFloat(val.replace(',', '.')) : parseFloat(val);
+                    if (isNaN(numVal)) return String(val);
+                    return numVal.toFixed(2).replace('.', ',');
+                }
+                if (fieldName === 'quantity') {
+                    return String(val);
+                }
+                return String(val);
+            };
+            
+            changes.push({
+                field: key,
+                label: fieldLabels[key] || key,
+                oldValue: formatValue(oldVal, key),
+                newValue: formatValue(newVal, key)
+            });
         }
     });
     
@@ -990,6 +1077,8 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
             throw new Error(errorData.detail || 'Errore salvataggio');
         }
         
+        const result = await response.json();
+        
         // Chiudi form e ricarica card
         wineCard.classList.remove('expanded');
         const wrapper = wineCard.parentElement?.classList.contains('wine-card-wrapper') 
@@ -998,8 +1087,24 @@ async function saveWineCardEdit(wineId, editForm, wineCard) {
         if (wrapper) wrapper.classList.remove('expanded');
         editForm.remove();
         
-        // Ricarica la card con i nuovi dati (opzionale: ricarica da backend)
-        addChatMessage('ai', 'Vino aggiornato con successo!', false, false);
+        // Mostra messaggio successo con template HTML delle modifiche
+        if (changes.length > 0) {
+            let changesHtml = '<div class="wine-edit-success-message"><h3>✅ Vino aggiornato con successo!</h3><div class="wine-edit-changes-list">';
+            changes.forEach(change => {
+                changesHtml += `
+                    <div class="wine-edit-change-item">
+                        <span class="wine-edit-change-label">${escapeHtml(change.label)}:</span>
+                        <span class="wine-edit-change-old">${escapeHtml(change.oldValue)}</span>
+                        <span class="wine-edit-change-arrow">→</span>
+                        <span class="wine-edit-change-new">${escapeHtml(change.newValue)}</span>
+                    </div>
+                `;
+            });
+            changesHtml += '</div></div>';
+            addChatMessage('ai', changesHtml, false, false, null, true);
+        } else {
+            addChatMessage('ai', 'Vino aggiornato con successo! (nessuna modifica rilevata)', false, false);
+        }
         
     } catch (error) {
         console.error('Errore salvataggio vino:', error);
@@ -1027,10 +1132,29 @@ async function handleViewerWineEdit(wineId) {
         
         const wine = await response.json();
         
+        // Salva valori originali per confronto dopo salvataggio
+        const originalValues = {
+            producer: wine.producer || null,
+            quantity: wine.quantity !== null && wine.quantity !== undefined ? wine.quantity : null,
+            selling_price: wine.selling_price !== null && wine.selling_price !== undefined ? wine.selling_price : null,
+            cost_price: wine.cost_price !== null && wine.cost_price !== undefined ? wine.cost_price : null,
+            vintage: wine.vintage || null,
+            region: wine.region || null,
+            country: wine.country || null,
+            wine_type: wine.wine_type || null,
+            supplier: wine.supplier || null,
+            grape_variety: wine.grape_variety || null,
+            classification: wine.classification || null,
+            alcohol_content: wine.alcohol_content || null,
+            description: wine.description || null,
+            notes: wine.notes || null
+        };
+        
         // Crea modal per modifica
         const modal = document.createElement('div');
         modal.className = 'viewer-edit-modal';
         modal.id = 'viewer-edit-modal';
+        modal.dataset.originalValues = JSON.stringify(originalValues);
         modal.innerHTML = `
             <div class="viewer-edit-modal-overlay" onclick="closeViewerEditModal()"></div>
             <div class="viewer-edit-modal-content">
@@ -1144,10 +1268,20 @@ function closeViewerEditModal() {
 
 async function saveViewerWineEdit(wineId, event) {
     event.preventDefault();
+    event.stopPropagation();
+    
+    const modal = document.getElementById('viewer-edit-modal');
     const form = document.getElementById('viewer-edit-form');
-    if (!form) return;
+    if (!form || !modal) {
+        console.error('[VIEWER] Form o modal non trovato');
+        return;
+    }
+    
+    // Recupera valori originali
+    const originalValues = JSON.parse(modal.dataset.originalValues || '{}');
     
     const data = {};
+    const newValues = {};
     
     // Raccogli tutti i valori dal form (escludi 'name')
     form.querySelectorAll('input, textarea').forEach(input => {
@@ -1159,13 +1293,78 @@ async function saveViewerWineEdit(wineId, event) {
         }
         
         const value = input.value.trim();
+        let parsedValue = null;
         
         if (name === 'quantity') {
-            data[name] = value === '' ? null : parseInt(value);
+            parsedValue = value === '' ? null : parseInt(value);
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
         } else if (name === 'selling_price' || name === 'cost_price') {
-            data[name] = value === '' ? null : parseFloat(value);
+            parsedValue = value === '' ? null : parseFloat(value);
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
         } else {
-            data[name] = value === '' ? null : value;
+            parsedValue = value === '' ? null : value;
+            data[name] = parsedValue;
+            newValues[name] = parsedValue;
+        }
+    });
+    
+    // Confronta valori e crea lista modifiche
+    const changes = [];
+    const fieldLabels = {
+        producer: 'Produttore',
+        quantity: 'Quantità',
+        selling_price: 'Prezzo Vendita',
+        cost_price: 'Prezzo Acquisto',
+        vintage: 'Annata',
+        region: 'Regione',
+        country: 'Paese',
+        wine_type: 'Tipo',
+        supplier: 'Fornitore',
+        grape_variety: 'Vitigno',
+        classification: 'Classificazione',
+        alcohol_content: 'Gradazione',
+        description: 'Descrizione',
+        notes: 'Note'
+    };
+    
+    Object.keys(newValues).forEach(key => {
+        const oldVal = originalValues[key];
+        const newVal = newValues[key];
+        
+        // Normalizza per confronto (tratta null, undefined, '' come equivalenti)
+        const normalize = (val) => {
+            if (val === null || val === undefined || val === '') return null;
+            if (typeof val === 'number') return val;
+            return String(val).trim();
+        };
+        
+        const oldNormalized = normalize(oldVal);
+        const newNormalized = normalize(newVal);
+        
+        if (oldNormalized !== newNormalized) {
+            // Formatta valori per visualizzazione
+            const formatValue = (val, fieldName) => {
+                if (val === null || val === undefined || val === '') return '-';
+                if (fieldName === 'selling_price' || fieldName === 'cost_price') {
+                    // Converti a numero e formatta con virgola come separatore decimale
+                    const numVal = typeof val === 'string' ? parseFloat(val.replace(',', '.')) : parseFloat(val);
+                    if (isNaN(numVal)) return String(val);
+                    return numVal.toFixed(2).replace('.', ',');
+                }
+                if (fieldName === 'quantity') {
+                    return String(val);
+                }
+                return String(val);
+            };
+            
+            changes.push({
+                field: key,
+                label: fieldLabels[key] || key,
+                oldValue: formatValue(oldVal, key),
+                newValue: formatValue(newVal, key)
+            });
         }
     });
     
@@ -1192,8 +1391,24 @@ async function saveViewerWineEdit(wineId, event) {
         // Ricarica snapshot viewer
         await loadViewerData();
         
-        // Mostra messaggio successo
-        addChatMessage('ai', 'Vino aggiornato con successo!', false, false);
+        // Mostra messaggio successo con template HTML delle modifiche
+        if (changes.length > 0) {
+            let changesHtml = '<div class="wine-edit-success-message"><h3>✅ Vino aggiornato con successo!</h3><div class="wine-edit-changes-list">';
+            changes.forEach(change => {
+                changesHtml += `
+                    <div class="wine-edit-change-item">
+                        <span class="wine-edit-change-label">${escapeHtml(change.label)}:</span>
+                        <span class="wine-edit-change-old">${escapeHtml(change.oldValue)}</span>
+                        <span class="wine-edit-change-arrow">→</span>
+                        <span class="wine-edit-change-new">${escapeHtml(change.newValue)}</span>
+                    </div>
+                `;
+            });
+            changesHtml += '</div></div>';
+            addChatMessage('ai', changesHtml, false, false, null, true);
+        } else {
+            addChatMessage('ai', 'Vino aggiornato con successo! (nessuna modifica rilevata)', false, false);
+        }
         
     } catch (error) {
         console.error('Errore salvataggio vino:', error);

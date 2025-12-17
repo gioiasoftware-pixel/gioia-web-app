@@ -3129,3 +3129,63 @@ body {
     }
 }
 
+
+/* Messaggio di successo modifica vino */
+.wine-edit-success-message {
+    padding: 16px;
+    background-color: var(--color-bg-secondary);
+    border-radius: 8px;
+    margin-top: 8px;
+}
+
+.wine-edit-success-message h3 {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.wine-edit-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.wine-edit-change-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--color-bg-primary);
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.wine-edit-change-label {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    min-width: 120px;
+}
+
+.wine-edit-change-old {
+    color: var(--color-text-secondary);
+    text-decoration: line-through;
+    padding: 2px 8px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 4px;
+}
+
+.wine-edit-change-arrow {
+    color: var(--color-granaccia);
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.wine-edit-change-new {
+    color: var(--color-granaccia);
+    font-weight: 600;
+    padding: 2px 8px;
+    background-color: rgba(220, 53, 69, 0.1);
+    border-radius: 4px;
+}
+
