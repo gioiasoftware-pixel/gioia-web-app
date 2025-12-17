@@ -268,7 +268,16 @@ async def create_wine(
         if not wine_id:
             raise HTTPException(
                 status_code=500,
-                detail="Vino creato ma wine_id non restituito"
+                detail="Vino creato ma wine_id non restituito dal processor"
+            )
+        
+        # Assicura che wine_id sia un intero
+        try:
+            wine_id = int(wine_id)
+        except (ValueError, TypeError):
+            raise HTTPException(
+                status_code=500,
+                detail=f"wine_id restituito non valido: {wine_id}"
             )
         
         # Recupera vino creato per generare wine card HTML
