@@ -3274,10 +3274,21 @@ function showMovementsChart(wineName) {
     const modalTitle = document.getElementById('viewer-movements-modal-wine-name');
     const chartContainer = document.getElementById('viewer-movements-chart-container');
     
-    if (!modal || !modalTitle || !chartContainer) return;
+    if (!modal || !modalTitle || !chartContainer) {
+        console.error('[VIEWER] Elementi modal non trovati:', { modal: !!modal, modalTitle: !!modalTitle, chartContainer: !!chartContainer });
+        return;
+    }
     
+    console.log('[VIEWER] Mostrando modal per vino:', wineName);
     modalTitle.textContent = `Movimenti: ${wineName}`;
     modal.classList.remove('hidden');
+    // Rimuovi anche lo style inline che potrebbe nascondere il modal
+    modal.style.display = '';
+    // Forza display flex per assicurarsi che sia visibile
+    if (window.getComputedStyle(modal).display === 'none') {
+        modal.style.display = 'flex';
+    }
+    console.log('[VIEWER] Modal display dopo modifica:', window.getComputedStyle(modal).display);
     
     // Mostra loading
     chartContainer.innerHTML = '<div class="loading">Caricamento movimenti...</div>';
@@ -3440,6 +3451,8 @@ function closeMovementsModal() {
     const modal = document.getElementById('viewer-movements-modal');
     if (modal) {
         modal.classList.add('hidden');
+        // Ripristina anche lo style inline per nascondere completamente
+        modal.style.display = 'none';
     }
 }
 
