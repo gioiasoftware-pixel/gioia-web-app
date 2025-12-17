@@ -3367,22 +3367,17 @@ function closeSidebarOnOverlayClick() {
 // Gestisci resize window per cambiare comportamento mobile/desktop
 function handleWindowResize() {
     const sidebar = document.getElementById('chat-sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // Passato a mobile: rimuovi collapsed, chiudi sempre sidebar
         sidebar.classList.remove('collapsed');
         sidebar.classList.remove('open'); // Su mobile sempre chiusa di default
-        if (overlay) {
-            overlay.classList.remove('active');
-        }
+        removeSidebarOverlay(); // Rimuovi overlay mobile se presente
     } else {
         // Passato a desktop: rimuovi open, usa collapsed
         sidebar.classList.remove('open');
-        if (overlay) {
-            overlay.classList.remove('active');
-        }
+        removeSidebarOverlay(); // Rimuovi overlay mobile se presente
         // Ripristina stato collapsed da localStorage
         const savedState = localStorage.getItem('chat-sidebar-collapsed');
         if (savedState === 'true') {
