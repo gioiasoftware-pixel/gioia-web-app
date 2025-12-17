@@ -3440,15 +3440,21 @@ function toggleSidebar() {
         } else {
             // Apri sidebar: rimuovi hidden
             sidebar.removeAttribute('hidden');
-            if (overlay) overlay.removeAttribute('hidden');
+            if (overlay) {
+                overlay.removeAttribute('hidden');
+                debugLog(`Overlay: hidden rimosso, display=${window.getComputedStyle(overlay).display}`, 'info', 'SIDEBAR');
+            }
             const newDisplay = window.getComputedStyle(sidebar).display;
             debugLog(`Sidebar aperta: hidden rimosso, display=${newDisplay}`, 'info', 'SIDEBAR');
             
-            // Verifica che sia visibile
+            // Verifica che sia visibile e che l'overlay sia cliccabile
             setTimeout(() => {
                 const finalDisplay = window.getComputedStyle(sidebar).display;
                 const rect = sidebar.getBoundingClientRect();
+                const overlayDisplay = overlay ? window.getComputedStyle(overlay).display : 'N/A';
+                const overlayPointerEvents = overlay ? window.getComputedStyle(overlay).pointerEvents : 'N/A';
                 debugLog(`Sidebar dopo 100ms: display=${finalDisplay}, width=${rect.width}, visible=${rect.width > 0}`, 'info', 'SIDEBAR');
+                debugLog(`Overlay dopo 100ms: display=${overlayDisplay}, pointer-events=${overlayPointerEvents}`, 'info', 'SIDEBAR');
             }, 100);
         }
     } else {
@@ -3469,37 +3475,72 @@ function toggleSidebar() {
 // L'overlay esiste già nel DOM e viene mostrato/nascosto con hidden
 function setupSidebarOverlay() {
     const overlay = document.getElementById('sidebarOverlay');
+    debugLog(`setupSidebarOverlay: overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
+    
     if (overlay) {
-        overlay.addEventListener('pointerup', (e) => {
+        // Rimuovi listener esistenti per evitare duplicati
+        const newOverlay = overlay.cloneNode(true);
+        overlay.parentNode.replaceChild(newOverlay, overlay);
+        
+        // Aggiungi listener per chiudere sidebar quando si clicca sull'overlay
+        newOverlay.addEventListener('pointerup', (e) => {
+            debugLog('OVERLAY: pointerup rilevato, chiudo sidebar', 'info', 'SIDEBAR');
             e.stopPropagation();
             toggleSidebar();
         });
+        
+        // Fallback con click
+        newOverlay.addEventListener('click', (e) => {
+            debugLog('OVERLAY: click rilevato (fallback), chiudo sidebar', 'info', 'SIDEBAR');
+            e.stopPropagation();
+            toggleSidebar();
+        });
+        
+        debugLog('setupSidebarOverlay: Listener aggiunto all\'overlay', 'info', 'SIDEBAR');
+    } else {
+        debugLog('setupSidebarOverlay: ERRORE - Overlay non trovato!', 'error', 'SIDEBAR');
     }
 }
 
-// Carica stato sidebar al caricamento pagina (solo desktop)
+// Carica stato sidebar al caricamento pagina
 function loadSidebarState() {
-    const sidebar = document.getElementById('chat-sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    // Su mobile, la sidebar è sempre nascosta di default
     const isMobile = window.innerWidth <= 768;
-    if (!isMobile) {
-        // Desktop: usa collapsed
-        const savedState = localStorage.getItem('chat-sidebar-collapsed');
-        if (savedState === 'true') {
-            sidebar.classList.add('collapsed');
-        } else {
-            sidebar.classList.remove('collapsed');
+    
+    if (isMobile) {
+        // MOBILE: Assicurati che sidebar mobile sia SEMPRE chiusa di default
+        const sidebarMobile = document.getElementById('chatSidebar');
+        const overlayMobile = document.getElementById('sidebarOverlay');
+        
+        if (sidebarMobile) {
+            // Assicurati che sia hidden (chiusa)
+            if (!sidebarMobile.hasAttribute('hidden')) {
+                sidebarMobile.setAttribute('hidden', '');
+                debugLog('loadSidebarState MOBILE: Sidebar chiusa di default (hidden aggiunto)', 'info', 'SIDEBAR');
+            }
         }
-        // Rimuovi 'open' se presente (da mobile)
-        sidebar.classList.remove('open');
-        if (overlay) {
-            overlay.classList.remove('active');
+        
+        if (overlayMobile) {
+            // Assicurati che overlay sia hidden
+            if (!overlayMobile.hasAttribute('hidden')) {
+                overlayMobile.setAttribute('hidden', '');
+            }
         }
     } else {
-        // Mobile: assicurati che sia SEMPRE chiusa di default
-        sidebar.classList.remove('open');
-        sidebar.classList.remove('collapsed');
+        // DESKTOP: usa collapsed
+        const sidebar = document.getElementById('chat-sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        
+        if (sidebar) {
+            const savedState = localStorage.getItem('chat-sidebar-collapsed');
+            if (savedState === 'true') {
+                sidebar.classList.add('collapsed');
+            } else {
+                sidebar.classList.remove('collapsed');
+            }
+            // Rimuovi 'open' se presente (da mobile)
+            sidebar.classList.remove('open');
+        }
+        
         if (overlay) {
             overlay.classList.remove('active');
         }

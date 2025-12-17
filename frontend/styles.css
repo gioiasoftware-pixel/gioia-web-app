@@ -788,9 +788,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .mSidebar {
         position: fixed;
         inset: 0 auto 0 0;
-        width: 85vw;
+        width: 80vw; /* 80% dello schermo come richiesto */
         max-width: 400px;
-        z-index: var(--z-sidebar);
+        z-index: var(--z-sidebar); /* z-index 40, sopra header (10) e overlay (30) */
         background: var(--color-white);
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
         overflow-y: auto;
@@ -798,11 +798,15 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         touch-action: pan-y;
         display: flex !important; /* CRITICO: display flex quando NON hidden */
         flex-direction: column;
+        /* Animazione slide da sinistra */
+        transform: translateX(0);
+        transition: transform 0.3s ease-out;
     }
     
-    /* CRITICO: Quando hidden, deve essere display:none */
+    /* CRITICO: Quando hidden, deve essere display:none e fuori schermo */
     .mSidebar[hidden] {
         display: none !important;
+        transform: translateX(-100%); /* Fuori schermo quando chiusa */
     }
 
     .mSidebar .chat-sidebar-header {
