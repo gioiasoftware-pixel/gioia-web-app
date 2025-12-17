@@ -477,25 +477,48 @@ function setupEventListeners() {
         });
     }
     
-    // Setup pulsante hamburger - con feedback visivo granaccia/giallo
-    // Cerca prima nel contesto mobile, poi desktop
-    const isMobile = window.innerWidth <= 768;
-    let sidebarToggle = null;
-    
-    if (isMobile) {
-        sidebarToggle = document.querySelector('.mHeader #sidebar-toggle');
-        debugLog(`SIDEBAR MOBILE: Cercando pulsante in .mHeader...`, 'info', 'SIDEBAR');
-        if (!sidebarToggle) {
-            debugLog(`SIDEBAR MOBILE: Pulsante NON trovato in .mHeader, provo getElementById`, 'warn', 'SIDEBAR');
+    // SOLUZIONE BLINDATA: Listener diretto e immediato per hamburger
+    // Funziona anche se chiamato dopo DOMContentLoaded
+    const attachSidebarToggle = () => {
+        const isMobile = window.innerWidth <= 768;
+        let sidebarToggle = null;
+        
+        // Cerca pulsante nel contesto corretto
+        if (isMobile) {
+            sidebarToggle = document.querySelector('.mHeader #sidebar-toggle');
+            console.log('[SIDEBAR] Cercando pulsante in .mHeader:', sidebarToggle);
+            if (!sidebarToggle) {
+                sidebarToggle = document.getElementById('sidebar-toggle');
+                console.log('[SIDEBAR] Fallback getElementById:', sidebarToggle);
+            }
+        } else {
             sidebarToggle = document.getElementById('sidebar-toggle');
         }
-    } else {
-        sidebarToggle = document.getElementById('sidebar-toggle');
-    }
+        
+        if (!sidebarToggle) {
+            console.error('[SIDEBAR] ERRORE: Pulsante hamburger NON TROVATO!');
+            debugLog('ERRORE: Pulsante hamburger NON trovato!', 'error', 'SIDEBAR');
+            return null;
+        }
+        
+        console.log('[SIDEBAR] Pulsante trovato:', {
+            id: sidebarToggle.id,
+            className: sidebarToggle.className,
+            tagName: sidebarToggle.tagName,
+            rect: sidebarToggle.getBoundingClientRect(),
+            isMobile
+        });
+        
+        debugLog(`SIDEBAR: Pulsante hamburger trovato (${isMobile ? 'mobile' : 'desktop'}) - ID: ${sidebarToggle.id}`, 'info', 'SIDEBAR');
+        debugLog(`SIDEBAR: Pulsante posizione: ${sidebarToggle.getBoundingClientRect().top},${sidebarToggle.getBoundingClientRect().left}`, 'info', 'SIDEBAR');
+        
+        return sidebarToggle;
+    };
+    
+    // Cerca pulsante
+    let sidebarToggle = attachSidebarToggle();
     
     if (sidebarToggle) {
-        debugLog(`SIDEBAR: Pulsante hamburger trovato (${isMobile ? 'mobile' : 'desktop'}) - ID: ${sidebarToggle.id}, Classe: ${sidebarToggle.className}`, 'info', 'SIDEBAR');
-        debugLog(`SIDEBAR: Pulsante posizione: ${sidebarToggle.getBoundingClientRect().top},${sidebarToggle.getBoundingClientRect().left}`, 'info', 'SIDEBAR');
         
         // Log quando viene toccato qualsiasi elemento nel header per debug
         const chatHeader = document.querySelector('.chat-header');
@@ -516,31 +539,46 @@ function setupEventListeners() {
         });
         
         // SOLUZIONE BLINDATA: Listener robusto con log dettagliati
-        sidebarToggle.addEventListener('pointerup', (e) => {
-            const isOpen = isMobile ? 
+        // Rimuovi listener esistenti per evitare duplicati
+        const newToggle = sidebarToggle.cloneNode(true);
+        sidebarToggle.parentNode.replaceChild(newToggle, sidebarToggle);
+        sidebarToggle = newToggle;
+        
+        // Listener pointerup - PRINCIPALE
+        sidebarToggle.addEventListener('pointerup', function(e) {
+            console.log('[SIDEBAR] ========== pointerup EVENTO CATTURATO ==========');
+            console.log('[SIDEBAR] Evento:', {
+                type: e.type,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                target: e.target.tagName + '#' + (e.target.id || 'no-id'),
+                currentTarget: e.currentTarget.tagName + '#' + (e.currentTarget.id || 'no-id')
+            });
+            
+            const isOpen = window.innerWidth <= 768 ? 
                 (document.getElementById('chatSidebar')?.classList.contains('is-open') || false) :
                 (document.getElementById('chat-sidebar')?.classList.contains('collapsed') || false);
             
             console.log('[SIDEBAR] btn pointerup. isOpen:', isOpen);
             debugLog(`SIDEBAR: pointerup rilevato DIRETTAMENTE sul pulsante, isOpen=${isOpen}`, 'info', 'SIDEBAR');
-            debugLog(`SIDEBAR: Evento pointerup - clientX=${e.clientX}, clientY=${e.clientY}, target=${e.target.tagName}#${e.target.id}`, 'info', 'SIDEBAR');
             
-            e.stopPropagation(); // Ferma propagazione
-            e.preventDefault(); // Previeni qualsiasi comportamento di default
+            e.stopPropagation();
+            e.preventDefault();
             
-            // Rimuovi feedback dopo breve delay per mostrare il colore
             setTimeout(() => {
                 sidebarToggle.classList.remove('clicked');
             }, 200);
             
-            // Chiama toggleSidebar con try-catch per catturare errori
             try {
+                console.log('[SIDEBAR] Chiamando toggleSidebar()...');
                 toggleSidebar();
             } catch (error) {
                 console.error('[SIDEBAR] ERRORE in toggleSidebar:', error);
                 debugLog(`ERRORE in toggleSidebar: ${error.message}`, 'error', 'SIDEBAR');
             }
-        }, { passive: false });
+        }, { passive: false, capture: false });
+        
+        console.log('[SIDEBAR] Listener pointerup ATTACCATO al pulsante');
         
         // Gestisci anche pointercancel per mobile
         sidebarToggle.addEventListener('pointercancel', (e) => {
@@ -550,7 +588,8 @@ function setupEventListeners() {
         });
         
         // Fallback con click per browser che non supportano pointer events
-        sidebarToggle.addEventListener('click', (e) => {
+        sidebarToggle.addEventListener('click', function(e) {
+            console.log('[SIDEBAR] ========== click EVENTO CATTURATO (fallback) ==========');
             debugLog('SIDEBAR: click rilevato DIRETTAMENTE sul pulsante (fallback)', 'info', 'SIDEBAR');
             e.stopPropagation();
             e.preventDefault();
@@ -558,12 +597,15 @@ function setupEventListeners() {
         });
         
         // Aggiungi anche touchend per Safari iOS
-        sidebarToggle.addEventListener('touchend', (e) => {
+        sidebarToggle.addEventListener('touchend', function(e) {
+            console.log('[SIDEBAR] ========== touchend EVENTO CATTURATO (Safari) ==========');
             debugLog('SIDEBAR: touchend rilevato DIRETTAMENTE sul pulsante', 'info', 'SIDEBAR');
             e.stopPropagation();
             e.preventDefault();
             toggleSidebar();
         }, { passive: false });
+        
+        console.log('[SIDEBAR] Tutti i listener attaccati al pulsante');
     } else {
         debugLog('SIDEBAR: ERRORE - Pulsante hamburger NON trovato!', 'error', 'SIDEBAR');
     }
@@ -771,6 +813,13 @@ function showAuthPage() {
 function showChatPage() {
     document.getElementById('auth-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
+    
+    // CRITICO: Attacca listener sidebar dopo che la pagina chat è visibile
+    // Aspetta un frame per assicurarsi che il DOM sia renderizzato
+    setTimeout(() => {
+        attachSidebarToggleListeners();
+    }, 100);
+    
     // Carica stato sidebar
     loadSidebarState();
     // Carica conversazioni e seleziona quella corrente
@@ -781,6 +830,74 @@ function showChatPage() {
         currentConversationId = parseInt(savedConversationId);
         loadConversationMessages(currentConversationId);
     }
+}
+
+// Funzione dedicata per attaccare listener sidebar (chiamata sia in setupEventListeners che in showChatPage)
+function attachSidebarToggleListeners() {
+    const isMobile = window.innerWidth <= 768;
+    let sidebarToggle = null;
+    
+    if (isMobile) {
+        sidebarToggle = document.querySelector('.mHeader #sidebar-toggle');
+        console.log('[SIDEBAR] attachSidebarToggleListeners: Cercando in .mHeader:', sidebarToggle);
+        if (!sidebarToggle) {
+            sidebarToggle = document.getElementById('sidebar-toggle');
+            console.log('[SIDEBAR] attachSidebarToggleListeners: Fallback getElementById:', sidebarToggle);
+        }
+    } else {
+        sidebarToggle = document.getElementById('sidebar-toggle');
+    }
+    
+    if (!sidebarToggle) {
+        console.warn('[SIDEBAR] attachSidebarToggleListeners: Pulsante non trovato, riprovo tra 500ms...');
+        setTimeout(attachSidebarToggleListeners, 500);
+        return;
+    }
+    
+    // Verifica se ha già listener (evita duplicati)
+    if (sidebarToggle.dataset.listenerAttached === 'true') {
+        console.log('[SIDEBAR] Listener già attaccato, skip');
+        return;
+    }
+    
+    console.log('[SIDEBAR] attachSidebarToggleListeners: Pulsante trovato, attacco listener');
+    
+    // Listener pointerup principale
+    sidebarToggle.addEventListener('pointerup', function(e) {
+        console.log('[SIDEBAR] ========== pointerup EVENTO CATTURATO ==========');
+        console.log('[SIDEBAR] Evento:', {
+            type: e.type,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            target: e.target.tagName + '#' + (e.target.id || 'no-id')
+        });
+        
+        const sidebar = document.getElementById('chatSidebar');
+        const isOpen = sidebar?.classList.contains('is-open') || false;
+        
+        console.log('[SIDEBAR] btn pointerup. isOpen:', isOpen);
+        
+        e.stopPropagation();
+        e.preventDefault();
+        
+        try {
+            toggleSidebar();
+        } catch (error) {
+            console.error('[SIDEBAR] ERRORE:', error);
+        }
+    }, { passive: false });
+    
+    // Fallback click
+    sidebarToggle.addEventListener('click', function(e) {
+        console.log('[SIDEBAR] ========== click EVENTO CATTURATO (fallback) ==========');
+        e.stopPropagation();
+        e.preventDefault();
+        toggleSidebar();
+    });
+    
+    // Marca come attaccato
+    sidebarToggle.dataset.listenerAttached = 'true';
+    console.log('[SIDEBAR] Listener attaccati con successo!');
 }
 
 // ============================================
