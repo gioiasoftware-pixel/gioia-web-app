@@ -1928,6 +1928,17 @@ function renderViewerTable(rows) {
     });
 
     tableBody.innerHTML = html;
+    
+    // Debug: verifica struttura colonne
+    if (isFullscreen) {
+        const firstRow = tableBody.querySelector('.viewer-wine-row');
+        if (firstRow) {
+            const cells = firstRow.querySelectorAll('td');
+            console.log('[VIEWER] Numero colonne renderizzate:', cells.length);
+            console.log('[VIEWER] Colonna SCORTA (6a):', cells[5]?.innerHTML?.substring(0, 100));
+            console.log('[VIEWER] Colonna AZIONE (7a):', cells[6]?.innerHTML?.substring(0, 100));
+        }
+    }
 
     // Setup click su pulsanti grafico
     document.querySelectorAll('.viewer-chart-btn').forEach(btn => {
