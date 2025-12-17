@@ -570,12 +570,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         flex-shrink: 0;
         /* CRITICO: Isolation per evitare che elementi dell'header interferiscano con la chat */
         isolation: isolate;
-        /* CRITICO: Header NON deve intercettare tap - solo elementi specifici */
-        pointer-events: none;
-    }
-    
-    /* Solo il pulsante hamburger può ricevere tap */
-    .mHeader .sidebar-toggle-btn {
+        /* Header può ricevere eventi, ma solo elementi specifici sono cliccabili */
         pointer-events: auto;
     }
     
@@ -585,12 +580,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         pointer-events: none;
         user-select: none;
         -webkit-user-select: none;
+        /* Assicura che non abbiano area di click */
+        cursor: default;
     }
     
     /* Nessun pseudo-elemento che possa intercettare */
     .mHeader::before,
     .mHeader::after {
         display: none;
+    }
+    
+    /* Assicura che l'header stesso non intercetti tap fuori dai suoi elementi interattivi */
+    .mHeader:not(:has(.sidebar-toggle-btn:hover)) {
+        /* Quando non si passa sopra il pulsante, l'header non deve intercettare */
     }
 
     .mHeader .sidebar-toggle-btn {
@@ -604,11 +606,12 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         /* CRITICO: Limita area di click al pulsante stesso */
         overflow: hidden;
         position: relative;
-        z-index: 1;
+        z-index: 2; /* Sopra altri elementi dell'header */
         /* Assicura che non ci siano pseudo-elementi o ombre che si estendono */
         box-shadow: none;
         /* UNICO elemento dell'header che può ricevere tap */
         pointer-events: auto;
+        cursor: pointer;
     }
     
     /* Assicura che il pulsante non interferisca con tap fuori dalla sua area */

@@ -464,9 +464,14 @@ function setupEventListeners() {
     }
     
     // Setup pulsante hamburger - con feedback visivo granaccia/giallo
-    const sidebarToggle = document.getElementById('sidebar-toggle');
+    // Cerca prima nel contesto mobile, poi desktop
+    const isMobile = window.innerWidth <= 768;
+    const sidebarToggle = isMobile 
+        ? document.querySelector('.mHeader #sidebar-toggle')
+        : document.getElementById('sidebar-toggle');
+    
     if (sidebarToggle) {
-        debugLog('SIDEBAR: Pulsante hamburger trovato', 'info', 'SIDEBAR');
+        debugLog(`SIDEBAR: Pulsante hamburger trovato (${isMobile ? 'mobile' : 'desktop'})`, 'info', 'SIDEBAR');
         
         // Log quando viene toccato qualsiasi elemento nel header per debug
         const chatHeader = document.querySelector('.chat-header');
@@ -528,12 +533,30 @@ function setupEventListeners() {
     // NUOVA ARCHITETTURA MOBILE: Setup sidebar-toggle mobile (dentro .mHeader)
     // Il sidebar-toggle desktop è già gestito sopra, qui aggiungiamo quello mobile
     const sidebarToggleMobile = document.querySelector('.mHeader #sidebar-toggle');
-    if (sidebarToggleMobile && sidebarToggleMobile !== sidebarToggle) {
-        sidebarToggleMobile.addEventListener('pointerup', (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            toggleSidebar();
-        });
+    if (sidebarToggleMobile) {
+        debugLog('SIDEBAR MOBILE: Pulsante hamburger trovato in .mHeader', 'info', 'SIDEBAR');
+        
+        // Se è lo stesso elemento del desktop, non aggiungere listener duplicati
+        if (sidebarToggleMobile !== sidebarToggle) {
+            sidebarToggleMobile.addEventListener('pointerup', (e) => {
+                debugLog('SIDEBAR MOBILE: pointerup rilevato sul pulsante mobile', 'info', 'SIDEBAR');
+                e.stopPropagation();
+                e.preventDefault();
+                toggleSidebar();
+            });
+            
+            // Fallback con click
+            sidebarToggleMobile.addEventListener('click', (e) => {
+                debugLog('SIDEBAR MOBILE: click rilevato sul pulsante mobile (fallback)', 'info', 'SIDEBAR');
+                e.stopPropagation();
+                e.preventDefault();
+                toggleSidebar();
+            });
+        } else {
+            debugLog('SIDEBAR MOBILE: Pulsante condiviso con desktop, listener già attaccati', 'info', 'SIDEBAR');
+        }
+    } else {
+        debugLog('SIDEBAR MOBILE: Pulsante hamburger NON trovato in .mHeader', 'warn', 'SIDEBAR');
     }
     
     // NUOVA ARCHITETTURA MOBILE: Setup new-chat-btn mobile
@@ -3384,35 +3407,38 @@ function clearChatMessages(keepWelcome = true) {
 
 function toggleSidebar() {
     debugLog('========== toggleSidebar chiamato ==========', 'info', 'SIDEBAR');
-    const sidebar = document.getElementById('chat-sidebar');
-    
-    if (!sidebar) {
-        debugLog('ERRORE: Sidebar non trovata!', 'error', 'SIDEBAR');
-        return;
-    }
-    
-    // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // MOBILE: usa display:none quando chiusa, display:flex quando aperta
-        const wasOpen = sidebar.classList.contains('open');
+        // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
+        const sidebar = document.getElementById('chatSidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        if (!sidebar) {
+            debugLog('ERRORE: Sidebar mobile non trovata!', 'error', 'SIDEBAR');
+            return;
+        }
+        
+        const wasOpen = !sidebar.hasAttribute('hidden');
         
         if (wasOpen) {
-            // Chiudi sidebar: rimuovi classe open (CSS farà display:none)
-            sidebar.classList.remove('open');
-            // Rimuovi overlay se esiste
-            removeSidebarOverlay();
-            debugLog('Sidebar chiusa (display:none)', 'info', 'SIDEBAR');
+            // Chiudi sidebar: aggiungi hidden
+            sidebar.setAttribute('hidden', '');
+            if (overlay) overlay.setAttribute('hidden', '');
+            debugLog('Sidebar chiusa (hidden)', 'info', 'SIDEBAR');
         } else {
-            // Apri sidebar: aggiungi classe open (CSS farà display:flex)
-            sidebar.classList.add('open');
-            // Crea overlay dinamicamente
-            createSidebarOverlay();
-            debugLog('Sidebar aperta (display:flex)', 'info', 'SIDEBAR');
+            // Apri sidebar: rimuovi hidden
+            sidebar.removeAttribute('hidden');
+            if (overlay) overlay.removeAttribute('hidden');
+            debugLog('Sidebar aperta (hidden rimosso)', 'info', 'SIDEBAR');
         }
     } else {
         // DESKTOP: usa classe 'collapsed' per collassare/espandere
+        const sidebar = document.getElementById('chat-sidebar');
+        if (!sidebar) {
+            debugLog('ERRORE: Sidebar desktop non trovata!', 'error', 'SIDEBAR');
+            return;
+        }
         sidebar.classList.toggle('collapsed');
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
@@ -3485,11 +3511,11 @@ function handleWindowResize() {
         // Passato a mobile: rimuovi collapsed, chiudi sempre sidebar
         sidebar.classList.remove('collapsed');
         sidebar.classList.remove('open'); // Su mobile sempre chiusa di default
-        removeSidebarOverlay(); // Rimuovi overlay mobile se presente
+        // Overlay mobile gestito con hidden, non serve rimuoverlo
     } else {
         // Passato a desktop: rimuovi open, usa collapsed
         sidebar.classList.remove('open');
-        removeSidebarOverlay(); // Rimuovi overlay mobile se presente
+        // Overlay mobile gestito con hidden, non serve rimuoverlo
         // Ripristina stato collapsed da localStorage
         const savedState = localStorage.getItem('chat-sidebar-collapsed');
         if (savedState === 'true') {
