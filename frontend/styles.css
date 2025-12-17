@@ -1767,10 +1767,16 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         justify-content: center;
         align-items: center;
         z-index: 10001;
+        pointer-events: none; /* Di default non intercetta */
+    }
+    
+    .viewer-movements-modal:not(.hidden) {
+        pointer-events: auto; /* Quando visibile può intercettare */
     }
 
     .viewer-movements-modal.hidden {
         display: none;
+        pointer-events: none;
     }
 
     .viewer-movements-modal-content {
@@ -3818,10 +3824,16 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         justify-content: center;
         align-items: center;
         z-index: 10001;
+        pointer-events: none; /* Di default non intercetta */
+    }
+    
+    .viewer-movements-modal:not(.hidden) {
+        pointer-events: auto; /* Quando visibile può intercettare */
     }
 
     .viewer-movements-modal.hidden {
         display: none;
+        pointer-events: none;
     }
 
     .viewer-movements-modal-content {
