@@ -191,9 +191,12 @@ function addUniversalEventListener(element, handler, options = {}) {
 }
 
 // Initialize
-// Funzione helper per log HTML visibile
-function debugLog(message, type = 'info') {
+// Funzione helper per log HTML visibile E invio a Railway
+async function debugLog(message, type = 'info', context = null) {
+    // Log nella console
     console.log(message);
+    
+    // Mostra nel box HTML visibile
     const debugEl = document.getElementById('debug-log');
     if (debugEl) {
         debugEl.classList.add('active');
@@ -208,6 +211,26 @@ function debugLog(message, type = 'info') {
         }
         // Scroll in fondo
         debugEl.scrollTop = debugEl.scrollHeight;
+    }
+    
+    // Invia anche a Railway tramite API (non blocca se fallisce)
+    try {
+        await fetch('/api/debug/log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: message,
+                level: type,
+                context: context,
+                timestamp: new Date().toISOString()
+            })
+        }).catch(() => {
+            // Ignora errori di rete silenziosamente
+        });
+    } catch (e) {
+        // Ignora errori silenziosamente per non bloccare l'app
     }
 }
 
@@ -399,16 +422,16 @@ function setupEventListeners() {
     // Setup pulsante hamburger - con feedback visivo granaccia/giallo
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        debugLog('SIDEBAR: Pulsante hamburger trovato');
+        debugLog('SIDEBAR: Pulsante hamburger trovato', 'info', 'SIDEBAR');
         
         sidebarToggle.addEventListener('pointerdown', (e) => {
-            debugLog('SIDEBAR: pointerdown rilevato');
+            debugLog('SIDEBAR: pointerdown rilevato', 'info', 'SIDEBAR');
             // Feedback visivo immediato al touch
             sidebarToggle.classList.add('clicked');
         });
         
         sidebarToggle.addEventListener('pointerup', (e) => {
-            debugLog('SIDEBAR: pointerup rilevato, chiamando toggleSidebar');
+            debugLog('SIDEBAR: pointerup rilevato, chiamando toggleSidebar', 'info', 'SIDEBAR');
             e.stopPropagation();
             e.preventDefault(); // Previeni qualsiasi comportamento di default
             // Rimuovi feedback dopo breve delay per mostrare il colore
@@ -420,19 +443,19 @@ function setupEventListeners() {
         
         // Gestisci anche pointercancel per mobile
         sidebarToggle.addEventListener('pointercancel', () => {
-            debugLog('SIDEBAR: pointercancel rilevato');
+            debugLog('SIDEBAR: pointercancel rilevato', 'info', 'SIDEBAR');
             sidebarToggle.classList.remove('clicked');
         });
         
         // Fallback con click per browser che non supportano pointer events
         sidebarToggle.addEventListener('click', (e) => {
-            debugLog('SIDEBAR: click rilevato (fallback)');
+            debugLog('SIDEBAR: click rilevato (fallback)', 'info', 'SIDEBAR');
             e.stopPropagation();
             e.preventDefault();
             toggleSidebar();
         });
     } else {
-        debugLog('SIDEBAR: ERRORE - Pulsante hamburger NON trovato!', 'error');
+        debugLog('SIDEBAR: ERRORE - Pulsante hamburger NON trovato!', 'error', 'SIDEBAR');
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
