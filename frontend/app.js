@@ -311,9 +311,11 @@ function setupEventListeners() {
         // Inizializza stato checkbox in base al tema corrente
         themeCheckbox.checked = currentTheme === 'dark';
         
-        addUniversalEventListener(themeCheckbox, (e) => {
-            e.preventDefault();
-            const nextTheme = themeCheckbox.checked ? 'dark' : 'light';
+        // Usa direttamente evento 'change' per evitare problemi con addUniversalEventListener
+        // Questo garantisce che funzioni sempre, anche dopo cambi di tema
+        themeCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            const nextTheme = isChecked ? 'dark' : 'light';
             applyTheme(nextTheme, true);
         });
     }

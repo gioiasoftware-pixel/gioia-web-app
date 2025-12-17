@@ -532,18 +532,41 @@ body {
 
     background: var(--bg);
     border: 1px solid var(--border);
-    transition: left .2s ease, border-color .2s ease;
+    transition: left .3s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color .3s cubic-bezier(0.4, 0, 0.2, 1),
+                transform .3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow .3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* ON state (usa selector con for) */
+/* Animazione quando si attiva/disattiva */
 .ui-themeToggle__input:checked + .ui-themeToggle__track {
     background: color-mix(in srgb, var(--accent) 30%, var(--panel) 70%);
     border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+    transition: background .3s cubic-bezier(0.4, 0, 0.2, 1), 
+                border-color .3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .ui-themeToggle__input:checked + .ui-themeToggle__track .ui-themeToggle__thumb {
     left: 23px;
     border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* Animazione quando si disattiva */
+.ui-themeToggle__input:not(:checked) + .ui-themeToggle__track .ui-themeToggle__thumb {
+    transform: translateY(-50%) scale(1);
+}
+
+/* Animazione hover per feedback visivo */
+.ui-themeToggle__track:hover .ui-themeToggle__thumb {
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ui-themeToggle__input:checked + .ui-themeToggle__track:hover .ui-themeToggle__thumb {
+    transform: translateY(-50%) scale(1.1);
 }
 
 /* Focus accessibile */
