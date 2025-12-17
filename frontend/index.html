@@ -114,10 +114,12 @@
                     <h1 class="chat-title">Gio.ia</h1>
                 </div>
                 <div class="chat-header-right">
-                    <label class="theme-toggle-switch" title="Passa alla modalità notte">
-                        <input type="checkbox" id="theme-toggle-checkbox" aria-label="Toggle dark mode">
-                        <span class="theme-toggle-slider"></span>
-                    </label>
+                    <div class="ui-themeToggle">
+                        <input id="themeToggle" class="ui-themeToggle__input" type="checkbox" />
+                        <label for="themeToggle" class="ui-themeToggle__track" aria-label="Toggle dark mode" title="Passa alla modalità notte">
+                            <span class="ui-themeToggle__thumb"></span>
+                        </label>
+                    </div>
                     <button id="add-wine-btn" class="btn btn-primary" title="Aggiungi nuovo vino">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

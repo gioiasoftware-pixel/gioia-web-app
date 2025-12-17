@@ -18,6 +18,12 @@
     --color-chat-bg: #ffffff;
     --color-chat-user-bg: #9a182e;
     --color-chat-ai-bg: #f5f5f5;
+    
+    /* Variabili per toggle switch robusto */
+    --border: var(--color-border);
+    --bg: var(--color-white);
+    --accent: var(--color-granaccia);
+    --panel: var(--color-white);
 }
 
 body.dark-theme {
@@ -33,6 +39,12 @@ body.dark-theme {
     --color-chat-bg: #000000;
     --color-chat-user-bg: #ffb347;
     --color-chat-ai-bg: #111111;
+    
+    /* Variabili per toggle switch robusto in dark mode */
+    --border: var(--color-border);
+    --bg: var(--color-white);
+    --accent: var(--color-granaccia);
+    --panel: var(--color-white);
 }
 
 body {
@@ -464,65 +476,80 @@ body {
     gap: 16px;
 }
 
-/* Toggle Switch per tema giorno/notte */
-.theme-toggle-switch {
+/* Toggle Switch robusto per tema giorno/notte */
+.ui-themeToggle {
+    display: inline-flex;
+    align-items: center;
+    margin-right: -8px; /* Avvicina al bottone successivo */
+    flex-shrink: 0;
+}
+
+/* Nascondo l'input ma resta accessibile */
+.ui-themeToggle__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* Track */
+.ui-themeToggle__track {
+    width: 46px;
+    height: 26px;
+    border-radius: 999px;
+    cursor: pointer;
+
+    /* IMPORTANTI: blocca reset/override */
+    display: inline-flex;
+    align-items: center;
     position: relative;
-    display: inline-block;
-    width: 50px;
-    height: 28px;
-    cursor: pointer;
+    box-sizing: border-box;
+
+    background: var(--border);
+    border: 1px solid var(--border);
+    transition: background .2s ease, border-color .2s ease;
 }
 
-.theme-toggle-switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.theme-toggle-slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #6b7280; /* grigio medio per track */
-    transition: background-color 0.3s ease;
-    border-radius: 28px;
-}
-
-.theme-toggle-slider:before {
-    position: absolute;
-    content: "";
-    height: 22px;
-    width: 22px;
-    left: 3px;
-    bottom: 3px;
-    background-color: #ffffff; /* bianco per knob */
-    transition: transform 0.3s ease;
+/* Thumb */
+.ui-themeToggle__thumb {
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+    /* IMPORTANTI */
+    display: block;
+    position: absolute;
+    left: 3px;
+    top: 50%;
+    transform: translateY(-50%);
+    box-sizing: border-box;
+
+    background: var(--bg);
+    border: 1px solid var(--border);
+    transition: left .2s ease, border-color .2s ease;
 }
 
-.theme-toggle-switch input:checked + .theme-toggle-slider {
-    background-color: var(--color-granaccia); /* granaccia quando attivo (giorno) */
+/* ON state (usa selector con for) */
+.ui-themeToggle__input:checked + .ui-themeToggle__track {
+    background: color-mix(in srgb, var(--accent) 30%, var(--panel) 70%);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
 }
 
-.theme-toggle-switch input:checked + .theme-toggle-slider:before {
-    transform: translateX(22px);
+.ui-themeToggle__input:checked + .ui-themeToggle__track .ui-themeToggle__thumb {
+    left: 23px;
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border) 55%);
 }
 
-/* In modalità dark, il toggle è invertito: attivo = notte */
-body.dark-theme .theme-toggle-switch input:checked + .theme-toggle-slider {
-    background-color: #ffb347; /* giallo aranciato quando attivo (notte) */
-}
-
-.theme-toggle-switch:hover .theme-toggle-slider {
-    box-shadow: 0 0 0 2px rgba(154, 24, 46, 0.2);
-}
-
-body.dark-theme .theme-toggle-switch:hover .theme-toggle-slider {
-    box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.2);
+/* Focus accessibile */
+.ui-themeToggle__input:focus-visible + .ui-themeToggle__track {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
 
 .chat-container {

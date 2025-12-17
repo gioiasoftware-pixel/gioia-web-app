@@ -246,11 +246,11 @@ function applyTheme(theme, persist = true) {
     }
 
     // Aggiorna stato del toggle switch (checked = dark mode)
-    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    const themeCheckbox = document.getElementById('themeToggle');
     if (themeCheckbox) {
         themeCheckbox.checked = currentTheme === 'dark';
-        const themeLabel = themeCheckbox.closest('.theme-toggle-switch');
-        if (themeLabel) {
+        const themeLabel = themeCheckbox.nextElementSibling;
+        if (themeLabel && themeLabel.classList.contains('ui-themeToggle__track')) {
             themeLabel.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
         }
     }
@@ -306,7 +306,7 @@ function setupEventListeners() {
     }
 
     // Theme toggle switch (giorno/notte)
-    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    const themeCheckbox = document.getElementById('themeToggle');
     if (themeCheckbox) {
         // Inizializza stato checkbox in base al tema corrente
         themeCheckbox.checked = currentTheme === 'dark';
