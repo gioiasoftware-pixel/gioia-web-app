@@ -257,15 +257,22 @@ document.addEventListener("pointerup", (e) => {
     console.log("FROM POINT stack:\n", stackInfo);
     
     // Verifica se ci sono layer sospetti (overlay/sidebar/viewer/modal) anche quando dovrebbero essere chiusi
-    // ESCLUDI elementi dell'header (.mHeader) che sono sempre visibili e legittimi
+    // Verifica anche se elementi dell'header (tranne hamburger) intercettano tap
     const suspiciousLayers = els.filter(el => {
-        // Salta elementi dell'header (sono sempre visibili e legittimi)
-        if (el.closest('.mHeader') || el.closest('.chat-header')) {
-            return false;
-        }
-        
         const id = el.id || '';
         const className = el.className || '';
+        const isInHeader = el.closest('.mHeader') || el.closest('.chat-header');
+        
+        // Se è nell'header mobile, verifica che sia SOLO il pulsante hamburger
+        if (isInHeader && window.innerWidth <= 768) {
+            // Se NON è il pulsante hamburger, è sospetto
+            if (id !== 'sidebar-toggle' && !el.closest('#sidebar-toggle')) {
+                return true; // Elemento dell'header che non dovrebbe intercettare
+            }
+            return false; // È il pulsante hamburger, è legittimo
+        }
+        
+        // Per altri elementi, verifica overlay/sidebar/viewer/modal
         return (
             (id.includes('overlay') || id.includes('Overlay') || className.includes('overlay')) ||
             (id.includes('sidebar') || id.includes('Sidebar') || className.includes('sidebar')) ||
@@ -433,18 +440,7 @@ function setupEventListeners() {
         });
     }
 
-    // Theme toggle switch (mobile) - NUOVA ARCHITETTURA
-    const themeCheckboxMobile = document.getElementById('themeToggle-mobile');
-    if (themeCheckboxMobile) {
-        themeCheckboxMobile.checked = currentTheme === 'dark';
-        themeCheckboxMobile.addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            const nextTheme = isChecked ? 'dark' : 'light';
-            applyTheme(nextTheme, true);
-            // Sincronizza anche il toggle desktop se esiste
-            if (themeCheckbox) themeCheckbox.checked = isChecked;
-        });
-    }
+    // Theme toggle switch mobile rimosso dal layout mobile
     
     // Bottone aggiungi vino (desktop)
     const addWineBtn = document.getElementById('add-wine-btn');
@@ -455,33 +451,7 @@ function setupEventListeners() {
         });
     }
     
-    // Bottone aggiungi vino (mobile) - STEP 4: Usa pointer events
-    const mobileAddWineBtn = document.getElementById('mobile-add-wine-btn');
-    if (mobileAddWineBtn) {
-        mobileAddWineBtn.addEventListener('pointerup', (e) => {
-            e.stopPropagation();
-            // NON preventDefault se non strettamente necessario
-            openAddWineModal();
-        });
-    }
-    
-    // Bottone inventario (mobile) - STEP 4: Usa pointer events
-    const mobileViewerBtn = document.getElementById('mobile-viewer-btn');
-    if (mobileViewerBtn) {
-        mobileViewerBtn.addEventListener('pointerup', (e) => {
-            e.stopPropagation();
-            toggleViewer();
-        });
-    }
-    
-    // Bottone logout (mobile) - STEP 4: Usa pointer events
-    const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
-    if (mobileLogoutBtn) {
-        mobileLogoutBtn.addEventListener('pointerup', (e) => {
-            e.stopPropagation();
-            handleLogout();
-        });
-    }
+    // Quick Actions Bar mobile rimossa dal layout mobile
 
     // Chat sidebar
     const newChatBtn = document.getElementById('new-chat-btn');

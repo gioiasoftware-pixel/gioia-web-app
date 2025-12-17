@@ -570,16 +570,24 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         flex-shrink: 0;
         /* CRITICO: Isolation per evitare che elementi dell'header interferiscano con la chat */
         isolation: isolate;
-        /* Assicura che l'header non intercetti tap nella chat */
+        /* CRITICO: Header NON deve intercettare tap - solo elementi specifici */
+        pointer-events: none;
+    }
+    
+    /* Solo il pulsante hamburger può ricevere tap */
+    .mHeader .sidebar-toggle-btn {
         pointer-events: auto;
     }
     
-    /* Gli elementi dell'header devono avere pointer-events auto */
-    .mHeader > * {
-        pointer-events: auto;
+    /* Logo e titolo NON devono intercettare tap */
+    .mHeader .logo-container,
+    .mHeader .chat-title {
+        pointer-events: none;
+        user-select: none;
+        -webkit-user-select: none;
     }
     
-    /* Ma l'header stesso non deve intercettare tap fuori dai suoi elementi */
+    /* Nessun pseudo-elemento che possa intercettare */
     .mHeader::before,
     .mHeader::after {
         display: none;
@@ -596,15 +604,22 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         /* CRITICO: Limita area di click al pulsante stesso */
         overflow: hidden;
         position: relative;
-        z-index: 1; /* Non più alto dell'header stesso */
+        z-index: 1;
         /* Assicura che non ci siano pseudo-elementi o ombre che si estendono */
         box-shadow: none;
+        /* UNICO elemento dell'header che può ricevere tap */
+        pointer-events: auto;
     }
     
     /* Assicura che il pulsante non interferisca con tap fuori dalla sua area */
     .mHeader .sidebar-toggle-btn::before,
     .mHeader .sidebar-toggle-btn::after {
         display: none;
+    }
+    
+    /* SVG dentro il pulsante non deve bloccare */
+    .mHeader .sidebar-toggle-btn svg {
+        pointer-events: none;
     }
 
     .mHeader .logo-container {
