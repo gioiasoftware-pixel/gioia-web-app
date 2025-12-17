@@ -235,24 +235,52 @@ async function debugLog(message, type = 'info', context = null) {
 }
 
 // ============================================
-// DEBUG OBBLIGATORIO - VERIFICA LAYER SOPRA
 // ============================================
-// Questo debug verifica che non ci siano layer sopra che intercettano i tap
+// DEBUG SERIO: Identifica layer che rubano i tap
+// ============================================
+// Usa elementsFromPoint per vedere TUTTO lo stack di elementi sopra il punto toccato
 document.addEventListener("pointerup", (e) => {
-    const tapped = document.elementFromPoint(e.clientX, e.clientY);
+    const els = document.elementsFromPoint(e.clientX, e.clientY);
     const target = e.target;
     
-    // Log sempre per vedere cosa viene toccato
-    console.log("Tapped:", tapped, "Target:", target);
+    // Log stack completo (primi 6 elementi)
+    const stackInfo = els.slice(0, 6).map((el, idx) => {
+        const id = el.id || 'no-id';
+        const className = el.className || 'no-class';
+        const tag = el.tagName.toLowerCase();
+        const zIndex = window.getComputedStyle(el).zIndex || 'auto';
+        const hidden = el.hasAttribute('hidden') ? 'HIDDEN' : '';
+        const display = window.getComputedStyle(el).display;
+        return `${idx}: ${tag}#${id}.${className.split(' ')[0]} (z:${zIndex}, d:${display}) ${hidden}`;
+    }).join('\n');
     
-    // Se l'elemento loggato non è quello toccato, il layout è ancora sbagliato
-    if (tapped !== target) {
-        const elId = tapped?.id || 'no-id';
-        const elClass = tapped?.className || 'no-class';
-        const targetId = target?.id || 'no-id';
-        const targetClass = target?.className || 'no-class';
-        const elZIndex = window.getComputedStyle(tapped).zIndex || 'auto';
-        debugLog(`POINTER INTERCEPT: Tapped=${tapped?.tagName}#${elId}.${elClass.split(' ')[0]} (z:${elZIndex}) Target=${target?.tagName}#${targetId}.${targetClass.split(' ')[0]}`, 'warn', 'POINTER');
+    console.log("FROM POINT stack:\n", stackInfo);
+    
+    // Verifica se ci sono layer sospetti (overlay/sidebar/viewer/modal) anche quando dovrebbero essere chiusi
+    const suspiciousLayers = els.filter(el => {
+        const id = el.id || '';
+        const className = el.className || '';
+        return (
+            (id.includes('overlay') || id.includes('Overlay') || className.includes('overlay')) ||
+            (id.includes('sidebar') || id.includes('Sidebar') || className.includes('sidebar')) ||
+            (id.includes('viewer') || id.includes('Viewer') || className.includes('viewer')) ||
+            (id.includes('modal') || id.includes('Modal') || className.includes('modal'))
+        );
+    });
+    
+    if (suspiciousLayers.length > 0) {
+        const suspiciousInfo = suspiciousLayers.map(el => {
+            const id = el.id || 'no-id';
+            const hidden = el.hasAttribute('hidden') ? 'HIDDEN' : 'VISIBLE';
+            const display = window.getComputedStyle(el).display;
+            return `${el.tagName}#${id} (${hidden}, display:${display})`;
+        }).join(', ');
+        debugLog(`⚠️ LAYER SOSPETTO nello stack: ${suspiciousInfo}`, 'warn', 'POINTER');
+    }
+    
+    // Se il target non è il primo elemento nello stack, c'è intercettazione
+    if (els[0] !== target) {
+        debugLog(`POINTER INTERCEPT: Stack[0]=${els[0]?.tagName}#${els[0]?.id || 'no-id'} Target=${target?.tagName}#${target?.id || 'no-id'}`, 'warn', 'POINTER');
     }
 }, { capture: true });
 
@@ -346,7 +374,7 @@ function setupEventListeners() {
     document.getElementById('login-form-element')?.addEventListener('submit', handleLogin);
     document.getElementById('signup-form-element')?.addEventListener('submit', handleSignup);
 
-    // Chat
+    // Chat (desktop)
     document.getElementById('chat-form')?.addEventListener('submit', handleChatSubmit);
     document.getElementById('chat-input')?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -355,12 +383,30 @@ function setupEventListeners() {
         }
     });
 
-    // Auto-resize textarea
+    // Chat (mobile) - NUOVA ARCHITETTURA
+    document.getElementById('chat-form-mobile')?.addEventListener('submit', handleChatSubmit);
+    document.getElementById('chat-input-mobile')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            document.getElementById('chat-form-mobile').dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // Auto-resize textarea (desktop)
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
         chatInput.addEventListener('input', () => {
             chatInput.style.height = 'auto';
             chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+        });
+    }
+
+    // Auto-resize textarea (mobile)
+    const chatInputMobile = document.getElementById('chat-input-mobile');
+    if (chatInputMobile) {
+        chatInputMobile.addEventListener('input', () => {
+            chatInputMobile.style.height = 'auto';
+            chatInputMobile.style.height = Math.min(chatInputMobile.scrollHeight, 120) + 'px';
         });
     }
 
@@ -370,18 +416,27 @@ function setupEventListeners() {
         addUniversalEventListener(logoutBtn, handleLogout);
     }
 
-    // Theme toggle switch (giorno/notte)
+    // Theme toggle switch (giorno/notte) - Desktop
     const themeCheckbox = document.getElementById('themeToggle');
     if (themeCheckbox) {
-        // Inizializza stato checkbox in base al tema corrente
         themeCheckbox.checked = currentTheme === 'dark';
-        
-        // Usa direttamente evento 'change' per evitare problemi con addUniversalEventListener
-        // Questo garantisce che funzioni sempre, anche dopo cambi di tema
         themeCheckbox.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             const nextTheme = isChecked ? 'dark' : 'light';
             applyTheme(nextTheme, true);
+        });
+    }
+
+    // Theme toggle switch (mobile) - NUOVA ARCHITETTURA
+    const themeCheckboxMobile = document.getElementById('themeToggle-mobile');
+    if (themeCheckboxMobile) {
+        themeCheckboxMobile.checked = currentTheme === 'dark';
+        themeCheckboxMobile.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            const nextTheme = isChecked ? 'dark' : 'light';
+            applyTheme(nextTheme, true);
+            // Sincronizza anche il toggle desktop se esiste
+            if (themeCheckbox) themeCheckbox.checked = isChecked;
         });
     }
     
@@ -491,7 +546,28 @@ function setupEventListeners() {
     } else {
         debugLog('SIDEBAR: ERRORE - Pulsante hamburger NON trovato!', 'error', 'SIDEBAR');
     }
-    // Overlay gestito dinamicamente in createSidebarOverlay()
+    // NUOVA ARCHITETTURA MOBILE: Setup overlay sidebar (esiste già nel DOM, gestito con hidden)
+    setupSidebarOverlay();
+    
+    // NUOVA ARCHITETTURA MOBILE: Setup sidebar-toggle mobile (dentro .mHeader)
+    // Il sidebar-toggle desktop è già gestito sopra, qui aggiungiamo quello mobile
+    const sidebarToggleMobile = document.querySelector('.mHeader #sidebar-toggle');
+    if (sidebarToggleMobile && sidebarToggleMobile !== sidebarToggle) {
+        sidebarToggleMobile.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            toggleSidebar();
+        });
+    }
+    
+    // NUOVA ARCHITETTURA MOBILE: Setup new-chat-btn mobile
+    const newChatBtnMobile = document.getElementById('new-chat-btn-mobile');
+    if (newChatBtnMobile) {
+        newChatBtnMobile.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            handleNewChat();
+        });
+    }
     
     // Gestisci resize window per mobile/desktop
     window.addEventListener('resize', handleWindowResize);
@@ -772,7 +848,18 @@ async function sendChatMessage(message, showUserMessage = true) {
 
 async function handleChatSubmit(e) {
     e.preventDefault();
-    const input = document.getElementById('chat-input');
+    const isMobile = window.innerWidth <= 768;
+    
+    // NUOVA ARCHITETTURA MOBILE: Gestisci sia form desktop che mobile
+    const input = isMobile 
+        ? document.getElementById('chat-input-mobile')
+        : document.getElementById('chat-input');
+    
+    if (!input) {
+        console.error('[CHAT] Input non trovato!');
+        return;
+    }
+    
     const message = input.value.trim();
 
     if (!message || !authToken) return;
@@ -785,9 +872,18 @@ async function handleChatSubmit(e) {
 }
 
 function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
-    // SOLUZIONE 2: Usa il wrapper scroll invece del container
-    const messagesContainer = document.getElementById('chat-messages');
-    const scrollWrapper = document.getElementById('chat-messages-scroll-wrapper') || messagesContainer; // Fallback al container se wrapper non esiste
+    // NUOVA ARCHITETTURA MOBILE: Usa .mScroller su mobile, altrimenti wrapper desktop
+    const isMobile = window.innerWidth <= 768;
+    let scrollWrapper;
+    if (isMobile) {
+        scrollWrapper = document.getElementById('chatScroll') || document.querySelector('.mScroller');
+    } else {
+        scrollWrapper = document.getElementById('chat-messages-scroll-wrapper') || document.getElementById('chat-messages');
+    }
+    if (!scrollWrapper) {
+        console.error('[CHAT] Scroller non trovato!');
+        return null;
+    }
     const messageId = `msg-${Date.now()}-${Math.random()}`;
     const messageEl = document.createElement('div');
     messageEl.id = messageId;
@@ -1931,24 +2027,72 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
 // ============================================
 
 function toggleViewer() {
-    const panel = document.getElementById('viewer-panel');
-    const toggleBtn = document.getElementById('viewer-toggle');
+    const isMobile = window.innerWidth <= 768;
     
-    if (panel.classList.contains('open')) {
-        closeViewer();
+    if (isMobile) {
+        // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
+        const viewerMobile = document.getElementById('viewerPanel');
+        const viewerDesktop = document.getElementById('viewer-panel');
+        const toggleBtn = document.getElementById('viewer-toggle');
+        
+        if (!viewerMobile) {
+            console.error('[VIEWER] Viewer mobile non trovato!');
+            return;
+        }
+        
+        const wasOpen = !viewerMobile.hasAttribute('hidden');
+        
+        if (wasOpen) {
+            closeViewer();
+        } else {
+            // Apri viewer: rimuovi hidden
+            viewerMobile.removeAttribute('hidden');
+            if (toggleBtn) toggleBtn.setAttribute('hidden', '');
+            
+            // Copia contenuto dal viewer desktop al viewer mobile se necessario
+            if (viewerDesktop && viewerDesktop.querySelector('.viewer-content')) {
+                const desktopContent = viewerDesktop.querySelector('.viewer-content');
+                const mobileContent = viewerMobile.querySelector('.viewer-content');
+                if (!mobileContent && desktopContent) {
+                    viewerMobile.innerHTML = desktopContent.outerHTML;
+                }
+            }
+            
+            loadViewerData();
+        }
     } else {
-        panel.classList.add('open');
-        toggleBtn.classList.add('hidden');
-        loadViewerData();
+        // DESKTOP: Usa classi come prima
+        const panel = document.getElementById('viewer-panel');
+        const toggleBtn = document.getElementById('viewer-toggle');
+        
+        if (panel.classList.contains('open')) {
+            closeViewer();
+        } else {
+            panel.classList.add('open');
+            if (toggleBtn) toggleBtn.classList.add('hidden');
+            loadViewerData();
+        }
     }
 }
 
 function closeViewer() {
-    const panel = document.getElementById('viewer-panel');
-    const toggleBtn = document.getElementById('viewer-toggle');
+    const isMobile = window.innerWidth <= 768;
     
-    panel.classList.remove('open');
-    toggleBtn.classList.remove('hidden');
+    if (isMobile) {
+        // NUOVA ARCHITETTURA MOBILE: Usa hidden
+        const viewerMobile = document.getElementById('viewerPanel');
+        const toggleBtn = document.getElementById('viewer-toggle');
+        
+        if (viewerMobile) viewerMobile.setAttribute('hidden', '');
+        if (toggleBtn) toggleBtn.removeAttribute('hidden');
+    } else {
+        // DESKTOP: Usa classi
+        const panel = document.getElementById('viewer-panel');
+        const toggleBtn = document.getElementById('viewer-toggle');
+        
+        if (panel) panel.classList.remove('open');
+        if (toggleBtn) toggleBtn.classList.remove('hidden');
+    }
 }
 
 
@@ -3300,33 +3444,15 @@ function toggleSidebar() {
     }
 }
 
-// Crea overlay dinamicamente solo quando sidebar è aperta
-function createSidebarOverlay() {
-    // Rimuovi overlay esistente se presente
-    removeSidebarOverlay();
-    
-    // Crea nuovo overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'sidebar-overlay-mobile';
-    overlay.className = 'sidebar-overlay-mobile active';
-    
-    // Chiudi sidebar quando si clicca sull'overlay
-    overlay.addEventListener('pointerup', (e) => {
-        e.stopPropagation();
-        toggleSidebar();
-    });
-    
-    // Aggiungi al body
-    document.body.appendChild(overlay);
-    debugLog('Overlay creato dinamicamente', 'info', 'SIDEBAR');
-}
-
-// Rimuovi overlay quando sidebar è chiusa
-function removeSidebarOverlay() {
-    const overlay = document.getElementById('sidebar-overlay-mobile');
+// NUOVA ARCHITETTURA: Overlay gestito tramite hidden, non più creato/rimosso dinamicamente
+// L'overlay esiste già nel DOM e viene mostrato/nascosto con hidden
+function setupSidebarOverlay() {
+    const overlay = document.getElementById('sidebarOverlay');
     if (overlay) {
-        overlay.remove();
-        debugLog('Overlay rimosso', 'info', 'SIDEBAR');
+        overlay.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
     }
 }
 

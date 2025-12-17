@@ -520,6 +520,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     display: block;
 }
 
+/* ============================================
+   MOBILE LAYOUT: Architettura pulita con z-index scalari
+   ============================================ */
+:root {
+    --z-header: 10;
+    --z-composer: 10;
+    --z-fab: 20;
+    --z-overlay: 30;
+    --z-sidebar: 40;
+    --z-viewer: 50;
+    --z-modal: 60;
+}
+
 @media (max-width: 768px) {
     .mobile-only {
         display: block;
@@ -528,8 +541,363 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .desktop-only {
         display: none;
     }
+
+    /* ============================================
+       MOBILE APP CONTAINER (.mApp)
+       ============================================ */
+    .mApp {
+        height: 100dvh;
+        display: grid;
+        grid-template-rows: auto auto 1fr auto;
+        overflow: hidden;          /* niente scroll su body */
+        position: relative;
+        background-color: var(--color-off-white);
+    }
+
+    /* ============================================
+       HEADER MOBILE (.mHeader) - Sticky
+       ============================================ */
+    .mHeader {
+        position: sticky;
+        top: 0;
+        z-index: var(--z-header);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background-color: var(--color-white);
+        border-bottom: 1px solid var(--color-border);
+        flex-shrink: 0;
+    }
+
+    .mHeader .sidebar-toggle-btn {
+        padding: 8px;
+        min-width: 44px;
+        min-height: 44px;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+    }
+
+    .mHeader .logo-container {
+        width: 32px;
+        height: 32px;
+    }
+
+    .mHeader .chat-title {
+        font-size: 20px;
+        font-weight: 700;
+        flex: 1;
+        margin: 0;
+    }
+
+    .mHeader .ui-themeToggle {
+        margin-left: auto;
+    }
+
+    /* ============================================
+       QUICK ACTIONS BAR MOBILE
+       ============================================ */
+    .mobile-quick-actions {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 12px 16px;
+        background-color: var(--color-white);
+        border-bottom: 1px solid var(--color-border);
+        gap: 8px;
+        flex-shrink: 0;
+        touch-action: manipulation;
+    }
+
+    .mobile-quick-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 12px;
+        background: none;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        color: var(--color-text-secondary);
+        transition: background-color 0.2s ease, color 0.2s ease;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.1);
+        min-height: 64px;
+        pointer-events: auto;
+    }
+
+    .mobile-quick-action-btn:active {
+        background-color: var(--color-light-gray);
+        color: var(--color-granaccia);
+    }
+
+    .mobile-quick-action-label {
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    /* ============================================
+       MAIN CONTENT MOBILE (.mMain)
+       ============================================ */
+    .mMain {
+        min-height: 0;             /* CRITICO: overflow in grid/flex */
+        overflow: hidden;
+        position: relative;
+    }
+
+    /* ============================================
+       SCROLLER MOBILE (.mScroller) - UN SOLO SCROLLER
+       ============================================ */
+    .mScroller {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        position: relative;
+        isolation: isolate;        /* blocca stacking context esterni */
+        padding: 16px;
+    }
+
+    .mScroller .welcome-message {
+        text-align: center;
+        padding: 32px 16px;
+        color: var(--color-text-secondary);
+    }
+
+    .mScroller .welcome-message h2 {
+        font-size: 24px;
+        margin-bottom: 8px;
+    }
+
+    /* ============================================
+       COMPOSER MOBILE (.mComposer) - Sticky
+       ============================================ */
+    .mComposer {
+        position: sticky;
+        bottom: 0;
+        z-index: var(--z-composer);
+        background-color: var(--color-white);
+        border-top: 1px solid var(--color-border);
+        padding: 12px 16px;
+        flex-shrink: 0;
+    }
+
+    .mComposer .chat-form {
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+    }
+
+    .mComposer .chat-input {
+        flex: 1;
+        min-height: 44px;
+        padding: 12px 16px;
+        border: 1px solid var(--color-border);
+        border-radius: 24px;
+        font-size: 14px;
+        resize: none;
+        touch-action: manipulation;
+    }
+
+    .mComposer .chat-send-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+        border-radius: 50%;
+        background-color: var(--color-granaccia);
+        color: var(--color-white);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+    }
+
+    /* ============================================
+       OVERLAY MOBILE (.mOverlay) - Solo quando aperto
+       ============================================ */
+    .mOverlay[hidden],
+    .mSidebar[hidden],
+    .mViewer[hidden],
+    .mModal[hidden] {
+        display: none !important;
+    }
+
+    .mOverlay {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-overlay);
+        background: rgba(0, 0, 0, 0.35);
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    /* ============================================
+       SIDEBAR MOBILE (.mSidebar) - Solo quando aperto
+       ============================================ */
+    .mSidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: 85vw;
+        max-width: 400px;
+        z-index: var(--z-sidebar);
+        background: var(--color-white);
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mSidebar .chat-sidebar-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--color-border);
+        flex-shrink: 0;
+    }
+
+    .mSidebar .chat-sidebar-list {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px;
+    }
+
+    /* ============================================
+       VIEWER MOBILE (.mViewer) - Solo quando aperto
+       ============================================ */
+    .mViewer {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-viewer);
+        background: var(--color-white);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .mViewer .viewer-content {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .mViewer .viewer-header {
+        padding: 16px;
+        border-bottom: 1px solid var(--color-border);
+        flex-shrink: 0;
+    }
+
+    .mViewer .viewer-close-btn {
+        min-width: 44px;
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    /* ============================================
+       MODAL MOBILE (.mModal) - Solo quando aperto
+       ============================================ */
+    .mModal {
+        position: fixed;
+        inset: 0;
+        z-index: var(--z-modal);
+        display: grid;
+        place-items: center;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 16px;
+    }
+
+    /* ============================================
+       VIEWER TOGGLE (FAB) - Solo quando visibile
+       ============================================ */
+    .viewer-toggle-btn {
+        position: fixed;
+        right: 16px;
+        bottom: 88px;  /* Sopra il composer */
+        z-index: var(--z-fab);
+        width: 56px;
+        height: 56px;
+        min-width: 56px;
+        min-height: 56px;
+        border-radius: 50%;
+        background-color: var(--color-granaccia);
+        color: var(--color-white);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+        pointer-events: auto;
+    }
+
+    .viewer-toggle-btn[hidden] {
+        display: none !important;
+        pointer-events: none;
+    }
     
-    /* Header mobile ottimizzato */
+    .viewer-toggle-btn.hidden {
+        display: none !important;
+        pointer-events: none;
+    }
+
+    /* ============================================
+       WINE CARDS HARDENING
+       ============================================ */
+    .wine-card {
+        position: relative;
+        z-index: 1;
+        pointer-events: auto;
+        touch-action: manipulation;
+    }
+
+    .wine-card * {
+        pointer-events: auto;
+    }
+
+    .wine-card button,
+    .wine-card .wine-card-bookmark,
+    .wine-card .wine-card-edit-btn {
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.2);
+    }
+
+    /* ============================================
+       DEBUG LOG
+       ============================================ */
+    .debug-log {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        max-height: 200px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        font-size: 11px;
+        padding: 8px;
+        z-index: 10000;
+        display: none;
+        pointer-events: none;
+    }
+
+    .debug-log.active {
+        display: block;
+    }
+
+    .debug-log-item {
+        pointer-events: none;
+        margin-bottom: 4px;
+    }
+    
+    /* Header mobile ottimizzato (per compatibilità desktop) */
     .chat-header {
         padding: 12px 16px;
     }
