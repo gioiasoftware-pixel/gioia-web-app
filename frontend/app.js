@@ -320,12 +320,40 @@ function setupEventListeners() {
         });
     }
     
-    // Bottone aggiungi vino
+    // Bottone aggiungi vino (desktop)
     const addWineBtn = document.getElementById('add-wine-btn');
     if (addWineBtn) {
         addUniversalEventListener(addWineBtn, (e) => {
             e.preventDefault();
             openAddWineModal();
+        });
+    }
+    
+    // Bottone aggiungi vino (mobile)
+    const mobileAddWineBtn = document.getElementById('mobile-add-wine-btn');
+    if (mobileAddWineBtn) {
+        addUniversalEventListener(mobileAddWineBtn, (e) => {
+            e.preventDefault();
+            openAddWineModal();
+        });
+    }
+    
+    // Bottone inventario (mobile)
+    const mobileViewerBtn = document.getElementById('mobile-viewer-btn');
+    if (mobileViewerBtn) {
+        addUniversalEventListener(mobileViewerBtn, (e) => {
+            e.preventDefault();
+            // Apri viewer (usa stessa funzione del toggle viewer)
+            toggleViewer();
+        });
+    }
+    
+    // Bottone logout (mobile)
+    const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
+    if (mobileLogoutBtn) {
+        addUniversalEventListener(mobileLogoutBtn, (e) => {
+            e.preventDefault();
+            handleLogout();
         });
     }
 
@@ -2199,8 +2227,19 @@ function renderViewerTable(rows) {
 
     tableBody.innerHTML = html;
     
+    // Mostra/nascondi tabella o card in base al dispositivo
+    if (isMobile) {
+        const table = document.getElementById('viewer-table');
+        if (table) table.style.display = 'none';
+        if (mobileCardsContainer) mobileCardsContainer.style.display = 'flex';
+    } else {
+        const table = document.getElementById('viewer-table');
+        if (table) table.style.display = 'table';
+        if (mobileCardsContainer) mobileCardsContainer.style.display = 'none';
+    }
+    
     // Debug: verifica struttura colonne
-    if (isFullscreen) {
+    if (isFullscreen && !isMobile) {
         const firstRow = tableBody.querySelector('.viewer-wine-row');
         if (firstRow) {
             const cells = firstRow.querySelectorAll('td');

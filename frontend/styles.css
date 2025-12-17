@@ -472,7 +472,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
 }
 
 .sidebar-overlay.active {
@@ -481,7 +483,117 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 }
 
 /* Responsive: nascondi sidebar su mobile */
+/* Utility classes per mobile/desktop */
+.mobile-only {
+    display: none;
+}
+
+.desktop-only {
+    display: block;
+}
+
 @media (max-width: 768px) {
+    .mobile-only {
+        display: block;
+    }
+    
+    .desktop-only {
+        display: none;
+    }
+    
+    /* Header mobile ottimizzato */
+    .chat-header {
+        padding: 12px 16px;
+    }
+    
+    .chat-header-left {
+        gap: 12px;
+    }
+    
+    .logo-container .logo {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .chat-title {
+        font-size: 20px;
+    }
+    
+    .chat-header-right {
+        gap: 8px;
+    }
+    
+    /* Quick Actions Bar Mobile */
+    .mobile-quick-actions {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+        padding: 12px 16px;
+        background-color: var(--color-white);
+        border-bottom: 1px solid var(--color-border);
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .mobile-quick-action-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 8px 12px;
+        background: none;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        color: var(--color-text-secondary);
+        transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        min-height: 64px;
+    }
+    
+    .mobile-quick-action-btn:active {
+        transform: scale(0.95);
+        background-color: var(--color-light-gray);
+    }
+    
+    .mobile-quick-action-btn svg {
+        width: 24px;
+        height: 24px;
+        stroke-width: 2;
+    }
+    
+    .mobile-quick-action-label {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--color-text-secondary);
+    }
+    
+    .mobile-quick-action-btn:active,
+    .mobile-quick-action-btn:hover {
+        background-color: var(--color-light-gray);
+        color: var(--color-granaccia);
+    }
+    
+    .mobile-quick-action-btn:active .mobile-quick-action-label,
+    .mobile-quick-action-btn:hover .mobile-quick-action-label {
+        color: var(--color-granaccia);
+    }
+    
+    body.dark-theme .mobile-quick-action-btn:active,
+    body.dark-theme .mobile-quick-action-btn:hover {
+        background-color: var(--color-light-gray);
+        color: #ffb347;
+    }
+    
+    body.dark-theme .mobile-quick-action-btn:active .mobile-quick-action-label,
+    body.dark-theme .mobile-quick-action-btn:hover .mobile-quick-action-label {
+        color: #ffb347;
+    }
+    
+    /* Sidebar mobile */
     .chat-sidebar {
         position: fixed;
         left: 0;
@@ -491,9 +603,10 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         max-width: 400px; /* Limite massimo per schermi molto grandi */
         z-index: 1000;
         transform: translateX(-100%); /* Chiusa di default */
-        transition: transform 0.3s ease;
-        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
         touch-action: pan-y; /* Permette scroll verticale nella sidebar */
+        will-change: transform; /* Ottimizzazione performance */
     }
 
     .chat-sidebar.open {
@@ -503,6 +616,369 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .chat-sidebar.collapsed {
         /* Su mobile, collapsed non ha effetto, usa solo 'open' */
         transform: translateX(-100%);
+    }
+    
+    /* Migliora overlay su mobile */
+    .sidebar-overlay {
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+    }
+    
+    /* Ottimizza lista chat per touch mobile */
+    .chat-sidebar-item {
+        padding: 16px;
+        min-height: 64px; /* Touch-friendly height */
+    }
+    
+    .chat-sidebar-item-title {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+    
+    .chat-sidebar-item-time-wrapper {
+        gap: 12px;
+    }
+    
+    .chat-sidebar-item-delete {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        min-height: 32px;
+    }
+    
+    /* Ottimizza wine cards per mobile */
+    .wine-card {
+        max-width: 100%;
+        width: calc(100% - 32px);
+        margin: 0 16px;
+        padding: 16px;
+    }
+    
+    .wine-card-body {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+    
+    .wine-card-header {
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+    }
+    
+    .wine-card-title {
+        font-size: 18px;
+    }
+    
+    .wine-card-field-value {
+        font-size: 14px;
+    }
+    
+    .wine-card-field-value.price,
+    .wine-card-field-value.quantity {
+        font-size: 16px;
+    }
+    
+    /* Ottimizza bookmarks per touch mobile */
+    .wine-card-bookmark {
+        min-height: 64px;
+        width: 52px;
+        font-size: 12px;
+        padding: 10px 6px;
+    }
+    
+    /* Ottimizza movement cards per mobile */
+    .movement-card {
+        max-width: 100%;
+        width: calc(100% - 32px);
+        margin: 0 16px;
+        padding: 16px;
+    }
+    
+    /* Ottimizza chat bubbles per mobile */
+    .chat-message {
+        padding: 12px 16px;
+        max-width: 85%;
+    }
+    
+    .chat-message.user {
+        margin-left: auto;
+    }
+    
+    .chat-message.ai {
+        margin-right: auto;
+    }
+    
+    /* Ottimizza chat input per mobile */
+    .chat-input-container {
+        padding: 12px 16px;
+        /* Safe area per iOS */
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+    }
+    
+    .chat-form {
+        gap: 8px;
+    }
+    
+    .chat-input {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 16px; /* Previene zoom su iOS */
+        line-height: 1.5;
+    }
+    
+    .chat-send-btn {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        min-height: 48px;
+    }
+    
+    .chat-send-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+    
+    /* Viewer Panel Mobile - Fullscreen Modal */
+    .viewer-toggle-btn {
+        display: none; /* Nascondi toggle button su mobile */
+    }
+    
+    .viewer-panel {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100vw;
+        height: 100vh;
+        transform: translateX(100%);
+        z-index: 2000;
+        border-left: none;
+        box-shadow: none;
+    }
+    
+    .viewer-panel.open {
+        transform: translateX(0);
+    }
+    
+    /* Viewer Header Mobile */
+    .viewer-header {
+        padding: 16px;
+        flex-wrap: nowrap;
+        gap: 12px;
+    }
+    
+    .viewer-header-left {
+        flex: 1;
+        min-width: 0;
+    }
+    
+    .viewer-title {
+        font-size: 20px;
+    }
+    
+    .viewer-header-actions {
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .viewer-header-btn {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        padding: 0;
+    }
+    
+    /* Viewer Search Mobile */
+    .viewer-search {
+        padding: 12px 16px;
+    }
+    
+    .viewer-search-input {
+        padding: 14px 16px;
+        font-size: 16px; /* Previene zoom su iOS */
+    }
+    
+    /* Viewer Filters Mobile - Accordion */
+    .viewer-filters {
+        padding: 12px 16px;
+    }
+    
+    .filters-header-row {
+        margin-bottom: 8px;
+    }
+    
+    .filters-buttons-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .filter-dropdown-wrapper {
+        min-width: 100%;
+    }
+    
+    /* Viewer Table Mobile - Card Layout */
+    .viewer-table-container {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        flex: 1;
+    }
+    
+    .viewer-table {
+        display: none; /* Nascondi tabella su mobile */
+    }
+    
+    .viewer-table-mobile-cards {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+    }
+    
+    .viewer-wine-card-mobile {
+        background: var(--color-white);
+        border: 1px solid var(--color-border);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    }
+    
+    .viewer-wine-card-mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--color-border);
+    }
+    
+    .viewer-wine-card-mobile-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--color-black);
+        margin: 0;
+        flex: 1;
+    }
+    
+    .viewer-wine-card-mobile-actions {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    
+    .viewer-wine-card-mobile-body {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+    }
+    
+    .viewer-wine-card-mobile-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    
+    .viewer-wine-card-mobile-field-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--color-text-light);
+    }
+    
+    .viewer-wine-card-mobile-field-value {
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--color-text-primary);
+    }
+    
+    /* Viewer Pagination Mobile */
+    .viewer-pagination {
+        padding: 12px 16px;
+    }
+    
+    .viewer-pagination-btn {
+        min-width: 48px;
+        min-height: 48px;
+        padding: 12px 16px;
+    }
+    
+    /* Modals Mobile - Fullscreen */
+    .viewer-edit-modal,
+    .viewer-movements-modal {
+        align-items: flex-start;
+        padding: 0;
+    }
+    
+    .viewer-edit-modal-content,
+    .viewer-movements-modal-content {
+        width: 100%;
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        margin: 0;
+    }
+    
+    .viewer-edit-modal-header,
+    .viewer-movements-modal-header {
+        padding: 16px;
+        flex-shrink: 0;
+    }
+    
+    .viewer-edit-modal-header h2,
+    .viewer-movements-modal-header h2 {
+        font-size: 18px;
+    }
+    
+    .viewer-edit-modal-close,
+    .viewer-movements-modal-close {
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+    
+    .viewer-edit-modal-body,
+    .viewer-movements-modal-body {
+        padding: 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    /* Form fields mobile */
+    .wine-card-edit-form-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px;
+    }
+    
+    .wine-card-edit-input,
+    .wine-card-edit-textarea {
+        min-height: 48px;
+        padding: 14px 16px;
+        font-size: 16px; /* Previene zoom su iOS */
+    }
+    
+    .wine-card-edit-textarea {
+        min-height: 120px;
+    }
+    
+    .wine-card-edit-actions {
+        flex-direction: column;
+        gap: 12px;
+        padding-top: 16px;
+    }
+    
+    .wine-card-edit-btn {
+        width: 100%;
+        min-height: 48px;
+        padding: 14px 24px;
+        font-size: 16px;
+    }
+    
+    /* Chart modal mobile */
+    #viewer-movements-chart-container {
+        height: 300px;
     }
 
     .chat-main-content {
