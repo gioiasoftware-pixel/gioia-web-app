@@ -1863,7 +1863,7 @@ function renderViewerTable(rows) {
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell">
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="viewer-chart-btn" data-wine-name="${escapeHtml(wineNameRaw)}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart(${JSON.stringify(wineNameRaw)});">
+                    <button class="viewer-chart-btn" data-wine-name="${wineNameRaw.replace(/"/g, '&quot;')}" title="Visualizza grafico movimenti" type="button">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1927,12 +1927,39 @@ function renderViewerTable(rows) {
 
     tableBody.innerHTML = html;
 
+    // Setup click su pulsanti grafico
+    document.querySelectorAll('.viewer-chart-btn').forEach(btn => {
+        addUniversalEventListener(btn, (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            let wineName = btn.dataset.wineName;
+            
+            // Fallback: recupera nome dalla riga se data attribute non disponibile
+            if (!wineName) {
+                const row = btn.closest('.viewer-wine-row');
+                if (row) {
+                    const nameCell = row.querySelector('.viewer-wine-name-cell');
+                    if (nameCell) {
+                        wineName = nameCell.textContent.trim();
+                    }
+                }
+            }
+            
+            if (wineName) {
+                console.log('[VIEWER] Apertura grafico per vino:', wineName);
+                showMovementsChart(wineName);
+            } else {
+                console.error('[VIEWER] Nome vino non trovato per pulsante grafico');
+            }
+        });
+    });
+
     // Setup click su righe per espansione (solo fullscreen)
     if (isFullscreen) {
         document.querySelectorAll('.viewer-wine-row').forEach(row => {
             addUniversalEventListener(row, (e) => {
-                // Non espandere se il click è sul pulsante grafico
-                if (e.target.closest('.viewer-chart-btn')) {
+                // Non espandere se il click è sul pulsante grafico o modifica
+                if (e.target.closest('.viewer-chart-btn') || e.target.closest('.viewer-edit-btn')) {
                     return;
                 }
                 
