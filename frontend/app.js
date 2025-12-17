@@ -239,7 +239,12 @@ document.addEventListener("pointerup", (e) => {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const target = e.target;
     if (el !== target) {
-        debugLog(`POINTER: Tapped=${el?.tagName} Target=${target?.tagName}`);
+        const elId = el?.id || 'no-id';
+        const elClass = el?.className || 'no-class';
+        const targetId = target?.id || 'no-id';
+        const targetClass = target?.className || 'no-class';
+        const elZIndex = window.getComputedStyle(el).zIndex || 'auto';
+        debugLog(`POINTER INTERCEPT: Tapped=${el?.tagName}#${elId}.${elClass.split(' ')[0]} (z:${elZIndex}) Target=${target?.tagName}#${targetId}.${targetClass.split(' ')[0]}`, 'warn', 'POINTER');
     }
 }, { capture: true });
 
@@ -3219,30 +3224,30 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    debugLog('========== toggleSidebar chiamato ==========');
+    debugLog('========== toggleSidebar chiamato ==========', 'info', 'SIDEBAR');
     const sidebar = document.getElementById('chat-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     
     if (!sidebar) {
-        debugLog('ERRORE: Sidebar non trovata!', 'error');
+        debugLog('ERRORE: Sidebar non trovata!', 'error', 'SIDEBAR');
         return;
     }
     
-    debugLog(`Sidebar trovata: ${sidebar.tagName}`);
+    debugLog(`Sidebar trovata: ${sidebar.tagName}`, 'info', 'SIDEBAR');
     
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
-    debugLog(`isMobile: ${isMobile}, width: ${window.innerWidth}`);
+    debugLog(`isMobile: ${isMobile}, width: ${window.innerWidth}`, 'info', 'SIDEBAR');
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
         const wasOpen = sidebar.classList.contains('open');
-        debugLog(`PRIMA - era aperta: ${wasOpen}, classes: ${sidebar.className}`);
+        debugLog(`PRIMA - era aperta: ${wasOpen}, classes: ${sidebar.className}`, 'info', 'SIDEBAR');
         
         sidebar.classList.toggle('open');
         
         const isNowOpen = sidebar.classList.contains('open');
-        debugLog(`DOPO - ora è aperta: ${isNowOpen}, classes: ${sidebar.className}`);
+        debugLog(`DOPO - ora è aperta: ${isNowOpen}, classes: ${sidebar.className}`, 'info', 'SIDEBAR');
         
         // Forza il reflow per assicurare che il CSS venga applicato
         sidebar.offsetHeight;
@@ -3253,20 +3258,20 @@ function toggleSidebar() {
             const transform = computed.transform;
             const position = computed.position;
             const width = computed.width;
-            debugLog(`CSS DOPO 100ms - transform: ${transform}, position: ${position}, width: ${width}`);
+            debugLog(`CSS DOPO 100ms - transform: ${transform}, position: ${position}, width: ${width}`, 'info', 'SIDEBAR');
         }, 100);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
             if (isNowOpen) {
                 overlay.classList.add('active');
-                debugLog('Overlay attivato');
+                debugLog('Overlay attivato', 'info', 'SIDEBAR');
             } else {
                 overlay.classList.remove('active');
-                debugLog('Overlay disattivato');
+                debugLog('Overlay disattivato', 'info', 'SIDEBAR');
             }
         } else {
-            debugLog('WARN: Overlay non trovato!', 'error');
+            debugLog('WARN: Overlay non trovato!', 'error', 'SIDEBAR');
         }
     } else {
         // Su desktop: usa classe 'collapsed' per collassare/espandere
@@ -3274,10 +3279,10 @@ function toggleSidebar() {
         // Salva stato nel localStorage solo su desktop
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
-        debugLog(`Desktop - collapsed: ${isCollapsed}`);
+        debugLog(`Desktop - collapsed: ${isCollapsed}`, 'info', 'SIDEBAR');
     }
     
-    debugLog('========== Fine toggleSidebar ==========');
+    debugLog('========== Fine toggleSidebar ==========', 'info', 'SIDEBAR');
 }
 
 // Carica stato sidebar al caricamento pagina (solo desktop)
