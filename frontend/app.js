@@ -403,6 +403,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inizializza il layout manager PRIMA di tutto
     initLayoutManager();
     
+    // Rimuovi parametri sensibili dall'URL se presenti (sicurezza)
+    if (window.location.search.includes('email=') || window.location.search.includes('password=')) {
+        const url = new URL(window.location);
+        url.searchParams.delete('email');
+        url.searchParams.delete('password');
+        window.history.replaceState({}, '', url);
+        console.warn('[SECURITY] Rimossi parametri sensibili dall\'URL');
+    }
+    
     // Check if user is already logged in
     authToken = localStorage.getItem('auth_token');
     
@@ -653,9 +662,16 @@ async function handleLogin(e) {
     const errorEl = document.getElementById('login-error');
     errorEl.classList.add('hidden');
 
-    const email = document.getElementById('login-email').value;
+    const email = document.getElementById('login-email').value.trim();
     const password = document.getElementById('login-password').value;
     const rememberMe = document.getElementById('remember-me').checked;
+
+    // Validazione base
+    if (!email || !password) {
+        errorEl.textContent = 'Inserisci email e password';
+        errorEl.classList.remove('hidden');
+        return;
+    }
 
     try {
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
@@ -669,17 +685,47 @@ async function handleLogin(e) {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.detail || 'Errore durante il login');
+            // Gestione errori più dettagliata
+            let errorMessage = 'Errore durante il login';
+            
+            if (response.status === 401) {
+                errorMessage = 'Email o password non corretti. Verifica le credenziali e riprova.';
+            } else if (response.status === 403) {
+                errorMessage = 'Accesso negato. Contatta l\'amministratore.';
+            } else if (response.status === 404) {
+                errorMessage = 'Utente non trovato. Verifica l\'email inserita.';
+            } else if (data.detail) {
+                errorMessage = data.detail;
+            } else if (data.message) {
+                errorMessage = data.message;
+            }
+            
+            console.error('[LOGIN] Errore login:', response.status, data);
+            throw new Error(errorMessage);
+        }
+
+        // Rimuovi parametri sensibili dall'URL se presenti (sicurezza)
+        if (window.location.search.includes('email=') || window.location.search.includes('password=')) {
+            const url = new URL(window.location);
+            url.searchParams.delete('email');
+            url.searchParams.delete('password');
+            window.history.replaceState({}, '', url);
         }
 
         authToken = data.access_token;
+        if (!authToken) {
+            throw new Error('Token di autenticazione non ricevuto dal server');
+        }
+        
         localStorage.setItem('auth_token', authToken);
         currentUser = data;
 
+        console.log('[LOGIN] Login riuscito per:', email);
         showChatPage();
         loadUserInfo();
     } catch (error) {
-        errorEl.textContent = error.message;
+        console.error('[LOGIN] Errore durante il login:', error);
+        errorEl.textContent = error.message || 'Errore durante il login. Riprova.';
         errorEl.classList.remove('hidden');
     }
 }
@@ -748,11 +794,34 @@ async function loadUserInfo() {
             },
         });
 
-        if (response.ok) {
-            currentUser = await response.json();
+        // Se il token è scaduto o invalido, fai logout
+        if (response.status === 401 || response.status === 403) {
+            console.warn('[AUTH] Token scaduto o invalido, logout automatico');
+            handleLogout();
+            // Mostra messaggio all'utente
+            const errorEl = document.getElementById('login-error');
+            if (errorEl) {
+                errorEl.textContent = 'La sessione è scaduta. Effettua nuovamente il login.';
+                errorEl.classList.remove('hidden');
+            }
+            return;
         }
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[AUTH] Errore caricamento info utente:', response.status, errorData);
+            // Se c'è un errore grave, fai logout
+            if (response.status >= 500) {
+                handleLogout();
+            }
+            return;
+        }
+
+        currentUser = await response.json();
+        console.log('[AUTH] Info utente caricate:', currentUser.email || 'N/A');
     } catch (error) {
-        console.error('Error loading user info:', error);
+        console.error('[AUTH] Errore caricamento info utente:', error);
+        // In caso di errore di rete, non fare logout automatico (potrebbe essere temporaneo)
     }
 }
 
