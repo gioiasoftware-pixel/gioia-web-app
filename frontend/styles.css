@@ -654,27 +654,27 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     
     /* Sidebar mobile */
     .chat-sidebar {
-        position: fixed;
-        left: 0;
-        top: 0;
-        height: 100vh;
+        position: fixed !important;
+        left: 0 !important;
+        top: 0 !important;
+        height: 100vh !important;
         width: 75vw !important; /* 3/4 dello schermo su mobile */
-        max-width: 400px; /* Limite massimo per schermi molto grandi */
-        z-index: 1000;
-        transform: translateX(-100%); /* Chiusa di default */
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-width: 400px !important; /* Limite massimo per schermi molto grandi */
+        z-index: 1000 !important;
+        transform: translateX(-100%) !important; /* Chiusa di default */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
         touch-action: pan-y; /* Permette scroll verticale nella sidebar */
         will-change: transform; /* Ottimizzazione performance */
     }
 
     .chat-sidebar.open {
-        transform: translateX(0); /* Aperta quando ha classe 'open' */
+        transform: translateX(0) !important; /* Aperta quando ha classe 'open' */
     }
 
     .chat-sidebar.collapsed {
         /* Su mobile, collapsed non ha effetto, usa solo 'open' */
-        transform: translateX(-100%);
+        transform: translateX(-100%) !important;
     }
     
     /* Migliora overlay su mobile */

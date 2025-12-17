@@ -3173,6 +3173,8 @@ function toggleSidebar() {
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
     console.log('[DEBUG] isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
+    console.log('[DEBUG] Sidebar classes prima:', sidebar.className);
+    console.log('[DEBUG] Sidebar computed style transform:', window.getComputedStyle(sidebar).transform);
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
@@ -3180,6 +3182,16 @@ function toggleSidebar() {
         sidebar.classList.toggle('open');
         const isNowOpen = sidebar.classList.contains('open');
         console.log('[DEBUG] Mobile - sidebar era aperta:', wasOpen, 'ora è aperta:', isNowOpen);
+        console.log('[DEBUG] Sidebar classes dopo:', sidebar.className);
+        
+        // Forza il reflow per assicurare che il CSS venga applicato
+        sidebar.offsetHeight;
+        
+        // Verifica dopo un breve delay
+        setTimeout(() => {
+            const computedTransform = window.getComputedStyle(sidebar).transform;
+            console.log('[DEBUG] Sidebar computed style transform dopo:', computedTransform);
+        }, 50);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
