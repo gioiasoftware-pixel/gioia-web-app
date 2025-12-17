@@ -464,56 +464,65 @@ body {
     gap: 16px;
 }
 
-.theme-toggle-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    border-radius: 999px;
-    border: 1px solid var(--color-border);
-    background-color: var(--color-white);
-    color: var(--color-text-primary);
-    cursor: pointer;
-    padding: 0;
-    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.1s ease;
-}
-
-.theme-toggle-btn:hover {
-    background-color: var(--color-light-gray);
-    border-color: var(--color-granaccia);
-}
-
-.theme-toggle-btn:active {
-    transform: scale(0.96);
-}
-
-.theme-toggle-icon {
+/* Toggle Switch per tema giorno/notte */
+.theme-toggle-switch {
     position: relative;
-    display: inline-flex;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+    cursor: pointer;
 }
 
-.theme-icon-sun,
-.theme-icon-moon {
-    transition: opacity 0.2s ease, transform 0.2s ease;
-}
-
-body:not(.dark-theme) .theme-icon-sun {
-    opacity: 1;
-}
-
-body:not(.dark-theme) .theme-icon-moon {
+.theme-toggle-switch input {
     opacity: 0;
-    transform: scale(0.8);
+    width: 0;
+    height: 0;
 }
 
-body.dark-theme .theme-icon-sun {
-    opacity: 0;
-    transform: scale(0.8);
+.theme-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #6b7280; /* grigio medio per track */
+    transition: background-color 0.3s ease;
+    border-radius: 28px;
 }
 
-body.dark-theme .theme-icon-moon {
-    opacity: 1;
+.theme-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #ffffff; /* bianco per knob */
+    transition: transform 0.3s ease;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle-switch input:checked + .theme-toggle-slider {
+    background-color: var(--color-granaccia); /* granaccia quando attivo (giorno) */
+}
+
+.theme-toggle-switch input:checked + .theme-toggle-slider:before {
+    transform: translateX(22px);
+}
+
+/* In modalità dark, il toggle è invertito: attivo = notte */
+body.dark-theme .theme-toggle-switch input:checked + .theme-toggle-slider {
+    background-color: #ffb347; /* giallo aranciato quando attivo (notte) */
+}
+
+.theme-toggle-switch:hover .theme-toggle-slider {
+    box-shadow: 0 0 0 2px rgba(154, 24, 46, 0.2);
+}
+
+body.dark-theme .theme-toggle-switch:hover .theme-toggle-slider {
+    box-shadow: 0 0 0 2px rgba(255, 179, 71, 0.2);
 }
 
 .chat-container {

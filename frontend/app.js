@@ -227,7 +227,7 @@ function applyTheme(theme, persist = true) {
     }
 
     // Aggiorna logo (versione chiara/scura)
-    const logoImgElements = document.querySelectorAll('.logo-container img.logo');
+    const logoImgElements = document.querySelectorAll('.logo-container img.logo, .chat-message-avatar img.chat-avatar-logo');
     logoImgElements.forEach(img => {
         if (currentTheme === 'dark') {
             // Usa logo dark se disponibile nello static
@@ -245,11 +245,14 @@ function applyTheme(theme, persist = true) {
         }
     }
 
-    // Aggiorna title del bottone
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    if (themeBtn) {
-        themeBtn.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
-        themeBtn.setAttribute('aria-pressed', currentTheme === 'dark' ? 'true' : 'false');
+    // Aggiorna stato del toggle switch (checked = dark mode)
+    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    if (themeCheckbox) {
+        themeCheckbox.checked = currentTheme === 'dark';
+        const themeLabel = themeCheckbox.closest('.theme-toggle-switch');
+        if (themeLabel) {
+            themeLabel.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
+        }
     }
 }
 
@@ -302,12 +305,16 @@ function setupEventListeners() {
         addUniversalEventListener(logoutBtn, handleLogout);
     }
 
-    // Theme toggle (giorno/notte)
-    const themeToggleBtn = document.getElementById('theme-toggle-btn');
-    if (themeToggleBtn) {
-        addUniversalEventListener(themeToggleBtn, (e) => {
+    // Theme toggle switch (giorno/notte)
+    const themeCheckbox = document.getElementById('theme-toggle-checkbox');
+    if (themeCheckbox) {
+        // Inizializza stato checkbox in base al tema corrente
+        themeCheckbox.checked = currentTheme === 'dark';
+        
+        addUniversalEventListener(themeCheckbox, (e) => {
             e.preventDefault();
-            toggleTheme();
+            const nextTheme = themeCheckbox.checked ? 'dark' : 'light';
+            applyTheme(nextTheme, true);
         });
     }
     
