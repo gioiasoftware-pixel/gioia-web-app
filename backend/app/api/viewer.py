@@ -362,6 +362,7 @@ async def get_wine_movements(
                 }
 
             # Recupera movimenti per il vino (ricerca case-insensitive)
+            # Prima prova corrispondenza esatta, poi pattern matching
             query_movements = sql_text(f"""
                 SELECT 
                     id,
@@ -375,8 +376,16 @@ async def get_wine_movements(
                     notes
                 FROM {table_name}
                 WHERE user_id = :user_id
-                AND LOWER(wine_name) LIKE LOWER(:wine_name_pattern)
-                ORDER BY movement_date DESC
+                AND (
+                    LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact))
+                    OR LOWER(wine_name) LIKE LOWER(:wine_name_pattern)
+                )
+                ORDER BY 
+                    CASE 
+                        WHEN LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact)) THEN 1
+                        ELSE 2
+                    END,
+                    movement_date DESC
                 LIMIT 100
             """)
 
@@ -384,6 +393,7 @@ async def get_wine_movements(
                 query_movements,
                 {
                     "user_id": user_id,
+                    "wine_name_exact": wine_name,
                     "wine_name_pattern": f"%{wine_name}%"
                 }
             )

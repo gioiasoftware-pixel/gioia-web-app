@@ -1847,7 +1847,8 @@ function renderViewerTable(rows) {
     let html = '';
     paginatedRows.forEach((row, index) => {
         const wineId = `wine-${index}-${Date.now()}`;
-        const wineName = escapeHtml(row.name || row.Nome || '');
+        const wineNameRaw = row.name || row.Nome || '';
+        const wineName = escapeHtml(wineNameRaw);
         const isExpanded = false; // Stato iniziale
         
         // Riga principale
@@ -1862,7 +1863,7 @@ function renderViewerTable(rows) {
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell">
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="viewer-chart-btn" data-wine-name="${wineName}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart('${wineName}');">
+                    <button class="viewer-chart-btn" data-wine-name="${escapeHtml(wineNameRaw)}" title="Visualizza grafico movimenti" type="button" onclick="event.stopPropagation(); showMovementsChart(${JSON.stringify(wineNameRaw)});">
                         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
                             <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
