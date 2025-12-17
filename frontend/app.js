@@ -191,13 +191,32 @@ function addUniversalEventListener(element, handler, options = {}) {
 }
 
 // Initialize
+// Funzione helper per log HTML visibile
+function debugLog(message, type = 'info') {
+    console.log(message);
+    const debugEl = document.getElementById('debug-log');
+    if (debugEl) {
+        debugEl.classList.add('active');
+        const item = document.createElement('div');
+        item.className = 'debug-log-item';
+        const timestamp = new Date().toLocaleTimeString();
+        item.textContent = `[${timestamp}] ${message}`;
+        debugEl.appendChild(item);
+        // Mantieni solo ultimi 10 log
+        while (debugEl.children.length > 10) {
+            debugEl.removeChild(debugEl.firstChild);
+        }
+        // Scroll in fondo
+        debugEl.scrollTop = debugEl.scrollHeight;
+    }
+}
+
 // DEBUG: Identifica elementi che intercettano i tap su mobile
 document.addEventListener("pointerup", (e) => {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const target = e.target;
     if (el !== target) {
-        console.log("[DEBUG POINTER] Tapped element:", el, "Target:", target, "Different:", el !== target);
-        console.log("[DEBUG POINTER] Element classes:", el?.className, "Tag:", el?.tagName);
+        debugLog(`POINTER: Tapped=${el?.tagName} Target=${target?.tagName}`);
     }
 }, { capture: true });
 
@@ -380,16 +399,16 @@ function setupEventListeners() {
     // Setup pulsante hamburger - con feedback visivo granaccia/giallo
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        console.log('[SIDEBAR] Pulsante hamburger trovato, setup event listeners');
+        debugLog('SIDEBAR: Pulsante hamburger trovato');
         
         sidebarToggle.addEventListener('pointerdown', (e) => {
-            console.log('[SIDEBAR] pointerdown rilevato');
+            debugLog('SIDEBAR: pointerdown rilevato');
             // Feedback visivo immediato al touch
             sidebarToggle.classList.add('clicked');
         });
         
         sidebarToggle.addEventListener('pointerup', (e) => {
-            console.log('[SIDEBAR] pointerup rilevato, chiamando toggleSidebar');
+            debugLog('SIDEBAR: pointerup rilevato, chiamando toggleSidebar');
             e.stopPropagation();
             e.preventDefault(); // Previeni qualsiasi comportamento di default
             // Rimuovi feedback dopo breve delay per mostrare il colore
@@ -401,19 +420,19 @@ function setupEventListeners() {
         
         // Gestisci anche pointercancel per mobile
         sidebarToggle.addEventListener('pointercancel', () => {
-            console.log('[SIDEBAR] pointercancel rilevato');
+            debugLog('SIDEBAR: pointercancel rilevato');
             sidebarToggle.classList.remove('clicked');
         });
         
         // Fallback con click per browser che non supportano pointer events
         sidebarToggle.addEventListener('click', (e) => {
-            console.log('[SIDEBAR] click rilevato (fallback)');
+            debugLog('SIDEBAR: click rilevato (fallback)');
             e.stopPropagation();
             e.preventDefault();
             toggleSidebar();
         });
     } else {
-        console.error('[SIDEBAR] Pulsante hamburger NON trovato!');
+        debugLog('SIDEBAR: ERRORE - Pulsante hamburger NON trovato!', 'error');
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
@@ -3177,46 +3196,54 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    console.log('[SIDEBAR] ========== toggleSidebar chiamato ==========');
+    debugLog('========== toggleSidebar chiamato ==========');
     const sidebar = document.getElementById('chat-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     
     if (!sidebar) {
-        console.error('[SIDEBAR] ERRORE: Sidebar non trovata!');
-        // Mostra alert visibile per debug
-        alert('ERRORE: Sidebar non trovata!');
+        debugLog('ERRORE: Sidebar non trovata!', 'error');
         return;
     }
     
+    debugLog(`Sidebar trovata: ${sidebar.tagName}`);
+    
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
+    debugLog(`isMobile: ${isMobile}, width: ${window.innerWidth}`);
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
         const wasOpen = sidebar.classList.contains('open');
+        debugLog(`PRIMA - era aperta: ${wasOpen}, classes: ${sidebar.className}`);
         
         sidebar.classList.toggle('open');
         
         const isNowOpen = sidebar.classList.contains('open');
-        
-        // DEBUG VISIVO: mostra alert temporaneo per vedere se funziona
-        // RIMUOVI QUESTO DOPO IL TEST
-        setTimeout(() => {
-            const computedTransform = window.getComputedStyle(sidebar).transform;
-            const transformValue = computedTransform === 'none' ? 'translateX(0)' : computedTransform;
-            alert(`Sidebar toggle:\nEra aperta: ${wasOpen}\nOra è aperta: ${isNowOpen}\nTransform: ${transformValue}\nClasses: ${sidebar.className}`);
-        }, 100);
+        debugLog(`DOPO - ora è aperta: ${isNowOpen}, classes: ${sidebar.className}`);
         
         // Forza il reflow per assicurare che il CSS venga applicato
         sidebar.offsetHeight;
+        
+        // Verifica transform dopo breve delay
+        setTimeout(() => {
+            const computed = window.getComputedStyle(sidebar);
+            const transform = computed.transform;
+            const position = computed.position;
+            const width = computed.width;
+            debugLog(`CSS DOPO 100ms - transform: ${transform}, position: ${position}, width: ${width}`);
+        }, 100);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
             if (isNowOpen) {
                 overlay.classList.add('active');
+                debugLog('Overlay attivato');
             } else {
                 overlay.classList.remove('active');
+                debugLog('Overlay disattivato');
             }
+        } else {
+            debugLog('WARN: Overlay non trovato!', 'error');
         }
     } else {
         // Su desktop: usa classe 'collapsed' per collassare/espandere
@@ -3224,7 +3251,10 @@ function toggleSidebar() {
         // Salva stato nel localStorage solo su desktop
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
+        debugLog(`Desktop - collapsed: ${isCollapsed}`);
     }
+    
+    debugLog('========== Fine toggleSidebar ==========');
 }
 
 // Carica stato sidebar al caricamento pagina (solo desktop)

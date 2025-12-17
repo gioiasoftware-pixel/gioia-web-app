@@ -683,6 +683,34 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         -webkit-backdrop-filter: blur(4px);
     }
     
+    /* Debug Log (mobile only) */
+    .debug-log {
+        position: fixed;
+        top: 60px;
+        left: 8px;
+        right: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        background: rgba(0, 0, 0, 0.8);
+        color: #00ff00;
+        font-family: monospace;
+        font-size: 10px;
+        padding: 8px;
+        border-radius: 4px;
+        z-index: 10000;
+        display: none;
+        border: 1px solid #00ff00;
+    }
+    
+    .debug-log.active {
+        display: block;
+    }
+    
+    .debug-log-item {
+        margin-bottom: 4px;
+        word-break: break-all;
+    }
+    
     /* Ottimizza lista chat per touch mobile */
     .chat-sidebar-item {
         padding: 16px;
