@@ -1859,23 +1859,25 @@ function renderViewerTable(rows) {
             <td>${row.qty || row.Quantità || row.quantità || 0}</td>
             <td>€${(row.price || row.Prezzo || row.prezzo || 0).toFixed(2)}</td>
             <td>${escapeHtml(row.supplier || row.Fornitore || row.fornitore || '')}</td>
-            <td>${(row.critical || row['Scorta critica'] || false) ? '<span class="critical-badge">Critica</span>' : ''}</td>
+            <td style="display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;">
+                ${(row.critical || row['Scorta critica'] || false) ? '<span class="critical-badge">Critica</span>' : ''}
+                ${isFullscreen ? `
+                <button class="viewer-chart-btn" data-wine-name="${wineNameRaw.replace(/"/g, '&quot;')}" title="Visualizza grafico movimenti" type="button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 12L10 9L14 13L21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                ` : ''}
+            </td>
             ${isFullscreen ? `
             <td class="viewer-chart-action-cell">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <button class="viewer-chart-btn" data-wine-name="${wineNameRaw.replace(/"/g, '&quot;')}" title="Visualizza grafico movimenti" type="button">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M3 3V21H21" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M7 16L12 11L16 15L21 10" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M21 10V4H15" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                    <button class="viewer-edit-btn" data-wine-id="${row.id || ''}" data-wine-name="${wineName}" title="Modifica vino" type="button" onclick="event.stopPropagation(); handleViewerWineEdit(${row.id || 'null'});">
-                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11.6667 3.33333L14.1667 5.83333M2.5 17.5L13.1583 6.84167C13.5 6.5 13.6667 6.33333 13.875 6.33333C14.0833 6.33333 14.25 6.5 14.5917 6.84167L17.5 9.75C17.8417 10.0917 18.0083 10.2583 18.0083 10.4667C18.0083 10.675 17.8417 10.8417 17.5 11.1833L6.84167 21.8417H2.5V17.5Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                    </button>
-                </div>
+                <button class="viewer-edit-btn" data-wine-id="${row.id || ''}" data-wine-name="${wineName}" title="Modifica vino" type="button" onclick="event.stopPropagation(); handleViewerWineEdit(${row.id || 'null'});">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
             </td>
             ` : ''}
         </tr>

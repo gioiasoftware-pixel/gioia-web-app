@@ -1140,21 +1140,39 @@ body {
 
     /* Pulsante modifica nella tabella viewer */
     .viewer-edit-btn {
-        background: none;
-        border: none;
+        background: var(--color-light-gray);
+        border: 2px solid var(--color-border);
         cursor: pointer;
-        padding: 6px;
-        display: flex;
+        padding: 8px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-text-secondary);
-        transition: color 0.2s;
-        border-radius: 4px;
+        color: var(--color-text-primary);
+        transition: all 0.2s;
+        border-radius: 8px;
+        width: 48px;
+        height: 48px;
+        margin: 0 auto;
+        box-sizing: border-box;
     }
 
     .viewer-edit-btn:hover {
-        color: var(--color-granaccia);
-        background-color: var(--color-bg-secondary);
+        color: var(--color-white);
+        background-color: var(--color-granaccia);
+        border-color: var(--color-granaccia);
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
+    }
+
+    .viewer-edit-btn:active {
+        transform: scale(0.95);
+    }
+
+    .viewer-edit-btn svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
     }
 
     .viewer-chart-action-cell {
@@ -3137,21 +3155,39 @@ body {
 
     /* Pulsante modifica nella tabella viewer */
     .viewer-edit-btn {
-        background: none;
-        border: none;
+        background: var(--color-light-gray);
+        border: 2px solid var(--color-border);
         cursor: pointer;
-        padding: 6px;
-        display: flex;
+        padding: 8px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-text-secondary);
-        transition: color 0.2s;
-        border-radius: 4px;
+        color: var(--color-text-primary);
+        transition: all 0.2s;
+        border-radius: 8px;
+        width: 48px;
+        height: 48px;
+        margin: 0 auto;
+        box-sizing: border-box;
     }
 
     .viewer-edit-btn:hover {
-        color: var(--color-granaccia);
-        background-color: var(--color-bg-secondary);
+        color: var(--color-white);
+        background-color: var(--color-granaccia);
+        border-color: var(--color-granaccia);
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
+    }
+
+    .viewer-edit-btn:active {
+        transform: scale(0.95);
+    }
+
+    .viewer-edit-btn svg {
+        display: block;
+        width: 20px;
+        height: 20px;
+        pointer-events: none;
     }
 
     .viewer-chart-action-cell {
