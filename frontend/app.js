@@ -332,8 +332,15 @@ function setupEventListeners() {
     // Bottone aggiungi vino (mobile)
     const mobileAddWineBtn = document.getElementById('mobile-add-wine-btn');
     if (mobileAddWineBtn) {
-        addUniversalEventListener(mobileAddWineBtn, (e) => {
+        // Usa sia touch che click per massima compatibilità
+        mobileAddWineBtn.addEventListener('touchend', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            openAddWineModal();
+        }, { passive: false });
+        mobileAddWineBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             openAddWineModal();
         });
     }
@@ -341,9 +348,14 @@ function setupEventListeners() {
     // Bottone inventario (mobile)
     const mobileViewerBtn = document.getElementById('mobile-viewer-btn');
     if (mobileViewerBtn) {
-        addUniversalEventListener(mobileViewerBtn, (e) => {
+        mobileViewerBtn.addEventListener('touchend', (e) => {
             e.preventDefault();
-            // Apri viewer (usa stessa funzione del toggle viewer)
+            e.stopPropagation();
+            toggleViewer();
+        }, { passive: false });
+        mobileViewerBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             toggleViewer();
         });
     }
@@ -351,8 +363,14 @@ function setupEventListeners() {
     // Bottone logout (mobile)
     const mobileLogoutBtn = document.getElementById('mobile-logout-btn');
     if (mobileLogoutBtn) {
-        addUniversalEventListener(mobileLogoutBtn, (e) => {
+        mobileLogoutBtn.addEventListener('touchend', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            handleLogout();
+        }, { passive: false });
+        mobileLogoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             handleLogout();
         });
     }
@@ -366,13 +384,17 @@ function setupEventListeners() {
     // Setup pulsante hamburger con supporto universale mobile
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
-        console.log('[DEBUG] Sidebar toggle button trovato, touch device:', isTouchDevice());
-        addUniversalEventListener(sidebarToggle, (e) => {
-            console.log('[DEBUG] Toggle chiamato, tipo evento:', e.type);
+        // Usa eventi diretti per massima compatibilità Safari iOS
+        sidebarToggle.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSidebar();
+        }, { passive: false });
+        sidebarToggle.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             toggleSidebar();
         });
-    } else {
-        console.error('[DEBUG] Sidebar toggle button NON trovato!');
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
@@ -2249,18 +2271,18 @@ function renderViewerTable(rows) {
         }
     }
 
-    // Setup click su pulsanti grafico
+    // Setup click su pulsanti grafico - supporto touch migliorato per Safari iOS
     document.querySelectorAll('.viewer-chart-btn').forEach(btn => {
-        addUniversalEventListener(btn, (e) => {
+        const handler = (e) => {
             e.stopPropagation();
             e.preventDefault();
             let wineName = btn.dataset.wineName;
             
-            // Fallback: recupera nome dalla riga se data attribute non disponibile
+            // Fallback: recupera nome dalla riga o card se data attribute non disponibile
             if (!wineName) {
-                const row = btn.closest('.viewer-wine-row');
+                const row = btn.closest('.viewer-wine-row') || btn.closest('.viewer-wine-card-mobile');
                 if (row) {
-                    const nameCell = row.querySelector('.viewer-wine-name-cell');
+                    const nameCell = row.querySelector('.viewer-wine-name-cell') || row.querySelector('.viewer-wine-card-mobile-title');
                     if (nameCell) {
                         wineName = nameCell.textContent.trim();
                     }
@@ -2273,7 +2295,11 @@ function renderViewerTable(rows) {
             } else {
                 console.error('[VIEWER] Nome vino non trovato per pulsante grafico');
             }
-        });
+        };
+        
+        // Usa eventi diretti per massima compatibilità Safari iOS
+        btn.addEventListener('touchend', handler, { passive: false });
+        btn.addEventListener('click', handler);
     });
 
     // Setup click su righe per espansione (solo fullscreen)
