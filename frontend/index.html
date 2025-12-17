@@ -83,10 +83,7 @@
 
     <!-- Chat Page (hidden initially) -->
     <div id="chat-page" class="chat-page hidden">
-        <!-- Sidebar Overlay (mobile only) -->
-        <div id="sidebar-overlay" class="sidebar-overlay"></div>
-        
-        <!-- Sidebar Chat List -->
+        <!-- Sidebar Chat List (mobile: display:none quando chiusa, desktop: collapsed) -->
         <aside id="chat-sidebar" class="chat-sidebar">
             <div class="chat-sidebar-header">
                 <button type="button" id="new-chat-btn" class="btn btn-primary btn-small">
@@ -322,8 +319,9 @@
         </button>
     </div>
 
-    <!-- Modal per grafico movimenti -->
-    <div id="viewer-movements-modal" class="viewer-movements-modal hidden">
+    <!-- Modal per grafico movimenti (creato dinamicamente quando necessario, rimosso quando chiuso) -->
+    <!-- NOTA: Questo elemento viene creato/rimosso dinamicamente in JS, non deve esistere permanentemente -->
+    <div id="viewer-movements-modal" class="viewer-movements-modal hidden" style="display: none;">
         <div class="viewer-movements-modal-content">
             <div class="viewer-movements-modal-header">
                 <h2 id="viewer-movements-modal-wine-name">Movimenti Vino</h2>

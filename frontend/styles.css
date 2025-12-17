@@ -507,29 +507,8 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     opacity: 0.9;
 }
 
-/* Sidebar Overlay (mobile only) */
-.sidebar-overlay {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    opacity: 0;
-    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    /* IMPORTANTE: pointer-events solo quando attivo */
-    pointer-events: none;
-}
-
-.sidebar-overlay.active {
-    display: block;
-    opacity: 1;
-    pointer-events: auto; /* Solo quando attivo può intercettare */
-}
+/* Sidebar Overlay (mobile only) - RIMOSSO: overlay creato dinamicamente solo quando sidebar è aperta */
+/* L'overlay viene creato/rimosso dinamicamente in JS quando necessario */
 
 /* Responsive: nascondi sidebar su mobile */
 /* Utility classes per mobile/desktop */
@@ -652,39 +631,48 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         color: #ffb347;
     }
     
-    /* Sidebar mobile */
+    /* ============================================
+       SIDEBAR MOBILE - ARCHITETTURA TOUCH-FIRST
+       ============================================ */
+    
+    /* Sidebar mobile: display:none quando chiusa (NON transform!) */
     .chat-sidebar {
-        position: fixed !important;
-        left: 0 !important;
-        top: 0 !important;
-        height: 100vh !important;
-        width: 85vw !important; /* 85% dello schermo su mobile */
-        max-width: 400px !important; /* Limite massimo per schermi molto grandi */
-        z-index: 1000 !important;
-        transform: translateX(-100%) !important; /* Chiusa di default */
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
-        touch-action: pan-y; /* Permette scroll verticale nella sidebar */
-        will-change: transform; /* Ottimizzazione performance */
-        /* IMPORTANTE: quando chiusa, non deve intercettare eventi */
-        pointer-events: none !important;
-    }
-
-    .chat-sidebar.open {
-        transform: translateX(0) !important; /* Aperta quando ha classe 'open' */
-        pointer-events: auto !important; /* Quando aperta, può ricevere eventi */
-    }
-
-    .chat-sidebar.collapsed {
-        /* Su mobile, collapsed non ha effetto, usa solo 'open' */
-        transform: translateX(-100%) !important;
-        pointer-events: none !important;
+        /* Quando chiusa: completamente rimossa dal layout */
+        display: none;
     }
     
-    /* Migliora overlay su mobile */
-    .sidebar-overlay {
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+    /* Quando aperta: visibile e interattiva */
+    .chat-sidebar.open {
+        display: flex;
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        width: 85vw;
+        max-width: 400px;
+        z-index: 10; /* Z-index minimo necessario */
+        flex-direction: column;
+        background-color: var(--color-white);
+        box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+        touch-action: pan-y; /* Permette scroll verticale */
+        /* NESSUN transform, filter, backdrop-filter, opacity, will-change */
+    }
+    
+    /* Overlay per sidebar: creato dinamicamente solo quando sidebar è aperta */
+    .sidebar-overlay-mobile {
+        display: none;
+    }
+    
+    .sidebar-overlay-mobile.active {
+        display: block;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 9; /* Sotto la sidebar ma sopra main */
+        /* NESSUN backdrop-filter per evitare stacking context */
     }
     
     /* Debug Log (mobile only) */
@@ -1076,15 +1064,10 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         height: 300px;
     }
 
+    /* Main content mobile - già gestito sopra con padding-top */
     .chat-main-content {
         width: 100%;
         touch-action: pan-y; /* Permette scroll nella chat */
-    }
-    
-    /* Mostra overlay quando sidebar è aperta su mobile */
-    .sidebar-overlay {
-        display: block;
-        touch-action: none; /* Previeni scroll quando overlay è attivo */
     }
     
     /* Migliora touch per pulsanti su mobile */
