@@ -912,6 +912,8 @@ body {
         padding: 12px 8px;
         width: 100px;
         min-width: 100px;
+        display: table-cell !important;
+        visibility: visible !important;
     }
 
     .viewer-chart-btn {
@@ -1176,9 +1178,12 @@ body {
     }
 
     .viewer-chart-action-cell {
-        display: flex;
-        gap: 8px;
-        align-items: center;
+        display: table-cell !important;
+        text-align: center;
+        padding: 12px 8px;
+        width: 100px;
+        min-width: 100px;
+        visibility: visible !important;
     }
 }
 
@@ -3191,9 +3196,12 @@ body {
     }
 
     .viewer-chart-action-cell {
-        display: flex;
-        gap: 8px;
-        align-items: center;
+        display: table-cell !important;
+        text-align: center;
+        padding: 12px 8px;
+        width: 100px;
+        min-width: 100px;
+        visibility: visible !important;
     }
 }
 
