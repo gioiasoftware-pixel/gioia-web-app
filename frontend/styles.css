@@ -548,7 +548,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .mApp {
         height: 100dvh;
         display: grid;
-        grid-template-rows: auto auto 1fr auto;
+        grid-template-rows: auto 1fr auto;  /* Header, Main, Composer (rimossa Quick Actions) */
         overflow: hidden;          /* niente scroll su body */
         position: relative;
         background-color: var(--color-off-white);
@@ -568,14 +568,43 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         background-color: var(--color-white);
         border-bottom: 1px solid var(--color-border);
         flex-shrink: 0;
+        /* CRITICO: Isolation per evitare che elementi dell'header interferiscano con la chat */
+        isolation: isolate;
+        /* Assicura che l'header non intercetti tap nella chat */
+        pointer-events: auto;
+    }
+    
+    /* Gli elementi dell'header devono avere pointer-events auto */
+    .mHeader > * {
+        pointer-events: auto;
+    }
+    
+    /* Ma l'header stesso non deve intercettare tap fuori dai suoi elementi */
+    .mHeader::before,
+    .mHeader::after {
+        display: none;
     }
 
     .mHeader .sidebar-toggle-btn {
         padding: 8px;
         min-width: 44px;
         min-height: 44px;
+        max-width: 44px;
+        max-height: 44px;
         touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+        /* CRITICO: Limita area di click al pulsante stesso */
+        overflow: hidden;
+        position: relative;
+        z-index: 1; /* Non più alto dell'header stesso */
+        /* Assicura che non ci siano pseudo-elementi o ombre che si estendono */
+        box-shadow: none;
+    }
+    
+    /* Assicura che il pulsante non interferisca con tap fuori dalla sua area */
+    .mHeader .sidebar-toggle-btn::before,
+    .mHeader .sidebar-toggle-btn::after {
+        display: none;
     }
 
     .mHeader .logo-container {
@@ -590,9 +619,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         margin: 0;
     }
 
-    .mHeader .ui-themeToggle {
-        margin-left: auto;
-    }
+    /* Toggle dark mode rimosso dall'header mobile */
 
     /* ============================================
        QUICK ACTIONS BAR MOBILE
@@ -814,37 +841,10 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     }
 
     /* ============================================
-       VIEWER TOGGLE (FAB) - Solo quando visibile
+       VIEWER TOGGLE (FAB) - Rimosso su mobile
        ============================================ */
     .viewer-toggle-btn {
-        position: fixed;
-        right: 16px;
-        bottom: 88px;  /* Sopra il composer */
-        z-index: var(--z-fab);
-        width: 56px;
-        height: 56px;
-        min-width: 56px;
-        min-height: 56px;
-        border-radius: 50%;
-        background-color: var(--color-granaccia);
-        color: var(--color-white);
-        border: none;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        touch-action: manipulation;
-        -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
-        pointer-events: auto;
-    }
-
-    .viewer-toggle-btn[hidden] {
-        display: none !important;
-        pointer-events: none;
-    }
-    
-    .viewer-toggle-btn.hidden {
-        display: none !important;
+        display: none !important;  /* Completamente rimosso su mobile */
         pointer-events: none;
     }
 

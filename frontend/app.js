@@ -257,7 +257,13 @@ document.addEventListener("pointerup", (e) => {
     console.log("FROM POINT stack:\n", stackInfo);
     
     // Verifica se ci sono layer sospetti (overlay/sidebar/viewer/modal) anche quando dovrebbero essere chiusi
+    // ESCLUDI elementi dell'header (.mHeader) che sono sempre visibili e legittimi
     const suspiciousLayers = els.filter(el => {
+        // Salta elementi dell'header (sono sempre visibili e legittimi)
+        if (el.closest('.mHeader') || el.closest('.chat-header')) {
+            return false;
+        }
+        
         const id = el.id || '';
         const className = el.className || '';
         return (

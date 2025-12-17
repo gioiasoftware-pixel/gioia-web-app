@@ -85,7 +85,7 @@
     <div id="chat-page" class="chat-page hidden">
         <!-- MOBILE LAYOUT: Wrapper .mApp per architettura mobile pulita -->
         <div class="mApp mobile-only">
-            <!-- Header Mobile -->
+            <!-- Header Mobile - Solo logo e hamburger -->
             <header class="mHeader">
                 <button id="sidebar-toggle" class="sidebar-toggle-btn">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
@@ -96,12 +96,6 @@
                     <img src="/static/assets/logo.png" alt="Gio.ia Logo" class="logo" onerror="this.style.display='none'">
                 </div>
                 <h1 class="chat-title">Gio.ia</h1>
-                <div class="ui-themeToggle">
-                    <input id="themeToggle-mobile" class="ui-themeToggle__input" type="checkbox" />
-                    <label for="themeToggle-mobile" class="ui-themeToggle__track" aria-label="Toggle dark mode" title="Passa alla modalità notte">
-                        <span class="ui-themeToggle__thumb"></span>
-                    </label>
-                </div>
             </header>
 
             <!-- Main Content Mobile -->
@@ -115,31 +109,6 @@
                     <!-- Chat messages e wine cards vengono inseriti qui dinamicamente -->
                 </div>
             </main>
-
-            <!-- Quick Actions Bar Mobile -->
-            <div class="mobile-quick-actions">
-                <button id="mobile-add-wine-btn" class="mobile-quick-action-btn" title="Aggiungi nuovo vino">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="mobile-quick-action-label">Aggiungi</span>
-                </button>
-                <button type="button" id="mobile-viewer-btn" class="mobile-quick-action-btn" title="Apri inventario">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 3V21H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M7 12L10 9L14 13L21 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="mobile-quick-action-label">Inventario</span>
-                </button>
-                <button type="button" id="mobile-logout-btn" class="mobile-quick-action-btn" title="Esci">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                    <span class="mobile-quick-action-label">Esci</span>
-                </button>
-            </div>
 
             <!-- Composer Mobile -->
             <footer class="mComposer">
