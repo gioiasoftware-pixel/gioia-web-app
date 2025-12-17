@@ -3342,26 +3342,35 @@ function showMovementsChart(wineName) {
             return;
         }
         
-        // Prepara dati per grafico
+        // Prepara dati per grafico di flusso
+        // Stock al centro, consumi sotto (negativi), rifornimenti sopra (positivi)
         const labels = [];
-        const consumiData = [];
-        const rifornimentiData = [];
-        const quantitaData = [];
+        const consumiData = []; // Valori negativi
+        const rifornimentiData = []; // Valori positivi
+        const stockData = []; // Linea di stock al centro
         
         movements.forEach(mov => {
             const date = new Date(mov.date);
             labels.push(date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
             
             if (mov.type === 'consumo') {
-                consumiData.push(Math.abs(mov.quantity_change));
-                rifornimentiData.push(null);
+                // Consumi: valori negativi (sotto la linea di stock)
+                consumiData.push(-Math.abs(mov.quantity_change));
+                rifornimentiData.push(0);
             } else {
-                consumiData.push(null);
-                rifornimentiData.push(mov.quantity_change);
+                // Rifornimenti: valori positivi (sopra la linea di stock)
+                consumiData.push(0);
+                rifornimentiData.push(Math.abs(mov.quantity_change));
             }
             
-            quantitaData.push(mov.quantity_after);
+            // Stock: quantità attuale (sarà la baseline al centro)
+            stockData.push(mov.quantity_after || 0);
         });
+        
+        // Calcola il valore medio di stock per posizionare la baseline al centro
+        const avgStock = stockData.length > 0 
+            ? stockData.reduce((a, b) => a + b, 0) / stockData.length 
+            : 0;
         
         // Crea grafico
         chartContainer.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
@@ -3373,33 +3382,37 @@ function showMovementsChart(wineName) {
         }
         
         movementsChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: labels,
                 datasets: [
                     {
                         label: 'Consumi',
                         data: consumiData,
+                        backgroundColor: '#9a182e', // Rosso granaccia
                         borderColor: '#9a182e',
-                        backgroundColor: 'rgba(154, 24, 46, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        borderWidth: 1,
+                        order: 2
                     },
                     {
                         label: 'Rifornimenti',
                         data: rifornimentiData,
-                        borderColor: '#28a745',
-                        backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                        tension: 0.4,
-                        fill: true
+                        backgroundColor: '#ffb347', // Giallo aranciato
+                        borderColor: '#ffb347',
+                        borderWidth: 1,
+                        order: 2
                     },
                     {
-                        label: 'Quantità Stock',
-                        data: quantitaData,
-                        borderColor: '#007bff',
-                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                        tension: 0.4,
+                        label: 'Stock',
+                        data: stockData.map(() => avgStock), // Linea costante al centro
+                        type: 'line',
+                        borderColor: '#333333',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [5, 5],
+                        pointRadius: 0,
                         fill: false,
+                        order: 1,
                         yAxisID: 'y1'
                     }
                 ]
@@ -3407,21 +3420,85 @@ function showMovementsChart(wineName) {
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
                 plugins: {
                     legend: {
                         display: true,
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.datasetIndex === 0) {
+                                    // Consumi: mostra valore positivo
+                                    label += Math.abs(context.parsed.y) + ' bottiglie';
+                                } else if (context.datasetIndex === 1) {
+                                    // Rifornimenti
+                                    label += context.parsed.y + ' bottiglie';
+                                } else {
+                                    // Stock
+                                    label += context.parsed.y + ' bottiglie';
+                                }
+                                return label;
+                            }
+                        }
                     },
                     title: {
                         display: false
                     }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
+                    x: {
+                        stacked: false,
                         title: {
                             display: true,
-                            text: 'Bottiglie (Consumi/Rifornimenti)'
+                            text: 'Data',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        }
+                    },
+                    y: {
+                        stacked: false,
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Movimenti (bottiglie)',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                return Math.abs(value) + '';
+                            }
+                        },
+                        grid: {
+                            color: function(context) {
+                                if (context.tick.value === 0) {
+                                    return '#333333'; // Linea più scura per lo zero
+                                }
+                                return '#e0e0e0';
+                            },
+                            lineWidth: function(context) {
+                                if (context.tick.value === 0) {
+                                    return 2; // Linea più spessa per lo zero
+                                }
+                                return 1;
+                            }
                         }
                     },
                     y1: {
@@ -3430,10 +3507,17 @@ function showMovementsChart(wineName) {
                         position: 'right',
                         title: {
                             display: true,
-                            text: 'Stock'
+                            text: 'Stock (bottiglie)',
+                            font: {
+                                size: 12,
+                                weight: 'bold'
+                            }
                         },
                         grid: {
                             drawOnChartArea: false
+                        },
+                        ticks: {
+                            display: true
                         }
                     }
                 }
