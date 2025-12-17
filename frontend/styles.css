@@ -796,8 +796,13 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
         touch-action: pan-y;
-        display: flex;
+        display: flex !important; /* CRITICO: display flex quando NON hidden */
         flex-direction: column;
+    }
+    
+    /* CRITICO: Quando hidden, deve essere display:none */
+    .mSidebar[hidden] {
+        display: none !important;
     }
 
     .mSidebar .chat-sidebar-header {
@@ -904,6 +909,8 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         z-index: 10000;
         display: none;
         pointer-events: none;
+        /* CRITICO: Non deve coprire l'header o il pulsante hamburger */
+        top: auto;
     }
 
     .debug-log.active {
@@ -913,6 +920,11 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     .debug-log-item {
         pointer-events: none;
         margin-bottom: 4px;
+    }
+    
+    /* Assicura che il debug log non interferisca con l'header */
+    .debug-log:not(.active) {
+        display: none !important;
     }
     
     /* Header mobile ottimizzato (per compatibilità desktop) */

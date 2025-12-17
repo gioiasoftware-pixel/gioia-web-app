@@ -480,12 +480,22 @@ function setupEventListeners() {
     // Setup pulsante hamburger - con feedback visivo granaccia/giallo
     // Cerca prima nel contesto mobile, poi desktop
     const isMobile = window.innerWidth <= 768;
-    const sidebarToggle = isMobile 
-        ? document.querySelector('.mHeader #sidebar-toggle')
-        : document.getElementById('sidebar-toggle');
+    let sidebarToggle = null;
+    
+    if (isMobile) {
+        sidebarToggle = document.querySelector('.mHeader #sidebar-toggle');
+        debugLog(`SIDEBAR MOBILE: Cercando pulsante in .mHeader...`, 'info', 'SIDEBAR');
+        if (!sidebarToggle) {
+            debugLog(`SIDEBAR MOBILE: Pulsante NON trovato in .mHeader, provo getElementById`, 'warn', 'SIDEBAR');
+            sidebarToggle = document.getElementById('sidebar-toggle');
+        }
+    } else {
+        sidebarToggle = document.getElementById('sidebar-toggle');
+    }
     
     if (sidebarToggle) {
-        debugLog(`SIDEBAR: Pulsante hamburger trovato (${isMobile ? 'mobile' : 'desktop'})`, 'info', 'SIDEBAR');
+        debugLog(`SIDEBAR: Pulsante hamburger trovato (${isMobile ? 'mobile' : 'desktop'}) - ID: ${sidebarToggle.id}, Classe: ${sidebarToggle.className}`, 'info', 'SIDEBAR');
+        debugLog(`SIDEBAR: Pulsante posizione: ${sidebarToggle.getBoundingClientRect().top},${sidebarToggle.getBoundingClientRect().left}`, 'info', 'SIDEBAR');
         
         // Log quando viene toccato qualsiasi elemento nel header per debug
         const chatHeader = document.querySelector('.chat-header');
@@ -507,13 +517,20 @@ function setupEventListeners() {
         
         sidebarToggle.addEventListener('pointerup', (e) => {
             debugLog('SIDEBAR: pointerup rilevato DIRETTAMENTE sul pulsante, chiamando toggleSidebar', 'info', 'SIDEBAR');
+            debugLog(`SIDEBAR: Evento pointerup - clientX=${e.clientX}, clientY=${e.clientY}, target=${e.target.tagName}#${e.target.id}`, 'info', 'SIDEBAR');
             e.stopPropagation(); // Ferma propagazione
             e.preventDefault(); // Previeni qualsiasi comportamento di default
             // Rimuovi feedback dopo breve delay per mostrare il colore
             setTimeout(() => {
                 sidebarToggle.classList.remove('clicked');
             }, 200);
-            toggleSidebar();
+            // Chiama toggleSidebar con try-catch per catturare errori
+            try {
+                toggleSidebar();
+            } catch (error) {
+                debugLog(`ERRORE in toggleSidebar: ${error.message}`, 'error', 'SIDEBAR');
+                console.error('Errore toggleSidebar:', error);
+            }
         });
         
         // Gestisci anche pointercancel per mobile
@@ -3393,29 +3410,46 @@ function clearChatMessages(keepWelcome = true) {
 function toggleSidebar() {
     debugLog('========== toggleSidebar chiamato ==========', 'info', 'SIDEBAR');
     const isMobile = window.innerWidth <= 768;
+    debugLog(`toggleSidebar: isMobile=${isMobile}, window.innerWidth=${window.innerWidth}`, 'info', 'SIDEBAR');
     
     if (isMobile) {
         // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
         const sidebar = document.getElementById('chatSidebar');
         const overlay = document.getElementById('sidebarOverlay');
         
+        debugLog(`toggleSidebar MOBILE: sidebar=${sidebar ? 'TROVATA' : 'NON TROVATA'}, overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
+        
         if (!sidebar) {
-            debugLog('ERRORE: Sidebar mobile non trovata!', 'error', 'SIDEBAR');
+            debugLog('ERRORE: Sidebar mobile non trovata! Cercando alternative...', 'error', 'SIDEBAR');
+            // Prova a cercare in altri modi
+            const altSidebar = document.querySelector('.mSidebar');
+            debugLog(`toggleSidebar: alternativa .mSidebar=${altSidebar ? 'TROVATA' : 'NON TROVATA'}`, 'warn', 'SIDEBAR');
             return;
         }
         
         const wasOpen = !sidebar.hasAttribute('hidden');
+        const currentDisplay = window.getComputedStyle(sidebar).display;
+        debugLog(`toggleSidebar MOBILE: wasOpen=${wasOpen}, currentDisplay=${currentDisplay}, hasHidden=${sidebar.hasAttribute('hidden')}`, 'info', 'SIDEBAR');
         
         if (wasOpen) {
             // Chiudi sidebar: aggiungi hidden
             sidebar.setAttribute('hidden', '');
             if (overlay) overlay.setAttribute('hidden', '');
-            debugLog('Sidebar chiusa (hidden)', 'info', 'SIDEBAR');
+            const newDisplay = window.getComputedStyle(sidebar).display;
+            debugLog(`Sidebar chiusa: hidden aggiunto, display=${newDisplay}`, 'info', 'SIDEBAR');
         } else {
             // Apri sidebar: rimuovi hidden
             sidebar.removeAttribute('hidden');
             if (overlay) overlay.removeAttribute('hidden');
-            debugLog('Sidebar aperta (hidden rimosso)', 'info', 'SIDEBAR');
+            const newDisplay = window.getComputedStyle(sidebar).display;
+            debugLog(`Sidebar aperta: hidden rimosso, display=${newDisplay}`, 'info', 'SIDEBAR');
+            
+            // Verifica che sia visibile
+            setTimeout(() => {
+                const finalDisplay = window.getComputedStyle(sidebar).display;
+                const rect = sidebar.getBoundingClientRect();
+                debugLog(`Sidebar dopo 100ms: display=${finalDisplay}, width=${rect.width}, visible=${rect.width > 0}`, 'info', 'SIDEBAR');
+            }, 100);
         }
     } else {
         // DESKTOP: usa classe 'collapsed' per collassare/espandere
