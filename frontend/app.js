@@ -2862,7 +2862,7 @@ function renderViewerTable(rows) {
     // Setup click su pulsanti grafico - Usa event delegation per gestire pulsanti creati dinamicamente
     // Rimuovi listener precedenti se esistono
     const viewerPanel = document.getElementById('viewer-panel');
-    const tableBody = document.getElementById('viewer-table-body');
+    // tableBody è già dichiarato all'inizio della funzione, non dichiararlo di nuovo
     
     // Usa tableBody come container per event delegation (più specifico)
     const container = tableBody || viewerPanel;
