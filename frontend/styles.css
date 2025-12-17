@@ -314,10 +314,19 @@ button, a, input[type="button"], input[type="submit"], input[type="checkbox"], i
     background-color: var(--color-light-gray);
 }
 
-.sidebar-toggle-btn:active {
-    background-color: var(--color-light-gray);
-    opacity: 0.8; /* Feedback visivo su Safari */
+.sidebar-toggle-btn:active,
+.sidebar-toggle-btn.clicked {
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    opacity: 1;
     -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+    transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+body.dark-theme .sidebar-toggle-btn:active,
+body.dark-theme .sidebar-toggle-btn.clicked {
+    background-color: #ffb347; /* giallo aranciato per dark mode */
+    color: var(--color-black);
 }
 
 /* Fix Safari iOS per sidebar toggle */
@@ -326,8 +335,14 @@ button, a, input[type="button"], input[type="submit"], input[type="checkbox"], i
         -webkit-tap-highlight-color: rgba(154, 24, 46, 0.2);
     }
     
-    .sidebar-toggle-btn:active {
+    .sidebar-toggle-btn:active,
+    .sidebar-toggle-btn.clicked {
         -webkit-tap-highlight-color: rgba(154, 24, 46, 0.3);
+    }
+    
+    body.dark-theme .sidebar-toggle-btn:active,
+    body.dark-theme .sidebar-toggle-btn.clicked {
+        -webkit-tap-highlight-color: rgba(255, 179, 71, 0.3);
     }
 }
 

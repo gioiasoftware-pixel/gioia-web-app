@@ -377,12 +377,26 @@ function setupEventListeners() {
         });
     }
     
-    // Setup pulsante hamburger - STEP 4: Usa pointer events
+    // Setup pulsante hamburger - con feedback visivo granaccia/giallo
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
+        sidebarToggle.addEventListener('pointerdown', (e) => {
+            // Feedback visivo immediato al touch
+            sidebarToggle.classList.add('clicked');
+        });
+        
         sidebarToggle.addEventListener('pointerup', (e) => {
             e.stopPropagation();
+            // Rimuovi feedback dopo breve delay per mostrare il colore
+            setTimeout(() => {
+                sidebarToggle.classList.remove('clicked');
+            }, 200);
             toggleSidebar();
+        });
+        
+        // Gestisci anche pointercancel per mobile
+        sidebarToggle.addEventListener('pointercancel', () => {
+            sidebarToggle.classList.remove('clicked');
         });
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
