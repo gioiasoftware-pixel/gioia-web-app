@@ -2741,11 +2741,27 @@ function renderViewerTable(rows) {
         }
     }
 
-    // Setup click su pulsanti grafico - STEP 4: Usa pointer events
-    document.querySelectorAll('.viewer-chart-btn').forEach(btn => {
-        const handler = (e) => {
+    // Setup click su pulsanti grafico - Usa event delegation per gestire pulsanti creati dinamicamente
+    // Rimuovi listener precedenti se esistono
+    const viewerPanel = document.getElementById('viewer-panel');
+    if (viewerPanel) {
+        // Rimuovi listener precedenti se esistono (per evitare duplicati)
+        const oldHandler = viewerPanel._chartBtnHandler;
+        if (oldHandler) {
+            viewerPanel.removeEventListener('pointerup', oldHandler);
+            viewerPanel.removeEventListener('click', oldHandler);
+        }
+        
+        // Crea nuovo handler con event delegation
+        const chartBtnHandler = (e) => {
+            const btn = e.target.closest('.viewer-chart-btn');
+            if (!btn) return;
+            
             e.stopPropagation();
-            // NON preventDefault se non strettamente necessario
+            e.preventDefault();
+            
+            console.log('[VIEWER] Click su pulsante grafico', btn, 'data-wine-name:', btn.dataset.wineName);
+            
             let wineName = btn.dataset.wineName;
             
             // Fallback: recupera nome dalla riga o card se data attribute non disponibile
@@ -2763,13 +2779,17 @@ function renderViewerTable(rows) {
                 console.log('[VIEWER] Apertura grafico per vino:', wineName);
                 showMovementsChart(wineName);
             } else {
-                console.error('[VIEWER] Nome vino non trovato per pulsante grafico');
+                console.error('[VIEWER] Nome vino non trovato per pulsante grafico', btn);
             }
         };
         
-        // STEP 4: Usa pointer events invece di touch/click
-        btn.addEventListener('pointerup', handler);
-    });
+        // Salva handler per poterlo rimuovere in futuro
+        viewerPanel._chartBtnHandler = chartBtnHandler;
+        
+        // Attacca listener con event delegation
+        viewerPanel.addEventListener('pointerup', chartBtnHandler);
+        viewerPanel.addEventListener('click', chartBtnHandler);
+    }
     
     // Setup click su pulsanti modifica - usa pointer events per mobile
     document.querySelectorAll('.viewer-edit-btn').forEach(btn => {
