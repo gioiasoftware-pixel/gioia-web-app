@@ -5,6 +5,7 @@ const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
 
 // State
 let authToken = null;
+let currentTheme = 'light';
 let currentUser = null;
 let viewerData = null;
 let viewerFilters = {
@@ -193,6 +194,14 @@ function addUniversalEventListener(element, handler, options = {}) {
 document.addEventListener('DOMContentLoaded', () => {
     // Check if user is already logged in
     authToken = localStorage.getItem('auth_token');
+    
+    // Inizializza tema (giorno/notte)
+    const savedTheme = localStorage.getItem('gioia_theme');
+    if (savedTheme === 'dark' || savedTheme === 'light') {
+        currentTheme = savedTheme;
+    }
+    applyTheme(currentTheme, false);
+
     if (authToken) {
         showChatPage();
         loadUserInfo();
@@ -202,6 +211,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupEventListeners();
 });
+
+// ============================================
+// THEME TOGGLE (DAY/NIGHT)
+// ============================================
+
+function applyTheme(theme, persist = true) {
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    const body = document.body;
+    
+    if (currentTheme === 'dark') {
+        body.classList.add('dark-theme');
+    } else {
+        body.classList.remove('dark-theme');
+    }
+
+    // Aggiorna logo (versione chiara/scura)
+    const logoImgElements = document.querySelectorAll('.logo-container img.logo');
+    logoImgElements.forEach(img => {
+        if (currentTheme === 'dark') {
+            // Usa logo dark se disponibile nello static
+            img.src = '/static/assets/logo-dark.png';
+        } else {
+            img.src = '/static/assets/logo.png';
+        }
+    });
+
+    if (persist) {
+        try {
+            localStorage.setItem('gioia_theme', currentTheme);
+        } catch (e) {
+            console.warn('[THEME] Impossibile salvare tema in localStorage:', e);
+        }
+    }
+
+    // Aggiorna title del bottone
+    const themeBtn = document.getElementById('theme-toggle-btn');
+    if (themeBtn) {
+        themeBtn.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
+        themeBtn.setAttribute('aria-pressed', currentTheme === 'dark' ? 'true' : 'false');
+    }
+}
+
+function toggleTheme() {
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(nextTheme, true);
+}
 
 // ============================================
 // AUTHENTICATION
@@ -245,6 +300,15 @@ function setupEventListeners() {
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         addUniversalEventListener(logoutBtn, handleLogout);
+    }
+
+    // Theme toggle (giorno/notte)
+    const themeToggleBtn = document.getElementById('theme-toggle-btn');
+    if (themeToggleBtn) {
+        addUniversalEventListener(themeToggleBtn, (e) => {
+            e.preventDefault();
+            toggleTheme();
+        });
     }
     
     // Bottone aggiungi vino
