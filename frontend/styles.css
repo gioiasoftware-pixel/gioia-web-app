@@ -1201,11 +1201,15 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         width: calc(100% - 32px);
         margin: 0 16px;
         padding: 16px;
+        /* Mantieni altezza minima anche su mobile per allineare i segnalibri */
+        min-height: 220px;
     }
     
     .wine-card-body {
         grid-template-columns: 1fr;
         gap: 12px;
+        /* Su mobile mantieni min-height per garantire spazio */
+        min-height: 100px;
     }
     
     .wine-card-header {
@@ -2935,6 +2939,12 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     transition: max-width 0.3s ease, width 0.3s ease;
     /* La card deve essere sopra i segnalibri */
     z-index: 10;
+    /* Altezza minima standard per allineare correttamente i segnalibri */
+    /* Calcolo: header (~60px) + body minimo (~120px) + padding (40px) = ~220px */
+    /* Aggiungiamo margine per sicurezza: 240px garantisce spazio per 2 bookmarks (80px ciascuno + gap) */
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
 }
 
 .wine-card.expanded {
@@ -2992,6 +3002,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
+    /* Assicura che il body si espanda per riempire lo spazio disponibile */
+    flex: 1;
+    min-height: 120px;
 }
 
 .wine-card-field {
@@ -3039,6 +3052,8 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     z-index: 5;
     /* Assicura che i segnalibri partano da sotto la card */
     align-items: flex-end;
+    /* Allinea i segnalibri al fondo della card, indipendentemente dall'altezza */
+    align-self: flex-end;
 }
 
 .wine-card-bookmark {
