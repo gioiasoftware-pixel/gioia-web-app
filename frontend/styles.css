@@ -658,7 +658,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         left: 0 !important;
         top: 0 !important;
         height: 100vh !important;
-        width: 75vw !important; /* 3/4 dello schermo su mobile */
+        width: 85vw !important; /* 85% dello schermo su mobile */
         max-width: 400px !important; /* Limite massimo per schermi molto grandi */
         z-index: 1000 !important;
         transform: translateX(-100%) !important; /* Chiusa di default */

@@ -380,13 +380,18 @@ function setupEventListeners() {
     // Setup pulsante hamburger - con feedback visivo granaccia/giallo
     const sidebarToggle = document.getElementById('sidebar-toggle');
     if (sidebarToggle) {
+        console.log('[SIDEBAR] Pulsante hamburger trovato, setup event listeners');
+        
         sidebarToggle.addEventListener('pointerdown', (e) => {
+            console.log('[SIDEBAR] pointerdown rilevato');
             // Feedback visivo immediato al touch
             sidebarToggle.classList.add('clicked');
         });
         
         sidebarToggle.addEventListener('pointerup', (e) => {
+            console.log('[SIDEBAR] pointerup rilevato, chiamando toggleSidebar');
             e.stopPropagation();
+            e.preventDefault(); // Previeni qualsiasi comportamento di default
             // Rimuovi feedback dopo breve delay per mostrare il colore
             setTimeout(() => {
                 sidebarToggle.classList.remove('clicked');
@@ -396,8 +401,19 @@ function setupEventListeners() {
         
         // Gestisci anche pointercancel per mobile
         sidebarToggle.addEventListener('pointercancel', () => {
+            console.log('[SIDEBAR] pointercancel rilevato');
             sidebarToggle.classList.remove('clicked');
         });
+        
+        // Fallback con click per browser che non supportano pointer events
+        sidebarToggle.addEventListener('click', (e) => {
+            console.log('[SIDEBAR] click rilevato (fallback)');
+            e.stopPropagation();
+            e.preventDefault();
+            toggleSidebar();
+        });
+    } else {
+        console.error('[SIDEBAR] Pulsante hamburger NON trovato!');
     }
     closeSidebarOnOverlayClick(); // Setup overlay click handler
     
@@ -3161,47 +3177,72 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    console.log('[DEBUG] toggleSidebar chiamato');
+    console.log('[SIDEBAR] ========== toggleSidebar chiamato ==========');
     const sidebar = document.getElementById('chat-sidebar');
     const overlay = document.getElementById('sidebar-overlay');
     
     if (!sidebar) {
-        console.error('[DEBUG] Sidebar non trovata!');
+        console.error('[SIDEBAR] ERRORE: Sidebar non trovata!');
         return;
     }
     
+    console.log('[SIDEBAR] Sidebar elemento trovato:', sidebar);
+    
     // Rileva se siamo su mobile (larghezza <= 768px)
     const isMobile = window.innerWidth <= 768;
-    console.log('[DEBUG] isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
-    console.log('[DEBUG] Sidebar classes prima:', sidebar.className);
-    console.log('[DEBUG] Sidebar computed style transform:', window.getComputedStyle(sidebar).transform);
+    console.log('[SIDEBAR] isMobile:', isMobile, 'window.innerWidth:', window.innerWidth);
+    console.log('[SIDEBAR] Sidebar classes PRIMA:', sidebar.className);
+    console.log('[SIDEBAR] Sidebar computed style PRIMA:');
+    const computedBefore = window.getComputedStyle(sidebar);
+    console.log('  - position:', computedBefore.position);
+    console.log('  - transform:', computedBefore.transform);
+    console.log('  - width:', computedBefore.width);
+    console.log('  - left:', computedBefore.left);
+    console.log('  - z-index:', computedBefore.zIndex);
     
     if (isMobile) {
         // Su mobile: usa classe 'open' per mostrare/nascondere
         const wasOpen = sidebar.classList.contains('open');
+        console.log('[SIDEBAR] Stato PRIMA - era aperta:', wasOpen);
+        
         sidebar.classList.toggle('open');
+        
         const isNowOpen = sidebar.classList.contains('open');
-        console.log('[DEBUG] Mobile - sidebar era aperta:', wasOpen, 'ora è aperta:', isNowOpen);
-        console.log('[DEBUG] Sidebar classes dopo:', sidebar.className);
+        console.log('[SIDEBAR] Stato DOPO - ora è aperta:', isNowOpen);
+        console.log('[SIDEBAR] Sidebar classes DOPO:', sidebar.className);
         
         // Forza il reflow per assicurare che il CSS venga applicato
         sidebar.offsetHeight;
         
-        // Verifica dopo un breve delay
+        // Verifica immediatamente dopo
+        const computedAfter = window.getComputedStyle(sidebar);
+        console.log('[SIDEBAR] Sidebar computed style DOPO:');
+        console.log('  - position:', computedAfter.position);
+        console.log('  - transform:', computedAfter.transform);
+        console.log('  - width:', computedAfter.width);
+        console.log('  - left:', computedAfter.left);
+        console.log('  - z-index:', computedAfter.zIndex);
+        
+        // Verifica dopo un breve delay per vedere se l'animazione parte
         setTimeout(() => {
-            const computedTransform = window.getComputedStyle(sidebar).transform;
-            console.log('[DEBUG] Sidebar computed style transform dopo:', computedTransform);
-        }, 50);
+            const computedDelayed = window.getComputedStyle(sidebar);
+            console.log('[SIDEBAR] Sidebar computed style DOPO 100ms:');
+            console.log('  - transform:', computedDelayed.transform);
+            console.log('  - visibility:', computedDelayed.visibility);
+            console.log('  - display:', computedDelayed.display);
+        }, 100);
         
         // Mostra/nascondi overlay quando sidebar è aperta
         if (overlay) {
             if (isNowOpen) {
                 overlay.classList.add('active');
-                console.log('[DEBUG] Overlay attivato');
+                console.log('[SIDEBAR] Overlay attivato');
             } else {
                 overlay.classList.remove('active');
-                console.log('[DEBUG] Overlay disattivato');
+                console.log('[SIDEBAR] Overlay disattivato');
             }
+        } else {
+            console.warn('[SIDEBAR] Overlay non trovato!');
         }
     } else {
         // Su desktop: usa classe 'collapsed' per collassare/espandere
@@ -3209,8 +3250,10 @@ function toggleSidebar() {
         // Salva stato nel localStorage solo su desktop
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
-        console.log('[DEBUG] Desktop - sidebar collapsed:', isCollapsed);
+        console.log('[SIDEBAR] Desktop - sidebar collapsed:', isCollapsed);
     }
+    
+    console.log('[SIDEBAR] ========== Fine toggleSidebar ==========');
 }
 
 // Carica stato sidebar al caricamento pagina (solo desktop)
