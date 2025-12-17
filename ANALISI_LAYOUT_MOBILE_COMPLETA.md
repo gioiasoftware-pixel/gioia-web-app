@@ -341,10 +341,157 @@ Target=DIV#chat-messages.chat-messages-container
 - `frontend/app.js`: Logica JavaScript, gestione eventi
 - `SOLUZIONI_POINTER_EVENTS.md`: Documento con 4 soluzioni alternative
 
-## ❓ RICHIESTA ANALISI
+## 📊 DIAGRAMMA STRUTTURA LAYOUT MOBILE
+
+```
+┌─────────────────────────────────────┐
+│  HEADER (fixed, z-index: 5)        │ ← 56px altezza
+│  [☰] [Logo] Gio.ia [Toggle]        │
+├─────────────────────────────────────┤
+│  QUICK ACTIONS (mobile-only)        │ ← Dopo header
+│  [Aggiungi] [Inventario] [Esci]    │
+├─────────────────────────────────────┤
+│                                     │
+│  CHAT CONTAINER                     │
+│  ┌───────────────────────────────┐ │
+│  │ chat-messages-container       │ │ ← NON scrollabile
+│  │ ┌───────────────────────────┐ │ │
+│  │ │ scroll-wrapper            │ │ │ ← Scrollabile
+│  │ │ ┌─────────────────────┐  │ │ │
+│  │ │ │ welcome-message     │  │ │ │
+│  │ │ └─────────────────────┘  │ │ │
+│  │ │ ┌─────────────────────┐  │ │ │
+│  │ │ │ chat-message        │  │ │ │
+│  │ │ └─────────────────────┘  │ │ │
+│  │ │ ┌─────────────────────┐  │ │ │
+│  │ │ │ wine-card-wrapper   │  │ │ │ ← PROBLEMA QUI
+│  │ │ │ ┌─────────────────┐ │  │ │ │
+│  │ │ │ │ wine-card       │ │  │ │ │
+│  │ │ │ │ └───────────────┘ │  │ │ │
+│  │ │ │ └─────────────────┘ │  │ │ │
+│  │ │ └─────────────────────┘  │ │ │
+│  │ └───────────────────────────┘ │ │
+│  └───────────────────────────────┘ │
+│                                     │
+│  CHAT INPUT                         │
+│  [Textarea] [Send]                  │
+└─────────────────────────────────────┘
+```
+
+## 🔍 ANALISI DETTAGLIATA PROBLEMA
+
+### Stacking Context
+
+**Domanda chiave**: Il wrapper scroll crea un nuovo stacking context?
+
+Possibili cause:
+1. `overflow-y: auto` sul wrapper potrebbe creare stacking context
+2. `touch-action: pan-y` potrebbe interferire con eventi sui figli
+3. La struttura annidata (container → wrapper → wine-card) potrebbe causare problemi di propagazione
+
+### Event Propagation Flow Attuale
+
+```
+Tap su wine-card-body
+    ↓
+pointerup event generato
+    ↓
+[CAPTURE PHASE]
+    ↓
+chat-messages-container (NON ha listener con capture)
+    ↓
+chat-messages-scroll-wrapper (NON ha listener)
+    ↓
+[BUBBLING PHASE]
+    ↓
+wine-card-wrapper (NON ha listener)
+    ↓
+wine-card (NON ha listener diretto - Soluzione 3 rimossa)
+    ↓
+wine-card-body (target originale)
+    ↓
+❌ MA: document.elementFromPoint() restituisce chat-messages-container!
+```
+
+### Perché document.elementFromPoint() restituisce il container?
+
+Possibili ragioni:
+1. **Z-index stacking**: Il wrapper scroll ha uno stacking context diverso?
+2. **Pointer events**: Qualche elemento padre ha `pointer-events: auto` che intercetta?
+3. **Touch-action**: `touch-action: pan-y` sul wrapper interferisce?
+4. **CSS position**: Qualche elemento ha `position: relative/absolute` che crea nuovo contesto?
+
+## 🎯 COMPORTAMENTO ATTESO vs REALE
+
+### Comportamento Atteso
+```
+Tap su bookmark "Modifica"
+    ↓
+Evento pointerup sul bookmark
+    ↓
+Listener bookmark intercetta: e.stopPropagation()
+    ↓
+handleWineCardEdit() chiamato
+    ↓
+✅ Funziona!
+```
+
+### Comportamento Reale
+```
+Tap su bookmark "Modifica"
+    ↓
+Evento pointerup generato
+    ↓
+document.elementFromPoint() restituisce: chat-messages-container
+    ↓
+Evento NON arriva al bookmark
+    ↓
+❌ Non funziona!
+```
+
+## 💡 IPOTESI ALTERNATIVE
+
+### Ipotesi 1: Touch-action interferisce
+- `touch-action: pan-y` sul wrapper potrebbe bloccare eventi pointer sui figli
+- **Test**: Rimuovere `touch-action` e gestire scroll manualmente
+
+### Ipotesi 2: Overflow crea stacking context
+- `overflow-y: auto` crea nuovo stacking context
+- Gli eventi vengono "catturati" dal wrapper invece che dai figli
+- **Test**: Usare `overflow: visible` e gestire scroll diversamente
+
+### Ipotesi 3: Struttura HTML sbagliata
+- Wine cards dentro wrapper scroll è il problema
+- Dovrebbero essere fuori dal wrapper scroll?
+- **Test**: Spostare wine cards fuori dal wrapper
+
+### Ipotesi 4: CSS position/transform
+- Qualche elemento padre ha `position: relative` che crea nuovo contesto
+- **Test**: Verificare tutti gli elementi nella catena DOM
+
+## 📋 CHECKLIST DEBUG
+
+- [ ] Verificare se wrapper scroll ha stacking context
+- [ ] Testare rimozione `touch-action: pan-y`
+- [ ] Testare `overflow: visible` invece di `auto`
+- [ ] Verificare tutti gli elementi nella catena DOM per `position: relative/absolute`
+- [ ] Testare wine cards fuori dal wrapper scroll
+- [ ] Verificare se ci sono altri elementi con `pointer-events: auto` che intercettano
+
+## ❓ RICHIESTA ANALISI ESTERNA
 
 **Chiediamo un'analisi esterna su:**
-1. La struttura HTML proposta è corretta per un layout touch-first?
-2. Il CSS mobile segue le best practices per evitare problemi di pointer events?
-3. C'è qualcosa nella gestione degli eventi JavaScript che potrebbe causare il problema?
-4. Suggerimenti alternativi per risolvere il problema dell'intercettazione degli eventi?
+
+1. **Struttura HTML**: La struttura proposta (container → wrapper scroll → wine cards) è corretta per un layout touch-first? Dovremmo cambiare completamente l'approccio?
+
+2. **CSS Stacking Context**: Il wrapper scroll con `overflow-y: auto` crea un nuovo stacking context che interferisce con gli eventi pointer? Come evitarlo?
+
+3. **Touch-action**: `touch-action: pan-y` sul wrapper impedisce eventi pointer sui figli? Dovremmo gestire scroll manualmente?
+
+4. **Event Propagation**: Perché `document.elementFromPoint()` restituisce il container invece del target originale? C'è qualcosa nella catena DOM che causa questo?
+
+5. **Soluzione Alternativa**: C'è un approccio completamente diverso che dovremmo considerare? (es. Web Components, Shadow DOM, o cambiare completamente la struttura)
+
+6. **Best Practices**: Quali sono le best practices per layout mobile touch-first che stiamo violando?
+
+7. **Browser Specific**: Ci sono problemi specifici di Safari iOS o altri browser che potrebbero causare questo comportamento?
