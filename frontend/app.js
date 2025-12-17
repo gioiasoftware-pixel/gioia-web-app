@@ -673,7 +673,16 @@ async function handleLogin(e) {
         return;
     }
 
+    // Mostra indicatore di caricamento
+    const loginBtn = e.target.querySelector('button[type="submit"]') || document.querySelector('#login-form-element button[type="submit"]');
+    const originalBtnText = loginBtn ? loginBtn.textContent : '';
+    if (loginBtn) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Accesso in corso...';
+    }
+
     try {
+        console.log('[LOGIN] Tentativo login per:', email);
         const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
             method: 'POST',
             headers: {
@@ -682,7 +691,26 @@ async function handleLogin(e) {
             body: JSON.stringify({ email, password, remember_me: rememberMe }),
         });
 
-        const data = await response.json();
+        console.log('[LOGIN] Risposta ricevuta:', response.status, response.statusText);
+
+        // Prova a parsare la risposta come JSON
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+                console.log('[LOGIN] Dati ricevuti:', data);
+            } catch (jsonError) {
+                console.error('[LOGIN] Errore parsing JSON:', jsonError);
+                const textResponse = await response.text();
+                console.error('[LOGIN] Risposta non-JSON:', textResponse);
+                throw new Error('Risposta del server non valida. Riprova.');
+            }
+        } else {
+            const textResponse = await response.text();
+            console.error('[LOGIN] Risposta non-JSON:', textResponse);
+            throw new Error('Risposta del server non valida. Riprova.');
+        }
 
         if (!response.ok) {
             // Gestione errori più dettagliata
@@ -714,19 +742,42 @@ async function handleLogin(e) {
 
         authToken = data.access_token;
         if (!authToken) {
+            console.error('[LOGIN] Token non presente nella risposta:', data);
             throw new Error('Token di autenticazione non ricevuto dal server');
         }
         
+        console.log('[LOGIN] Token ricevuto, lunghezza:', authToken.length);
         localStorage.setItem('auth_token', authToken);
         currentUser = data;
 
         console.log('[LOGIN] Login riuscito per:', email);
-        showChatPage();
-        loadUserInfo();
+        console.log('[LOGIN] Chiamata showChatPage...');
+        
+        try {
+            showChatPage();
+            console.log('[LOGIN] showChatPage completata');
+        } catch (showError) {
+            console.error('[LOGIN] Errore in showChatPage:', showError);
+            throw new Error('Errore nel caricamento della pagina. Ricarica la pagina.');
+        }
+        
+        try {
+            loadUserInfo();
+            console.log('[LOGIN] loadUserInfo completata');
+        } catch (loadError) {
+            console.error('[LOGIN] Errore in loadUserInfo:', loadError);
+            // Non bloccare il login se loadUserInfo fallisce
+        }
     } catch (error) {
         console.error('[LOGIN] Errore durante il login:', error);
         errorEl.textContent = error.message || 'Errore durante il login. Riprova.';
         errorEl.classList.remove('hidden');
+    } finally {
+        // Ripristina il pulsante
+        if (loginBtn) {
+            loginBtn.disabled = false;
+            loginBtn.textContent = originalBtnText;
+        }
     }
 }
 
