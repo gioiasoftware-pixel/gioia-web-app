@@ -303,6 +303,53 @@ class ProcessorClient:
         except Exception as e:
             logger.error(f"[PROCESSOR_CLIENT] Errore delete_tables: {e}", exc_info=True)
             return {"status": "error", "error": str(e)}
+    
+    async def add_wine(
+        self,
+        telegram_id: int,
+        business_name: str,
+        wine_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Aggiunge un nuovo vino all'inventario.
+        """
+        logger.info(
+            f"[PROCESSOR_CLIENT] add_wine: telegram_id={telegram_id}, "
+            f"business_name={business_name}, wine_name={wine_data.get('name')}"
+        )
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=30.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                # Prepara dati form
+                form_data = aiohttp.FormData()
+                form_data.add_field('telegram_id', str(telegram_id))
+                form_data.add_field('business_name', business_name)
+                
+                # Aggiungi tutti i campi del vino
+                for key, value in wine_data.items():
+                    if value is not None:
+                        form_data.add_field(key, str(value))
+                
+                async with session.post(
+                    f"{self.base_url}/admin/add-wine",
+                    data=form_data
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
+                    
+                    logger.info(
+                        f"[PROCESSOR_CLIENT] add_wine completato: wine_id={result.get('wine_id')}, "
+                        f"wine_name={wine_data.get('name')}"
+                    )
+                    
+                    return result
+        except aiohttp.ClientResponseError as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore add_wine: HTTP {e.status} - {e.message}")
+            return {"status": "error", "error": f"HTTP {e.status}: {e.message[:200]}"}
+        except Exception as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore add_wine: {e}", exc_info=True)
+            return {"status": "error", "error": str(e)}
 
 
 # Istanza globale del client

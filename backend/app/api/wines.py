@@ -32,6 +32,24 @@ class WineUpdate(BaseModel):
     notes: Optional[str] = None
 
 
+class WineCreate(BaseModel):
+    name: str
+    producer: Optional[str] = None
+    quantity: Optional[int] = None
+    selling_price: Optional[float] = None
+    cost_price: Optional[float] = None
+    vintage: Optional[str] = None
+    region: Optional[str] = None
+    country: Optional[str] = None
+    wine_type: Optional[str] = None
+    supplier: Optional[str] = None
+    grape_variety: Optional[str] = None
+    classification: Optional[str] = None
+    alcohol_content: Optional[str] = None
+    description: Optional[str] = None
+    notes: Optional[str] = None
+
+
 @router.get("/{wine_id}")
 async def get_wine(
     wine_id: int,
@@ -200,4 +218,93 @@ async def update_wine(
         raise
     except Exception as e:
         logger.error(f"Errore aggiornamento vino {wine_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
+
+
+@router.post("")
+async def create_wine(
+    wine_data: WineCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un nuovo vino nell'inventario.
+    """
+    try:
+        user = current_user["user"]
+        telegram_id = user.telegram_id
+        business_name = user.business_name
+        
+        if not telegram_id or not business_name:
+            raise HTTPException(
+                status_code=400,
+                detail="Utente non ha telegram_id o business_name"
+            )
+        
+        # Valida che il nome sia presente
+        if not wine_data.name or not wine_data.name.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="Il nome del vino è obbligatorio"
+            )
+        
+        # Prepara dati per processor
+        wine_dict = wine_data.dict(exclude_none=True)
+        
+        # Chiama processor per aggiungere vino
+        from app.core.processor_client import processor_client
+        result = await processor_client.add_wine(
+            telegram_id=telegram_id,
+            business_name=business_name,
+            wine_data=wine_dict
+        )
+        
+        if result.get("status") == "error":
+            raise HTTPException(
+                status_code=500,
+                detail=result.get("error", "Errore durante aggiunta vino")
+            )
+        
+        wine_id = result.get("wine_id")
+        if not wine_id:
+            raise HTTPException(
+                status_code=500,
+                detail="Vino creato ma wine_id non restituito"
+            )
+        
+        # Recupera vino creato per generare wine card HTML
+        # Aggiungi piccolo delay per assicurare che il commit sia completato
+        import asyncio
+        await asyncio.sleep(0.1)
+        
+        wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+        if not wine:
+            # Retry dopo un altro breve delay
+            await asyncio.sleep(0.2)
+            wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+            if not wine:
+                raise HTTPException(
+                    status_code=500,
+                    detail="Vino creato ma non trovato nel database"
+                )
+        
+        # Genera wine card HTML con dicitura "vino aggiunto"
+        from app.services.ai_service import AIService
+        ai_service = AIService()
+        wine_card_html = ai_service._generate_wine_card_html(wine, is_new=True)
+        
+        logger.info(
+            f"[WINES] Vino creato: wine_id={wine_id}, name={wine_data.name}, "
+            f"telegram_id={telegram_id}, business_name={business_name}"
+        )
+        
+        return {
+            "message": "Vino aggiunto con successo",
+            "wine_id": wine_id,
+            "wine_card_html": wine_card_html
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore creazione vino: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")

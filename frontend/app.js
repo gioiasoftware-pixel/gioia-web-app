@@ -246,6 +246,15 @@ function setupEventListeners() {
     if (logoutBtn) {
         addUniversalEventListener(logoutBtn, handleLogout);
     }
+    
+    // Bottone aggiungi vino
+    const addWineBtn = document.getElementById('add-wine-btn');
+    if (addWineBtn) {
+        addUniversalEventListener(addWineBtn, (e) => {
+            e.preventDefault();
+            openAddWineModal();
+        });
+    }
 
     // Chat sidebar
     const newChatBtn = document.getElementById('new-chat-btn');
@@ -1416,10 +1425,198 @@ async function saveViewerWineEdit(wineId, event) {
     }
 }
 
+// ============================================
+// ADD WINE MODAL
+// ============================================
+
+function openAddWineModal() {
+    if (!authToken) {
+        alert('Token non valido');
+        return;
+    }
+    
+    // Crea modal per aggiungere vino
+    const modal = document.createElement('div');
+    modal.className = 'viewer-edit-modal';
+    modal.id = 'add-wine-modal';
+    modal.innerHTML = `
+        <div class="viewer-edit-modal-overlay" onclick="closeAddWineModal()"></div>
+        <div class="viewer-edit-modal-content">
+            <div class="viewer-edit-modal-header">
+                <h2>Aggiungi Nuovo Vino</h2>
+                <button class="viewer-edit-modal-close" onclick="closeAddWineModal()" type="button">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                        <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="viewer-edit-modal-body">
+                <form class="viewer-edit-form" id="add-wine-form">
+                    <div class="wine-card-edit-form-grid">
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Nome *</label>
+                            <input type="text" class="wine-card-edit-input" name="name" required>
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Produttore</label>
+                            <input type="text" class="wine-card-edit-input" name="producer">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Quantità</label>
+                            <input type="number" class="wine-card-edit-input" name="quantity" min="0">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Prezzo Vendita (€)</label>
+                            <input type="number" class="wine-card-edit-input" name="selling_price" step="0.01" min="0">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Prezzo Acquisto (€)</label>
+                            <input type="number" class="wine-card-edit-input" name="cost_price" step="0.01" min="0">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Annata</label>
+                            <input type="text" class="wine-card-edit-input" name="vintage">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Regione</label>
+                            <input type="text" class="wine-card-edit-input" name="region">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Paese</label>
+                            <input type="text" class="wine-card-edit-input" name="country">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Tipo</label>
+                            <input type="text" class="wine-card-edit-input" name="wine_type">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Fornitore</label>
+                            <input type="text" class="wine-card-edit-input" name="supplier">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Vitigno</label>
+                            <input type="text" class="wine-card-edit-input" name="grape_variety">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Classificazione</label>
+                            <input type="text" class="wine-card-edit-input" name="classification">
+                        </div>
+                        <div class="wine-card-edit-field">
+                            <label class="wine-card-edit-label">Gradazione (% vol)</label>
+                            <input type="text" class="wine-card-edit-input" name="alcohol_content">
+                        </div>
+                        <div class="wine-card-edit-field full-width">
+                            <label class="wine-card-edit-label">Descrizione</label>
+                            <textarea class="wine-card-edit-textarea" name="description"></textarea>
+                        </div>
+                        <div class="wine-card-edit-field full-width">
+                            <label class="wine-card-edit-label">Note</label>
+                            <textarea class="wine-card-edit-textarea" name="notes"></textarea>
+                        </div>
+                    </div>
+                    <div class="wine-card-edit-actions">
+                        <button class="wine-card-edit-btn cancel" type="button" onclick="closeAddWineModal()">Annulla</button>
+                        <button class="wine-card-edit-btn save" type="button" onclick="saveAddWine(event)">Aggiungi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Chiudi modal con ESC
+    const handleEsc = (e) => {
+        if (e.key === 'Escape') {
+            closeAddWineModal();
+        }
+    };
+    document.addEventListener('keydown', handleEsc);
+    modal._escHandler = handleEsc;
+}
+
+function closeAddWineModal() {
+    const modal = document.getElementById('add-wine-modal');
+    if (modal) {
+        if (modal._escHandler) {
+            document.removeEventListener('keydown', modal._escHandler);
+        }
+        modal.remove();
+    }
+}
+
+async function saveAddWine(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const form = document.getElementById('add-wine-form');
+    if (!form) {
+        console.error('[ADD_WINE] Form non trovato');
+        return;
+    }
+    
+    const data = {};
+    
+    // Raccogli tutti i valori dal form
+    form.querySelectorAll('input, textarea').forEach(input => {
+        const name = input.name;
+        const value = input.value.trim();
+        
+        if (name === 'quantity') {
+            data[name] = value === '' ? null : parseInt(value);
+        } else if (name === 'selling_price' || name === 'cost_price') {
+            data[name] = value === '' ? null : parseFloat(value);
+        } else {
+            data[name] = value === '' ? null : value;
+        }
+    });
+    
+    // Validazione: nome obbligatorio
+    if (!data.name || !data.name.trim()) {
+        alert('Il nome del vino è obbligatorio');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/wines`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore aggiunta vino' }));
+            throw new Error(errorData.detail || 'Errore aggiunta vino');
+        }
+        
+        const result = await response.json();
+        
+        // Chiudi modal
+        closeAddWineModal();
+        
+        // Mostra messaggio successo con wine card HTML
+        if (result.wine_card_html) {
+            addChatMessage('ai', result.wine_card_html, false, false, null, true);
+        } else {
+            addChatMessage('ai', `✅ Vino "${data.name}" aggiunto con successo!`, false, false);
+        }
+        
+    } catch (error) {
+        console.error('Errore aggiunta vino:', error);
+        addChatMessage('ai', `Errore: ${error.message}`, false, true);
+    }
+}
+
 // Make functions available globally
 window.handleViewerWineEdit = handleViewerWineEdit;
 window.closeViewerEditModal = closeViewerEditModal;
 window.saveViewerWineEdit = saveViewerWineEdit;
+window.openAddWineModal = openAddWineModal;
+window.closeAddWineModal = closeAddWineModal;
+window.saveAddWine = saveAddWine;
 
 async function handleWineCardShowInInventory(wineCard, wineId) {
     // Apri il viewer se non è già aperto

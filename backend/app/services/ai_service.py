@@ -423,15 +423,21 @@ INFORMAZIONI UTENTE:
     
     # ========== HTML CARD GENERATORS ==========
     
-    def _generate_wine_card_html(self, wine) -> str:
+    def _generate_wine_card_html(self, wine, is_new: bool = False) -> str:
         """
         Genera HTML per card informazioni vino.
         Stile gio-ia: bianco con accenti granaccia.
+        
+        Args:
+            wine: Oggetto vino
+            is_new: Se True, aggiunge dicitura "Vino aggiunto" nell'header
         """
         wine_id = getattr(wine, 'id', None)
         wine_id_attr = f' data-wine-id="{wine_id}"' if wine_id else ''
         html = f'<div class="wine-card"{wine_id_attr}>'
         html += '<div class="wine-card-header">'
+        if is_new:
+            html += '<div class="wine-card-badge">✅ Vino aggiunto</div>'
         html += f'<div><h3 class="wine-card-title">{self._escape_html(wine.name)}</h3>'
         if wine.producer:
             html += f'<div class="wine-card-producer">{self._escape_html(wine.producer)}</div>'
