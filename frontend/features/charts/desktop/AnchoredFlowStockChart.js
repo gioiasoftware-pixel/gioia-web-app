@@ -19,6 +19,15 @@
  * @returns {Chart} istanza Chart.js
  */
 function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
+    console.log('[AnchoredFlowStockChart] render chiamata', { canvas, chartData, options });
+    
+    // Verifica Chart.js
+    if (typeof Chart === 'undefined') {
+        console.error('[AnchoredFlowStockChart] Chart.js non disponibile');
+        return null;
+    }
+    console.log('[AnchoredFlowStockChart] Chart.js disponibile');
+    
     const buildAnchoredFlowStockChart = window.AnchoredFlowStockChartBuilder?.build;
     if (!buildAnchoredFlowStockChart) {
         console.error('[AnchoredFlowStockChart] Builder non disponibile');
@@ -281,14 +290,15 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     };
 
     // Crea grafico
-    const chart = new Chart(canvas, chartConfig);
-
-    // Aggiungi annotation per baseline (opzionale, se Chart.js annotation plugin disponibile)
-    if (window.Chart && window.Chart.helpers && typeof window.Chart.helpers.drawLine === 'function') {
-        // Baseline annotation manuale se necessario
+    console.log('[AnchoredFlowStockChart] Creando istanza Chart.js');
+    try {
+        const chart = new Chart(canvas, chartConfig);
+        console.log('[AnchoredFlowStockChart] Chart.js istanza creata:', !!chart);
+        return chart;
+    } catch (error) {
+        console.error('[AnchoredFlowStockChart] Errore creazione Chart.js:', error);
+        throw error;
     }
-
-    return chart;
 }
 
 /**
@@ -313,11 +323,14 @@ function getPeriodLabel(preset) {
  * @returns {Chart} istanza Chart.js
  */
 function createAnchoredFlowStockChart(container, movementsData, options = {}) {
+    console.log('[AnchoredFlowStockChart] create chiamata', { container, movementsData, options });
     const buildAnchoredFlowStockChart = window.AnchoredFlowStockChartBuilder?.build;
     if (!buildAnchoredFlowStockChart) {
         console.error('[AnchoredFlowStockChart] Builder non disponibile');
+        console.error('[AnchoredFlowStockChart] window.AnchoredFlowStockChartBuilder:', window.AnchoredFlowStockChartBuilder);
         return null;
     }
+    console.log('[AnchoredFlowStockChart] Builder disponibile, procedo');
     // Pulisci container
     container.innerHTML = '<canvas></canvas>';
     const canvas = container.querySelector('canvas');
@@ -341,6 +354,7 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     const openingStock = currentStock - totalDelta;
 
     // Build chart data
+    console.log('[AnchoredFlowStockChart] Building chart data con movements:', movements.length);
     const chartData = buildAnchoredFlowStockChart(movements, {
         now: options.now || new Date(),
         preset: options.preset || 'week',
@@ -349,9 +363,18 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         paddingMultiplier: options.paddingMultiplier,
         minAbsDomain: options.minAbsDomain,
     });
+    console.log('[AnchoredFlowStockChart] Chart data built:', chartData);
 
     // Render
-    return renderAnchoredFlowStockChart(canvas, chartData, options);
+    console.log('[AnchoredFlowStockChart] Rendering chart');
+    try {
+        const chart = renderAnchoredFlowStockChart(canvas, chartData, options);
+        console.log('[AnchoredFlowStockChart] Chart renderizzato:', !!chart);
+        return chart;
+    } catch (error) {
+        console.error('[AnchoredFlowStockChart] Errore durante rendering:', error);
+        throw error;
+    }
 }
 
 // Export per uso globale
@@ -360,4 +383,7 @@ if (typeof window !== 'undefined') {
         create: createAnchoredFlowStockChart,
         render: renderAnchoredFlowStockChart,
     };
+    console.log('[AnchoredFlowStockChart] Modulo esportato su window.AnchoredFlowStockChart');
+} else {
+    console.error('[AnchoredFlowStockChart] window non disponibile');
 }

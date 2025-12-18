@@ -3740,25 +3740,32 @@ function setupPeriodPresets(container, wineName) {
 }
 
 function loadAndRenderMovementsChart(wineName, preset) {
+    console.log('[VIEWER] loadAndRenderMovementsChart chiamata:', { wineName, preset });
     const chartContainer = document.getElementById('viewer-movements-chart-container');
-    if (!chartContainer) return;
+    if (!chartContainer) {
+        console.error('[VIEWER] Container grafico non trovato');
+        return;
+    }
     
     // Mostra loading
     chartContainer.innerHTML = '<div class="loading">Caricamento movimenti...</div>';
     
     // Fetch movimenti
+    console.log('[VIEWER] Fetch movimenti per:', wineName);
     fetch(`${API_BASE_URL}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`, {
         headers: {
             'Authorization': `Bearer ${authToken}`,
         },
     })
     .then(response => {
+        console.log('[VIEWER] Risposta fetch:', response.status, response.statusText);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         return response.json();
     })
     .then(data => {
+        console.log('[VIEWER] Dati ricevuti:', data);
         // Distruggi grafico precedente
         if (currentMovementsChart) {
             currentMovementsChart.destroy();
@@ -3767,13 +3774,36 @@ function loadAndRenderMovementsChart(wineName, preset) {
         
         // Su desktop, usa nuovo componente ancorato
         const isDesktop = !isMobileView();
+        console.log('[VIEWER] Is desktop:', isDesktop);
+        console.log('[VIEWER] AnchoredFlowStockChart disponibile:', !!window.AnchoredFlowStockChart);
+        console.log('[VIEWER] AnchoredFlowStockChart.create disponibile:', !!(window.AnchoredFlowStockChart && window.AnchoredFlowStockChart.create));
+        console.log('[VIEWER] AnchoredFlowStockChartBuilder disponibile:', !!window.AnchoredFlowStockChartBuilder);
+        
         if (isDesktop && window.AnchoredFlowStockChart && window.AnchoredFlowStockChart.create) {
-            // Usa nuovo componente desktop
-            currentMovementsChart = window.AnchoredFlowStockChart.create(chartContainer, data, {
-                preset: preset,
-                now: new Date(),
-            });
+            console.log('[VIEWER] Usando nuovo componente desktop');
+            try {
+                currentMovementsChart = window.AnchoredFlowStockChart.create(chartContainer, data, {
+                    preset: preset,
+                    now: new Date(),
+                });
+                console.log('[VIEWER] Grafico creato:', !!currentMovementsChart);
+                if (!currentMovementsChart) {
+                    throw new Error('Grafico non creato (ritornato null)');
+                }
+            } catch (error) {
+                console.error('[VIEWER] Errore creazione grafico desktop:', error);
+                console.error('[VIEWER] Stack trace:', error.stack);
+                chartContainer.innerHTML = `<div class="error-state">Errore nel rendering del grafico: ${error.message}<br><small>Usando grafico legacy come fallback...</small></div>`;
+                // Fallback al grafico legacy in caso di errore
+                setTimeout(() => {
+                    renderLegacyMovementsChart(chartContainer, data);
+                }, 1000);
+            }
         } else {
+            console.log('[VIEWER] Usando grafico legacy (fallback)');
+            if (isDesktop) {
+                console.warn('[VIEWER] Componente desktop non disponibile, usando legacy');
+            }
             // Fallback: usa vecchio grafico (mobile o se componente non disponibile)
             renderLegacyMovementsChart(chartContainer, data);
         }

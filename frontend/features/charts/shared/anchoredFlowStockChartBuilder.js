@@ -305,4 +305,7 @@ if (typeof window !== 'undefined') {
         computeRollingRange,
         generateBuckets,
     };
+    console.log('[AnchoredFlowStockChartBuilder] Modulo esportato su window.AnchoredFlowStockChartBuilder');
+} else {
+    console.error('[AnchoredFlowStockChartBuilder] window non disponibile');
 }
