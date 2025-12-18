@@ -27,30 +27,30 @@
    MOBILE APP CONTAINER (.mApp)
    ============================================ */
 .mobileRoot .mApp {
-    height: 100dvh;
-    display: grid;
-    grid-template-rows: auto 1fr auto; /* Header, Main, Composer */
-    overflow: hidden;
-    position: relative;
-    background-color: var(--color-off-white);
+    height: 100dvh !important;
+    display: grid !important;
+    grid-template-rows: auto 1fr auto !important; /* Header, Main, Composer */
+    overflow: hidden !important;
+    position: relative !important;
+    background-color: var(--color-off-white) !important;
 }
 
 /* ============================================
    HEADER MOBILE (.mHeader) - Sticky
    ============================================ */
 .mobileRoot .mHeader {
-    position: sticky;
-    top: 0;
-    z-index: var(--z-header);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    background-color: var(--color-white);
-    border-bottom: 1px solid var(--color-border);
-    flex-shrink: 0;
-    isolation: isolate;
-    pointer-events: auto;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: var(--z-header) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    background-color: var(--color-white) !important;
+    border-bottom: 1px solid var(--color-border) !important;
+    flex-shrink: 0 !important;
+    isolation: isolate !important;
+    pointer-events: auto !important;
 }
 
 /* Logo e titolo NON devono intercettare tap */
@@ -74,11 +74,11 @@
    MAIN CONTENT MOBILE (.mMain)
    ============================================ */
 .mobileRoot .mMain {
-    flex: 1;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    min-height: 0;
+    flex: 1 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
 }
 
 /* ============================================
@@ -86,12 +86,12 @@
    ============================================ */
 .mobileRoot .mScroller,
 .mobileRoot #chatScroll {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
-    min-height: 0;
-    padding: 16px;
+    flex: 1 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-height: 0 !important;
+    padding: 16px !important;
 }
 
 .mobileRoot .mScroller .welcome-message {
@@ -111,13 +111,13 @@
    COMPOSER MOBILE (.mComposer) - Sticky
    ============================================ */
 .mobileRoot .mComposer {
-    position: sticky;
-    bottom: 0;
-    z-index: var(--z-composer);
-    background-color: var(--color-white);
-    border-top: 1px solid var(--color-border);
-    padding: 12px 16px;
-    flex-shrink: 0;
+    position: sticky !important;
+    bottom: 0 !important;
+    z-index: var(--z-composer) !important;
+    background-color: var(--color-white) !important;
+    border-top: 1px solid var(--color-border) !important;
+    padding: 12px 16px !important;
+    flex-shrink: 0 !important;
 }
 
 .mobileRoot .mComposer .chat-form {
@@ -152,43 +152,43 @@
    OVERLAY MOBILE (.mOverlay) - Solo quando aperto
    ============================================ */
 .mobileRoot .mOverlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100dvh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: var(--z-overlay);
-    display: none;
-    pointer-events: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100dvh !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+    z-index: var(--z-overlay) !important;
+    display: none !important;
+    pointer-events: none !important;
 }
 
 .mobileRoot .mOverlay.is-open {
-    display: block;
-    pointer-events: auto;
+    display: block !important;
+    pointer-events: auto !important;
 }
 
 /* ============================================
    SIDEBAR MOBILE (.mSidebar) - Drawer
    ============================================ */
 .mobileRoot .mSidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 280px;
-    height: 100dvh;
-    background-color: var(--color-white);
-    z-index: var(--z-sidebar);
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-    pointer-events: none;
-    display: flex;
-    flex-direction: column;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 280px !important;
+    height: 100dvh !important;
+    background-color: var(--color-white) !important;
+    z-index: var(--z-sidebar) !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+    pointer-events: none !important;
+    display: flex !important;
+    flex-direction: column !important;
 }
 
 .mobileRoot .mSidebar.is-open {
-    transform: translateX(0);
-    pointer-events: auto;
+    transform: translateX(0) !important;
+    pointer-events: auto !important;
 }
 
 .mobileRoot .mSidebar .chat-sidebar-header {
@@ -321,23 +321,23 @@
 }
 
 .mobileRoot .mApp.state-chat #chatScroll {
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 /* STATE: SIDEBAR_OPEN */
 .mobileRoot .mApp.state-sidebar .mOverlay,
 .mobileRoot .mApp.state-sidebar .mSidebar {
-    pointer-events: auto;
+    pointer-events: auto !important;
 }
 
 .mobileRoot .mApp.state-sidebar .mMain,
 .mobileRoot .mApp.state-sidebar .mComposer {
-    pointer-events: none; /* NO tap-through */
+    pointer-events: none !important; /* NO tap-through */
 }
 
 .mobileRoot .mApp.state-sidebar #chatScroll {
-    overflow: hidden; /* Disabilita scroll chat */
+    overflow: hidden !important; /* Disabilita scroll chat */
 }
 
 .mobileRoot .mApp.state-sidebar .chat-sidebar-list {
@@ -347,17 +347,17 @@
 
 /* STATE: VIEWER_OPEN */
 .mobileRoot .mApp.state-viewer .mViewer {
-    pointer-events: auto;
+    pointer-events: auto !important;
 }
 
 .mobileRoot .mApp.state-viewer .mSidebar,
 .mobileRoot .mApp.state-viewer .mMain,
 .mobileRoot .mApp.state-viewer .mComposer {
-    pointer-events: none; /* NO tap-through */
+    pointer-events: none !important; /* NO tap-through */
 }
 
 .mobileRoot .mApp.state-viewer #chatScroll {
-    overflow: hidden; /* Disabilita scroll chat */
+    overflow: hidden !important; /* Disabilita scroll chat */
 }
 
 .mobileRoot .mApp.state-viewer .viewer-content {
@@ -367,18 +367,18 @@
 
 /* STATE: MODAL_OPEN */
 .mobileRoot .mApp.state-modal .mModal {
-    pointer-events: auto;
+    pointer-events: auto !important;
 }
 
 .mobileRoot .mApp.state-modal .mSidebar,
 .mobileRoot .mApp.state-modal .mViewer,
 .mobileRoot .mApp.state-modal .mMain,
 .mobileRoot .mApp.state-modal .mComposer {
-    pointer-events: none; /* NO tap-through */
+    pointer-events: none !important; /* NO tap-through */
 }
 
 .mobileRoot .mApp.state-modal #chatScroll {
-    overflow: hidden; /* Disabilita scroll chat */
+    overflow: hidden !important; /* Disabilita scroll chat */
 }
 
 .mobileRoot .mApp.state-modal .modal-content {

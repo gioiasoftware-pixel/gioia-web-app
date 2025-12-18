@@ -12,12 +12,12 @@
     <link rel="stylesheet" href="/static/styles/globals.css">
     <!-- LayoutBoundary CSS (namespace isolation - SOLO namespace, NO layout) -->
     <link rel="stylesheet" href="/static/layout/LayoutBoundary/layoutBoundary.css">
-    <!-- Mobile Layout CSS (isolato dentro .mobileRoot) -->
-    <link rel="stylesheet" href="/static/layout/MobileLayout/mobile.css">
     <!-- CSS legacy FENCED: regole pericolose isolate nei namespace -->
     <link rel="stylesheet" href="/static/styles/legacy-fenced.css">
     <!-- CSS legacy: resto delle regole (dopo fence per evitare override) -->
     <link rel="stylesheet" href="/static/styles.css">
+    <!-- Mobile Layout CSS (DOPO legacy per sovrascrivere regole mobile vecchie) -->
+    <link rel="stylesheet" href="/static/layout/MobileLayout/mobile.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">

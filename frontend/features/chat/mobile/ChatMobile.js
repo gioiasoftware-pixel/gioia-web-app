@@ -34,7 +34,6 @@ let previousMobileState = null; // Per tornare allo stato precedente dopo modal
 function setMobileState(newState) {
     const mApp = document.querySelector('.mApp');
     if (!mApp) {
-        console.warn('[ChatMobile] .mApp non trovato');
         return;
     }
     
@@ -49,8 +48,6 @@ function setMobileState(newState) {
     // Applica nuovo stato
     mApp.classList.add(`state-${newState}`);
     currentMobileState = newState;
-    
-    console.log(`[ChatMobile] Stato cambiato: ${previousMobileState || 'null'} → ${newState}`);
     
     // Gestisci transizioni specifiche
     handleStateTransition(newState);
@@ -128,7 +125,6 @@ function openSidebarInternal() {
     const overlay = document.getElementById('sidebarOverlay');
     
     if (!sidebar || !overlay) {
-        console.warn('[ChatMobile] Sidebar o overlay non trovati');
         return;
     }
     
@@ -165,8 +161,6 @@ function setupSidebarOverlay() {
             closeSidebar();
         }
     });
-    
-    console.log('[ChatMobile] Overlay sidebar configurato');
 }
 
 // ============================================
@@ -182,7 +176,6 @@ function openViewer(wineData = null) {
     
     if (wineData) {
         // Popola contenuto viewer (da implementare se necessario)
-        console.log('[ChatMobile] Apertura viewer con dati:', wineData);
     }
 }
 
@@ -199,7 +192,6 @@ function closeViewer() {
 function openViewerInternal() {
     const viewer = document.getElementById('viewerPanel');
     if (!viewer) {
-        console.warn('[ChatMobile] Viewer non trovato');
         return;
     }
     
@@ -233,8 +225,6 @@ function setupViewerClose() {
     newCloseBtn.addEventListener('click', () => {
         closeViewer();
     });
-    
-    console.log('[ChatMobile] Viewer close button configurato');
 }
 
 // ============================================
@@ -251,7 +241,6 @@ function openModal(content, options = {}) {
     
     const modal = document.getElementById('anyModal');
     if (!modal) {
-        console.warn('[ChatMobile] Modal non trovato');
         return;
     }
     
@@ -331,7 +320,6 @@ function closeModalInternal() {
 function initChatMobile() {
     const selectors = window.ChatSelectors?.get();
     if (!selectors || selectors.layout !== 'mobile') {
-        console.warn('[ChatMobile] Selectors non disponibili o layout non mobile');
         return;
     }
     
@@ -346,7 +334,6 @@ function initChatMobile() {
         form.parentNode.replaceChild(newForm, form);
         
         newForm.addEventListener('submit', handleChatSubmitMobile);
-        console.log('[ChatMobile] Form submit listener attaccato');
     }
     
     // Setup input keydown
@@ -372,7 +359,6 @@ function initChatMobile() {
             e.stopPropagation();
             toggleSidebar();
         });
-        console.log('[ChatMobile] Sidebar toggle listener attaccato');
     }
     
     // Setup overlay
@@ -383,8 +369,6 @@ function initChatMobile() {
     
     // Setup conversazioni click (auto-close sidebar)
     setupConversationsClick();
-    
-    console.log('[ChatMobile] Inizializzato');
 }
 
 /**
@@ -414,7 +398,6 @@ async function handleChatSubmitMobile(e) {
     
     // Verifica che siamo in stato CHAT
     if (currentMobileState !== MOBILE_STATES.CHAT) {
-        console.warn('[ChatMobile] Submit ignorato: stato non CHAT');
         return;
     }
     
@@ -423,7 +406,6 @@ async function handleChatSubmitMobile(e) {
     const form = selectors?.form();
     
     if (!input || !form) {
-        console.error('[ChatMobile] Input o form non trovati');
         return;
     }
     
@@ -443,7 +425,6 @@ async function handleChatSubmitMobile(e) {
             addChatMessageMobile('ai', response.message, false, false, null, response.is_html);
         }
     } catch (error) {
-        console.error('[ChatMobile] Errore invio messaggio:', error);
         addChatMessageMobile('ai', 'Errore invio messaggio', false, true);
     }
 }
@@ -456,7 +437,6 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
     const scrollContainer = selectors?.scrollContainer(); // #chatScroll
     
     if (!scrollContainer) {
-        console.error('[ChatMobile] Scroll container non trovato');
         return null;
     }
     
@@ -485,7 +465,6 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
     // Gestione wine cards (da implementare se necessario)
     if (wineData) {
         // ... renderizza wine card ...
-        console.log('[ChatMobile] Wine data ricevuto:', wineData);
     }
     
     // Aggiungi al DOM
@@ -508,8 +487,6 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
  * Chiamato quando si cambia layout da mobile a desktop
  */
 function cleanupChatMobile() {
-    console.log('[ChatMobile] Cleanup iniziato');
-    
     // Reset stato a CHAT
     setMobileState(MOBILE_STATES.CHAT);
     previousMobileState = null;
@@ -537,8 +514,6 @@ function cleanupChatMobile() {
     closeSidebarInternal();
     closeViewerInternal();
     closeModalInternal();
-    
-    console.log('[ChatMobile] Cleanup completato');
 }
 
 // ============================================
