@@ -86,7 +86,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
 
     // Se non ci sono movimenti, enfatizza la linea stock
     const stockLineWidth = hasNoMovement ? 3 : 2;
-    const stockLineStyle = hasNoMovement ? 'solid' : [5, 5]; // dashed se c'è movimento
+    const stockLineStyle = hasNoMovement ? false : [5, 5]; // dashed se c'è movimento, solid (false) se no movement
 
     const datasets = [];
 
@@ -122,18 +122,24 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     }
 
     // 3. Stock line (sempre visibile, enfatizzata se no movement)
-    datasets.push({
+    const stockLineDataset = {
         label: 'Stock',
         data: stockLineData,
         type: 'line',
         borderColor: colors.stock,
         backgroundColor: 'transparent',
         borderWidth: stockLineWidth,
-        borderDash: stockLineStyle,
         pointRadius: 0,
         order: 1,
         tension: 0.4,
-    });
+    };
+    
+    // borderDash deve essere un array o false/undefined, non una stringa
+    if (stockLineStyle !== false) {
+        stockLineDataset.borderDash = stockLineStyle;
+    }
+    
+    datasets.push(stockLineDataset);
 
     // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
     if (!hasNoMovement && options.showPOI !== false) {
@@ -483,12 +489,17 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     });
 
     // Converti movimenti API in formato WineMovement
-    const movements = (movementsData.movements || []).map(mov => ({
+    const rawMovements = movementsData.movements || [];
+    console.log('[AnchoredFlowStockChart] Movimenti raw dall\'API:', rawMovements.length);
+    
+    const movements = rawMovements.map(mov => ({
         at: mov.date || mov.at,
         delta: mov.type === 'consumo' 
             ? -(mov.quantity_change || 0)
             : (mov.quantity_change || 0),
     }));
+    
+    console.log('[AnchoredFlowStockChart] Movimenti convertiti:', movements.length);
 
     // Calcola opening stock
     // Se abbiamo current_stock dall'API, usalo come stock finale
