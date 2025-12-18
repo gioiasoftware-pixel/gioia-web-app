@@ -138,26 +138,8 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     
     datasets.push(stockLineDataset);
 
-    // 2.5. Baseline (linea guida orizzontale alla media stock) - trasparente, non interattiva
-    // Questa linea rappresenta la media stock nel periodo (y=0 normalizzato)
-    // È solo una guida visiva, non interagisce con tooltip o hover
-    datasets.push({
-        label: '_baseline', // dataset interno, nascosto (non appare in tooltip grazie al filter)
-        data: baselineData, // y=0 normalizzato = media stock
-        type: 'line',
-        borderColor: colors.baseline + '30', // molto trasparente (30 = ~19% opacità in hex)
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        pointRadius: 0,
-        pointHoverRadius: 0, // nessun hover point
-        fill: false,
-        order: 0, // renderizzata per prima, sotto tutto
-        tension: 0, // linea retta orizzontale
-        borderDash: [2, 4], // linea tratteggiata sottile
-    });
-
     // 3. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
-    // Deve essere DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
+    // Deve essere IMMEDIATAMENTE DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: 'Rifornimenti',
@@ -171,6 +153,25 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             tension: 0.4,
         });
     }
+
+    // 3.5. Baseline (linea guida orizzontale alla media stock) - trasparente, non interattiva
+    // Questa linea rappresenta la media stock nel periodo (y=0 normalizzato)
+    // È solo una guida visiva, NON serve come base per le aree (le aree partono dalla stock line)
+    // Deve essere DOPO le aree nell'array per non interferire con fill: '+1' e fill: '-1'
+    datasets.push({
+        label: '_baseline', // dataset interno, nascosto (non appare in tooltip grazie al filter)
+        data: baselineData, // y=0 normalizzato = media stock
+        type: 'line',
+        borderColor: colors.baseline + '30', // molto trasparente (30 = ~19% opacità in hex)
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        pointRadius: 0,
+        pointHoverRadius: 0, // nessun hover point
+        fill: false,
+        order: 0, // renderizzata per prima visivamente, sotto tutto
+        tension: 0, // linea retta orizzontale
+        borderDash: [2, 4], // linea tratteggiata sottile
+    });
 
     // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
     if (!hasNoMovement && options.showPOI !== false) {
