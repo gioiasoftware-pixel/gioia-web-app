@@ -108,6 +108,16 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // 1. Outflow area (consumi) - DEVE essere PRIMA della base nell'array
     // fill: '+1' riempie verso il dataset successivo (base stock) - verso l'ALTO fino alla base
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        // Debug: verifica valori area consumi
+        const sampleOutflow = outflowAreaBottom.slice(0, 3);
+        const sampleStock = stockLineBase.slice(0, 3);
+        console.log('[AnchoredFlowStockChart] Area consumi - valori sample:', {
+            outflowAreaBottom: sampleOutflow,
+            stockLineBase: sampleStock,
+            diff: sampleOutflow.map((v, i) => v - sampleStock[i]),
+            hasOutflow: points.slice(0, 3).map(p => p.outflow > 0)
+        });
+        
         datasets.push({
             label: 'Consumi',
             data: outflowAreaBottom, // bottom dell'area (stockNorm - outflow)
@@ -179,6 +189,16 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // Parte dalla base stock e va verso l'alto (rialzo)
     // fill: '-1' riempie verso il dataset precedente (base stock)
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        // Debug: verifica valori area rifornimenti (per confronto)
+        const sampleInflow = inflowAreaTop.slice(0, 3);
+        const sampleStockInflow = stockLineBase.slice(0, 3);
+        console.log('[AnchoredFlowStockChart] Area rifornimenti - valori sample:', {
+            inflowAreaTop: sampleInflow,
+            stockLineBase: sampleStockInflow,
+            diff: sampleInflow.map((v, i) => v - sampleStockInflow[i]),
+            hasInflow: points.slice(0, 3).map(p => p.inflow > 0)
+        });
+        
         datasets.push({
             label: 'Rifornimenti',
             data: inflowAreaTop, // top dell'area (stockNorm + inflow)
