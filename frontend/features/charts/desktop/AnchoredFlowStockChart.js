@@ -100,9 +100,13 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // IMPORTANTE: In Chart.js, fill: '+1' riempie verso il dataset successivo nell'array,
     // fill: '-1' riempie verso il dataset precedente nell'array.
     // L'ordine nell'array è cruciale per far funzionare correttamente il fill.
+    
+    // STRATEGIA UNIFICATA: Entrambe le aree usano la stessa logica speculare:
+    // - Base invisibile (stock line) → Area colorata con fill verso la base
+    // - Consumi: base sotto → area sopra la base (verso il basso dalla stock line)
+    // - Rifornimenti: base sopra → area sopra la base (verso l'alto dalla stock line)
 
-    // 1. Base invisibile per area consumi (linea stock) - deve essere prima dell'area consumi
-    // Questa linea serve come base d'appoggio per l'area consumi (fill: '+1' riempie verso il dataset successivo)
+    // 1. Base invisibile per area consumi (linea stock) - serve come base d'appoggio
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: '_base_outflow', // dataset interno, nascosto
@@ -118,9 +122,9 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         });
     }
 
-    // 2. Outflow area (consumi) - parte dalla linea stock e va verso il basso (a testa in giù)
-    // Deve essere DOPO la base stock nell'array, così fill: '+1' riempie verso la base stock successiva
-    // IMPORTANTE: order deve essere più basso della stock line per essere renderizzata sotto
+    // 2. Outflow area (consumi) - SPECCHIO di rifornimenti
+    // Parte dalla base stock e va verso il basso (a testa in giù)
+    // fill: '+1' riempie verso il dataset successivo (base stock)
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: 'Consumi',
@@ -130,14 +134,12 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             backgroundColor: colors.outflow + '40',
             fill: '+1', // riempi verso il dataset successivo nell'array (base stock)
             pointRadius: 0,
-            order: 0, // renderizzata per prima (sotto tutto) per non sovrapporsi alla stock line
+            order: 0, // renderizzata sotto la stock line
             tension: 0.4,
         });
     }
 
     // 3. Stock line (sempre visibile, enfatizzata se no movement)
-    // Serve come base d'appoggio per l'area rifornimenti:
-    // - Per rifornimenti: il dataset successivo (inflow) usa fill: '-1' per riempire verso questa
     const stockLineDataset = {
         label: 'Stock',
         data: stockLineData,
@@ -157,8 +159,26 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     
     datasets.push(stockLineDataset);
 
-    // 4. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
-    // Deve essere IMMEDIATAMENTE DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
+    // 4. Base invisibile per area rifornimenti (linea stock) - serve come base d'appoggio
+    // SPECCHIO di base_outflow: stessa logica ma per area sopra
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: '_base_inflow', // dataset interno, nascosto
+            data: stockLineBase, // linea stock (base per area rifornimenti)
+            type: 'line',
+            borderColor: 'transparent',
+            backgroundColor: 'transparent',
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: false,
+            order: 1, // stesso ordine della stock line
+            tension: 0.4,
+        });
+    }
+
+    // 5. Inflow area (rifornimenti) - SPECCHIO di consumi
+    // Parte dalla base stock e va verso l'alto (rialzo)
+    // fill: '-1' riempie verso il dataset precedente (base stock)
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: 'Rifornimenti',
@@ -166,7 +186,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             type: 'line',
             borderColor: colors.inflow + '80',
             backgroundColor: colors.inflow + '40',
-            fill: '-1', // riempi verso il dataset precedente nell'array (stock line)
+            fill: '-1', // riempi verso il dataset precedente nell'array (base stock)
             pointRadius: 0,
             order: 2, // renderizzata sopra la stock line
             tension: 0.4,
