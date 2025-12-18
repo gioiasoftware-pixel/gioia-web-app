@@ -383,18 +383,28 @@ function initChatMobile() {
     // Setup conversazioni click (auto-close sidebar)
     setupConversationsClick();
     
-    // Carica conversazioni e conversazione corrente
-    loadConversationsMobile();
-    
-    // Carica conversazione corrente da localStorage se presente
-    const savedConversationId = localStorage.getItem('current_conversation_id');
-    if (savedConversationId) {
-        window.currentConversationId = parseInt(savedConversationId);
-        loadConversationMessagesMobile(window.currentConversationId);
-    } else {
-        // Mostra welcome message se nessuna conversazione salvata
-        showWelcomeMessageMobile();
-    }
+    // Carica conversazioni e conversazione corrente (con delay per assicurare DOM ready)
+    setTimeout(() => {
+        loadConversationsMobile().then(() => {
+            // Carica conversazione corrente da localStorage se presente
+            const savedConversationId = localStorage.getItem('current_conversation_id');
+            if (savedConversationId) {
+                const convId = parseInt(savedConversationId);
+                if (!isNaN(convId)) {
+                    window.currentConversationId = convId;
+                    loadConversationMessagesMobile(convId);
+                } else {
+                    showWelcomeMessageMobile();
+                }
+            } else {
+                // Mostra welcome message se nessuna conversazione salvata
+                showWelcomeMessageMobile();
+            }
+        }).catch(err => {
+            console.error('[MOBILE] Errore inizializzazione:', err);
+            showWelcomeMessageMobile();
+        });
+    }, 100);
 }
 
 /**
@@ -456,39 +466,48 @@ function formatConversationTimeMobile(timestamp) {
  * Carica le conversazioni dalla API
  */
 async function loadConversationsMobile() {
-    if (!window.authToken) return;
+    // Usa authToken globale (come desktop) o window.authToken
+    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
+    if (!token) {
+        console.warn('[MOBILE] authToken non disponibile');
+        return;
+    }
     
     const sidebarList = document.getElementById('chat-sidebar-list-mobile');
-    if (!sidebarList) return;
+    if (!sidebarList) {
+        console.warn('[MOBILE] sidebarList non trovato');
+        return;
+    }
     
     sidebarList.innerHTML = '<div class="chat-sidebar-loading">Caricamento chat...</div>';
     
     try {
-        // Usa ChatAPI se disponibile, altrimenti fallback a fetch diretto
-        if (window.ChatAPI?.loadConversations) {
-            conversationsMobile = await window.ChatAPI.loadConversations();
-        } else {
-            // Fallback: fetch diretto (come desktop)
-            const response = await fetch(`${window.API_BASE_URL || 'http://localhost:8000'}/api/chat/conversations`, {
-                headers: {
-                    'Authorization': `Bearer ${window.authToken}`,
-                },
-            });
-            
-            if (!response.ok) {
-                throw new Error('Errore caricamento conversazioni');
-            }
-            
-            conversationsMobile = await response.json();
+        // Usa endpoint desktop (/api/chat/conversations) invece di ChatAPI (/api/conversations)
+        // perché ChatAPI potrebbe usare endpoint diverso
+        const apiBaseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.API_BASE_URL || 'http://localhost:8000');
+        const response = await fetch(`${apiBaseUrl}/api/chat/conversations`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[MOBILE] Errore API:', response.status, errorText);
+            throw new Error(`Errore caricamento conversazioni: ${response.status}`);
         }
         
+        conversationsMobile = await response.json();
+        
         if (!conversationsMobile || !Array.isArray(conversationsMobile)) {
+            console.warn('[MOBILE] Risposta API non è un array:', conversationsMobile);
             conversationsMobile = [];
         }
         
+        console.log('[MOBILE] Conversazioni caricate:', conversationsMobile.length);
         renderConversationsListMobile();
     } catch (error) {
-        console.error('Errore caricamento conversazioni mobile:', error);
+        console.error('[MOBILE] Errore caricamento conversazioni:', error);
         sidebarList.innerHTML = '<div class="chat-sidebar-error">Errore caricamento chat</div>';
         conversationsMobile = [];
     }
@@ -577,7 +596,8 @@ async function selectConversationMobile(conversationId) {
  * Carica i messaggi di una conversazione
  */
 async function loadConversationMessagesMobile(conversationId) {
-    if (!window.authToken || !conversationId) return;
+    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
+    if (!token || !conversationId) return;
     
     // Pulisci messaggi correnti
     clearChatMessagesMobile(false);
@@ -636,7 +656,8 @@ async function loadConversationMessagesMobile(conversationId) {
  * Elimina una conversazione (con modal di conferma)
  */
 async function deleteConversationMobile(conversationId) {
-    if (!window.authToken) return;
+    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
+    if (!token) return;
     
     // Mostra modal di conferma invece di confirm()
     const confirmHtml = `
@@ -697,7 +718,8 @@ async function deleteConversationMobile(conversationId) {
  * Gestisce la creazione di una nuova conversazione
  */
 async function handleNewChatMobile() {
-    if (!window.authToken) return;
+    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
+    if (!token) return;
     
     try {
         // Resetta conversation_id (verrà creata al primo messaggio)
