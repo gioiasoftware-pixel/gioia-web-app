@@ -374,35 +374,9 @@ function addUniversalEventListener(element, handler, options = {}) {
 // Initialize
 // Funzione helper per log HTML visibile E invio a Railway
 async function debugLog(message, type = 'info', context = null) {
-    // Log nella console
-    console.log(message);
-    
-    // Mostra nel box HTML visibile
-    const debugEl = document.getElementById('debug-log');
-    if (debugEl) {
-        debugEl.classList.add('active');
-        const item = document.createElement('div');
-        item.className = 'debug-log-item';
-        const timestamp = new Date().toLocaleTimeString();
-        item.textContent = `[${timestamp}] ${message}`;
-        debugEl.appendChild(item);
-        // Mantieni solo ultimi 10 log
-        while (debugEl.children.length > 10) {
-            debugEl.removeChild(debugEl.firstChild);
-        }
-        // Scroll in fondo
-        debugEl.scrollTop = debugEl.scrollHeight;
-    }
-    
-    // Invia anche a Railway tramite API (non blocca se fallisce)
-    try {
-        await fetch('/api/debug/log', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                message: message,
+    // DISABILITATO: Log verde rimosso
+    // Funzione mantenuta per compatibilità ma non fa nulla
+    return;
                 level: type,
                 context: context,
                 timestamp: new Date().toISOString()
@@ -483,12 +457,10 @@ document.addEventListener("pointerup", (e) => {
             const display = window.getComputedStyle(el).display;
             return `${el.tagName}#${id} (${hidden}, display:${display})`;
         }).join(', ');
-        debugLog(`⚠️ LAYER SOSPETTO nello stack: ${suspiciousInfo}`, 'warn', 'POINTER');
     }
     
     // Se il target non è il primo elemento nello stack, c'è intercettazione
     if (els[0] !== target) {
-        debugLog(`POINTER INTERCEPT: Stack[0]=${els[0]?.tagName}#${els[0]?.id || 'no-id'} Target=${target?.tagName}#${target?.id || 'no-id'}`, 'warn', 'POINTER');
     }
 }, { capture: true });
 
@@ -1779,14 +1751,12 @@ function setupWineCardBookmarks(messageEl) {
     editBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        debugLog(`SOLUZIONE 2: Click su bookmark edit (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
         handleWineCardEdit(wineCard, wineId);
     });
     
     inventoryBookmark.addEventListener('pointerup', (e) => {
         e.stopPropagation();
         e.preventDefault();
-        debugLog(`SOLUZIONE 2: Click su bookmark inventory (setupWineCardBookmarks)`, 'info', 'WINE_CARD');
         handleWineCardShowInInventory(wineCard, wineId);
     });
     
@@ -4241,118 +4211,58 @@ function toggleSidebar() {
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // SOLUZIONE BLINDATA: Usa classi is-open invece di hidden
-        const sidebar = document.getElementById('chatSidebar');
-        const overlay = document.getElementById('sidebarOverlay');
-        
-        console.log('[SIDEBAR] toggleSidebar MOBILE chiamato', { sidebar, overlay });
-        debugLog(`toggleSidebar MOBILE: sidebar=${sidebar ? 'TROVATA' : 'NON TROVATA'}, overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
-        
-        if (!sidebar || !overlay) {
-            console.error('[SIDEBAR] Missing elements. Check IDs.');
-            debugLog('ERRORE: Sidebar o overlay non trovati!', 'error', 'SIDEBAR');
-            return;
-        }
-        
-        const isOpen = sidebar.classList.contains('is-open');
-        console.log('[SIDEBAR] Stato attuale isOpen:', isOpen);
-        
-        if (isOpen) {
-            // Chiudi sidebar
-            sidebar.classList.remove('is-open');
-            overlay.classList.remove('is-open');
-            console.log('[SIDEBAR] CLOSE');
-            debugLog('Sidebar chiusa (is-open rimosso)', 'info', 'SIDEBAR');
+        // DELEGA al nuovo codice mobile (ChatMobile.js)
+        if (typeof window.ChatMobile !== 'undefined' && window.ChatMobile.toggleSidebar) {
+            window.ChatMobile.toggleSidebar();
         } else {
-            // Apri sidebar
-            sidebar.classList.add('is-open');
-            overlay.classList.add('is-open');
-            
-            // Debug dettagliato posizione e stili
-            const computedStyle = window.getComputedStyle(sidebar);
-            const rect = sidebar.getBoundingClientRect();
-            const transform = computedStyle.transform;
-            const display = computedStyle.display;
-            const left = computedStyle.left;
-            const width = computedStyle.width;
-            const zIndex = computedStyle.zIndex;
-            const hasIsOpen = sidebar.classList.contains('is-open');
-            
-            console.log('[SIDEBAR] OPEN', { 
-                transform, 
-                display, 
-                left, 
-                width, 
-                zIndex,
-                hasIsOpen,
-                rect: {
-                    left: rect.left,
-                    top: rect.top,
-                    width: rect.width,
-                    height: rect.height,
-                    visible: rect.width > 0 && rect.left >= 0
+            // Fallback legacy (da rimuovere quando ChatMobile è sempre disponibile)
+            const sidebar = document.getElementById('chatSidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            if (sidebar && overlay) {
+                const isOpen = sidebar.classList.contains('is-open');
+                if (isOpen) {
+                    sidebar.classList.remove('is-open');
+                    overlay.classList.remove('is-open');
+                } else {
+                    sidebar.classList.add('is-open');
+                    overlay.classList.add('is-open');
                 }
-            });
-            
-            debugLog(`Sidebar aperta (is-open aggiunto)`, 'info', 'SIDEBAR');
-            debugLog(`  transform=${transform}, display=${display}`, 'info', 'SIDEBAR');
-            debugLog(`  left=${left}, width=${width}, zIndex=${zIndex}`, 'info', 'SIDEBAR');
-            debugLog(`  rect: left=${rect.left}, width=${rect.width}, visible=${rect.width > 0 && rect.left >= 0}`, 'info', 'SIDEBAR');
-            
-            // Verifica dopo animazione
-            setTimeout(() => {
-                const finalRect = sidebar.getBoundingClientRect();
-                const finalTransform = window.getComputedStyle(sidebar).transform;
-                const finalLeft = window.getComputedStyle(sidebar).left;
-                console.log('[SIDEBAR] Dopo 300ms:', {
-                    transform: finalTransform,
-                    left: finalLeft,
-                    rect: {
-                        left: finalRect.left,
-                        width: finalRect.width,
-                        visible: finalRect.width > 0 && finalRect.left >= 0
-                    }
-                });
-                debugLog(`Dopo 300ms: transform=${finalTransform}, left=${finalLeft}, visible=${finalRect.width > 0 && finalRect.left >= 0}`, 'info', 'SIDEBAR');
-            }, 300);
+            }
         }
     } else {
         // DESKTOP: usa classe 'collapsed' per collassare/espandere
         const sidebar = document.getElementById('chat-sidebar');
         if (!sidebar) {
-            debugLog('ERRORE: Sidebar desktop non trovata!', 'error', 'SIDEBAR');
             return;
         }
         sidebar.classList.toggle('collapsed');
         const isCollapsed = sidebar.classList.contains('collapsed');
         localStorage.setItem('chat-sidebar-collapsed', isCollapsed.toString());
-        debugLog(`Desktop - collapsed: ${isCollapsed}`, 'info', 'SIDEBAR');
     }
 }
 
-// NUOVA ARCHITETTURA: Overlay gestito tramite hidden, non più creato/rimosso dinamicamente
-// L'overlay esiste già nel DOM e viene mostrato/nascosto con hidden
+// NUOVA ARCHITETTURA: Overlay gestito da ChatMobile.js
+// Questa funzione legacy viene chiamata ma delega a ChatMobile se disponibile
 function setupSidebarOverlay() {
-    // SOLUZIONE BLINDATA: Listener robusto sull'overlay
-    const overlay = document.getElementById('sidebarOverlay');
-    debugLog(`setupSidebarOverlay: overlay=${overlay ? 'TROVATO' : 'NON TROVATO'}`, 'info', 'SIDEBAR');
+    const isMobile = window.innerWidth <= 768;
     
+    if (isMobile) {
+        // Su mobile, ChatMobile.js gestisce già l'overlay in setupSidebarOverlay()
+        // Questa funzione legacy viene mantenuta per compatibilità ma non fa nulla
+        // perché ChatMobile.init() chiama già setupSidebarOverlay()
+        return;
+    }
+    
+    // Desktop: gestione legacy (se necessario)
+    const overlay = document.getElementById('sidebar-overlay');
     if (overlay) {
-        // Rimuovi listener esistenti per evitare duplicati
         const newOverlay = overlay.cloneNode(true);
         overlay.parentNode.replaceChild(newOverlay, overlay);
         
-        // Listener robusto per chiudere sidebar quando si clicca sull'overlay
         newOverlay.addEventListener('pointerup', (e) => {
-            console.log('[SIDEBAR] overlay pointerup, chiudo sidebar');
-            debugLog('OVERLAY: pointerup rilevato, chiudo sidebar', 'info', 'SIDEBAR');
             e.stopPropagation();
             toggleSidebar();
         }, { passive: true });
-        
-        debugLog('setupSidebarOverlay: Listener aggiunto all\'overlay', 'info', 'SIDEBAR');
-    } else {
-        debugLog('setupSidebarOverlay: ERRORE - Overlay non trovato!', 'error', 'SIDEBAR');
     }
 }
 
@@ -4361,21 +4271,16 @@ function loadSidebarState() {
     const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
-        // MOBILE: Assicurati che sidebar mobile sia SEMPRE chiusa di default (no is-open)
+        // MOBILE: Gestito da ChatMobile.js
+        // Assicurati che sidebar mobile sia SEMPRE chiusa di default
         const sidebarMobile = document.getElementById('chatSidebar');
         const overlayMobile = document.getElementById('sidebarOverlay');
         
-        console.log('[SIDEBAR] loadSidebarState MOBILE init', { sidebarMobile, overlayMobile });
-        
         if (sidebarMobile) {
-            // Rimuovi is-open se presente (chiudi sidebar)
             sidebarMobile.classList.remove('is-open');
-            console.log('[SIDEBAR] Sidebar chiusa di default (is-open rimosso)');
-            debugLog('loadSidebarState MOBILE: Sidebar chiusa di default (is-open rimosso)', 'info', 'SIDEBAR');
         }
         
         if (overlayMobile) {
-            // Rimuovi is-open se presente
             overlayMobile.classList.remove('is-open');
         }
     } else {

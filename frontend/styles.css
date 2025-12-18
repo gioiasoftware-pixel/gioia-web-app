@@ -933,33 +933,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     }
 
     /* ============================================
-       DEBUG LOG
+       DEBUG LOG - DISABILITATO
        ============================================ */
     .debug-log {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        max-height: 200px;
-        overflow-y: auto;
-        background: rgba(0, 0, 0, 0.8);
-        color: #fff;
-        font-size: 11px;
-        padding: 8px;
-        z-index: 10000;
-        display: none;
-        pointer-events: none;
-        /* CRITICO: Non deve coprire l'header o il pulsante hamburger */
-        top: auto;
+        display: none !important;
+        visibility: hidden !important;
     }
 
     .debug-log.active {
-        display: block;
+        display: none !important;
     }
 
     .debug-log-item {
-        pointer-events: none;
-        margin-bottom: 4px;
+        display: none !important;
     }
     
     /* Assicura che il debug log non interferisca con l'header */
@@ -1128,17 +1114,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         padding: 8px;
         border-radius: 4px;
         z-index: 10000;
-        display: none;
+        display: none !important;
+        visibility: hidden !important;
         border: 1px solid #00ff00;
         /* IMPORTANTE: non intercettare eventi pointer */
         pointer-events: none;
     }
     
     .debug-log.active {
-        display: block;
+        display: none !important;
     }
     
     .debug-log-item {
+        display: none !important;
         margin-bottom: 4px;
         word-break: break-all;
         /* Anche gli item non devono intercettare */
