@@ -66,6 +66,7 @@
  * @property {number} [paddingMultiplier] - moltiplicatore padding dominio Y (default: 1.2)
  * @property {number} [minAbsDomain] - minimo assoluto dominio Y (default: 1)
  * @property {number} openingStock - stock assoluto all'inizio della finestra
+ * @property {number} [finalStock] - stock finale esplicito (da quantity_after ultimo movimento, opzionale)
  */
 
 /**
@@ -284,7 +285,10 @@ function buildAnchoredFlowStockChart(movements, opts) {
 
     // Baseline dinamica = MEDIA stock nel periodo (non stock di oggi)
     const anchorTime = now;
-    const anchorStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock; // Stock di oggi (per riferimento)
+    // Se abbiamo stock finale esplicito (da quantity_after ultimo movimento), usalo
+    // Altrimenti usa lo stock calcolato dall'ultimo punto
+    const calculatedFinalStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock;
+    const anchorStock = opts.finalStock !== undefined ? opts.finalStock : calculatedFinalStock; // Stock di oggi (per riferimento)
     
     // Calcola media stock nel periodo
     const mediaStock = pointsAbs.length > 0

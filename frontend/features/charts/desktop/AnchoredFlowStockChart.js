@@ -721,9 +721,22 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         preset: options.preset || 'week',
         granularity: options.granularity,
         openingStock: Math.max(0, openingStock), // Assicura non negativo
+        finalStock: stockFinale, // Passa stock finale esplicito (da quantity_after ultimo movimento)
         paddingMultiplier: options.paddingMultiplier,
         minAbsDomain: options.minAbsDomain,
     });
+    
+    // Verifica che lo stock finale sia corretto
+    const calculatedFinalStock = chartData.anchorStock;
+    if (stockFinale > 0 && Math.abs(calculatedFinalStock - stockFinale) > 0.1) {
+        console.warn('[AnchoredFlowStockChart] Stock finale non corrisponde!', {
+            expected: stockFinale,
+            calculated: calculatedFinalStock,
+            difference: calculatedFinalStock - stockFinale
+        });
+        // Forza lo stock finale corretto
+        chartData.anchorStock = stockFinale;
+    }
     console.log('[AnchoredFlowStockChart] Chart data built:', {
         pointsCount: chartData.points.length,
         mediaStock: chartData.mediaStock, // Media stock (baseline dinamica)
