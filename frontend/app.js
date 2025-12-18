@@ -938,6 +938,7 @@ async function loadUserInfo() {
 
 function handleLogout() {
     authToken = null;
+    window.authToken = null; // Esponi su window
     currentUser = null;
     currentConversationId = null;
     conversations = [];

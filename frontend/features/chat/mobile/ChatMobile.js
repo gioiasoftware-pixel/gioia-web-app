@@ -374,6 +374,19 @@ function initChatMobile() {
         });
     }
     
+    // Setup pulsante chiudi sidebar
+    const closeSidebarBtn = document.getElementById('sidebar-close-btn-mobile');
+    if (closeSidebarBtn) {
+        const newCloseBtn = closeSidebarBtn.cloneNode(true);
+        closeSidebarBtn.parentNode.replaceChild(newCloseBtn, closeSidebarBtn);
+        
+        newCloseBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSidebar();
+        });
+    }
+    
     // Setup overlay
     setupSidebarOverlay();
     
@@ -484,7 +497,7 @@ async function loadConversationsMobile() {
     try {
         // Usa endpoint desktop (/api/chat/conversations) invece di ChatAPI (/api/conversations)
         // perché ChatAPI potrebbe usare endpoint diverso
-        const apiBaseUrl = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : (window.API_BASE_URL || 'http://localhost:8000');
+        const apiBaseUrl = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://localhost:8000');
         const response = await fetch(`${apiBaseUrl}/api/chat/conversations`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -596,22 +609,41 @@ async function selectConversationMobile(conversationId) {
  * Carica i messaggi di una conversazione
  */
 async function loadConversationMessagesMobile(conversationId) {
-    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
-    if (!token || !conversationId) return;
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+    if (!token || !conversationId) {
+        console.warn('[MOBILE] Token o conversationId mancante:', { token: !!token, conversationId });
+        return;
+    }
     
     // Pulisci messaggi correnti
     clearChatMessagesMobile(false);
     
     try {
-        const response = await window.ChatAPI?.loadMessages(conversationId);
+        // Usa endpoint desktop (/api/chat/conversations) invece di ChatAPI (/api/conversations)
+        const apiBaseUrl = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://localhost:8000');
+        const response = await fetch(`${apiBaseUrl}/api/chat/conversations/${conversationId}/messages?limit=50`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[MOBILE] Errore API caricamento messaggi:', response.status, errorText);
+            throw new Error(`Errore caricamento messaggi: ${response.status}`);
+        }
+        
+        const data = await response.json();
         
         // Gestisci sia array diretto che oggetto con proprietà messages
-        let messages = Array.isArray(response) ? response : (response?.messages || []);
+        let messages = Array.isArray(data) ? data : (data?.messages || []);
         
         if (!messages || messages.length === 0) {
             showWelcomeMessageMobile();
             return;
         }
+        
+        console.log('[MOBILE] Messaggi caricati:', messages.length);
         
         // Renderizza messaggi
         messages.forEach(msg => {
@@ -647,7 +679,7 @@ async function loadConversationMessagesMobile(conversationId) {
             });
         }
     } catch (error) {
-        console.error('Errore caricamento messaggi mobile:', error);
+        console.error('[MOBILE] Errore caricamento messaggi:', error);
         addChatMessageMobile('ai', 'Errore caricamento messaggi', false, true);
     }
 }
