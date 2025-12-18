@@ -62,6 +62,21 @@ function switchLayout() {
         return;
     }
     
+    // Cleanup layout precedente PRIMA di cambiare
+    const wasMobile = mobileLayout.style.display !== 'none';
+    
+    if (wasMobile && !isMobile) {
+        // Stava su mobile, passa a desktop: cleanup mobile
+        if (typeof window.ChatMobile !== 'undefined' && window.ChatMobile.cleanup) {
+            window.ChatMobile.cleanup();
+        }
+    } else if (!wasMobile && isMobile) {
+        // Stava su desktop, passa a mobile: cleanup desktop
+        if (typeof window.ChatDesktop !== 'undefined' && window.ChatDesktop.cleanup) {
+            window.ChatDesktop.cleanup();
+        }
+    }
+    
     // Cleanup namespace precedente
     if (typeof window.LayoutBoundary !== 'undefined') {
         window.LayoutBoundary.cleanup();
@@ -145,14 +160,41 @@ function initLayoutManager() {
 
 /**
  * Inizializza la chat per il layout corrente (mobile o desktop)
+ * Assicura cleanup del layout precedente prima di inizializzare il nuovo
  */
 function initChatForCurrentLayout() {
     const isMobile = isMobileView();
     
-    if (isMobile && typeof window.ChatMobile !== 'undefined') {
-        window.ChatMobile.init();
-    } else if (!isMobile && typeof window.ChatDesktop !== 'undefined') {
-        window.ChatDesktop.init();
+    // Reset selectors prima di inizializzare
+    if (typeof window.ChatSelectors !== 'undefined') {
+        window.ChatSelectors.reset();
+    }
+    
+    if (isMobile) {
+        // Cleanup desktop se presente
+        if (typeof window.ChatDesktop !== 'undefined' && window.ChatDesktop.cleanup) {
+            window.ChatDesktop.cleanup();
+        }
+        
+        // Init mobile
+        if (typeof window.ChatMobile !== 'undefined') {
+            // Piccolo delay per assicurarsi che il DOM sia pronto
+            setTimeout(() => {
+                window.ChatMobile.init();
+            }, 50);
+        }
+    } else {
+        // Cleanup mobile se presente
+        if (typeof window.ChatMobile !== 'undefined' && window.ChatMobile.cleanup) {
+            window.ChatMobile.cleanup();
+        }
+        
+        // Init desktop
+        if (typeof window.ChatDesktop !== 'undefined') {
+            setTimeout(() => {
+                window.ChatDesktop.init();
+            }, 50);
+        }
     }
 }
 

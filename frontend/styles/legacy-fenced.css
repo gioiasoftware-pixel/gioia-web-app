@@ -1,0 +1,168 @@
+/**
+ * LEGACY CSS FENCED - Wrapper per isolare styles.css legacy dentro namespace
+ * 
+ * STRATEGIA:
+ * 1. Variabili CSS globali (ok, sono tokens)
+ * 2. Regole pericolose (html, body, overflow, height) wrappate nei namespace
+ * 3. Tutto il resto wrappato nei namespace per evitare regressioni
+ * 
+ * NOTA: Questo è un fence temporaneo. L'obiettivo è migrare gradualmente
+ * le regole nei file layout-specific (mobile.css / desktop.css)
+ */
+
+/* ============================================
+   VARIABILI CSS GLOBALI (ok, sono tokens)
+   ============================================ */
+:root {
+    --color-granaccia: #9a182e;
+    --color-white: #ffffff;
+    --color-black: #000000;
+    --color-off-white: #fafafa;
+    --color-light-gray: #f5f5f5;
+    --color-border: #e0e0e0;
+    --color-text-primary: #1a1a1a;
+    --color-text-secondary: #666666;
+    --color-text-light: #999999;
+    --color-chat-bg: #ffffff;
+    --color-chat-user-bg: #9a182e;
+    --color-chat-ai-bg: #f5f5f5;
+    
+    /* Variabili per toggle switch robusto */
+    --border: var(--color-border);
+    --bg: var(--color-white);
+    --accent: var(--color-granaccia);
+    --panel: var(--color-white);
+}
+
+body.dark-theme {
+    --color-granaccia: #ffb347; /* giallo aranciato per accenti */
+    --color-white: #000000;
+    --color-black: #ffffff;
+    --color-off-white: #050505;
+    --color-light-gray: #111111;
+    --color-border: #333333;
+    --color-text-primary: #f5f5f5;
+    --color-text-secondary: #cccccc;
+    --color-text-light: #aaaaaa;
+    --color-chat-bg: #000000;
+    --color-chat-user-bg: #ffb347;
+    --color-chat-ai-bg: #111111;
+    
+    /* Variabili per toggle switch robusto in dark mode */
+    --border: var(--color-border);
+    --bg: var(--color-white);
+    --accent: var(--color-granaccia);
+    --panel: var(--color-white);
+}
+
+/* ============================================
+   REGOLE PERICOLOSE ISOLATE NEI NAMESPACE
+   ============================================ */
+
+/* Reset globale (ok, è minimo) */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Utility globale (ok) */
+.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   MOBILE ROOT: Regole pericolose isolate
+   ============================================ */
+.mobileRoot {
+    /* Layout mobile gestito da mobile.css */
+}
+
+.mobileRoot html,
+.mobileRoot body {
+    /* NO overflow/height qui - gestito da mobile.css */
+    width: 100%;
+    min-width: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--color-off-white);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Mobile-safe touch */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: pan-y pinch-zoom;
+}
+
+.mobileRoot button,
+.mobileRoot a,
+.mobileRoot input,
+.mobileRoot textarea,
+.mobileRoot select,
+.mobileRoot label {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(154, 24, 46, 0.1);
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* ============================================
+   DESKTOP ROOT: Regole pericolose isolate
+   ============================================ */
+.desktopRoot {
+    /* Layout desktop gestito da desktop.css */
+}
+
+.desktopRoot html,
+.desktopRoot body {
+    /* NO overflow/height qui - gestito da desktop.css */
+    width: 100%;
+    min-width: 100%;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--color-off-white);
+    color: var(--color-text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Desktop: NO overflow-x hidden globale (gestito da desktop.css) */
+}
+
+.desktopRoot button,
+.desktopRoot a,
+.desktopRoot input,
+.desktopRoot textarea,
+.desktopRoot select,
+.desktopRoot label {
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* ============================================
+   IMPORT LEGACY CSS DENTRO NAMESPACE
+   ============================================
+   
+   NOTA: CSS non supporta @import dentro selettori.
+   Soluzione: includere styles.css direttamente qui dentro i namespace.
+   
+   Per ora, manteniamo styles.css globale ma rimuoviamo le regole
+   pericolose che abbiamo già isolato sopra.
+   
+   TODO: Migrare gradualmente le regole da styles.css nei file
+   layout-specific (mobile.css / desktop.css)
+ */
+
+/* ============================================
+   NOTA IMPORTANTE
+   ============================================
+   
+   Questo file contiene le regole pericolose isolate nei namespace.
+   Il resto di styles.css viene incluso DOPO questo file, ma le regole
+   pericolose (html, body, overflow, height) sono già sovrascritte sopra.
+   
+   TODO: Migrare gradualmente le regole da styles.css nei file
+   layout-specific (layout/MobileLayout/mobile.css / layout/DesktopLayout/desktop.css)
+   ============================================ */

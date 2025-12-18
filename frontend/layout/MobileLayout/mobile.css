@@ -1,0 +1,394 @@
+/**
+ * Mobile Layout CSS - Isolamento completo da desktop
+ * 
+ * Namespace: .mobileRoot
+ * Prefisso: .m* (mApp, mHeader, mMain, mScroller, mComposer, mSidebar, mOverlay, mViewer, mModal)
+ * 
+ * Regole:
+ * - State machine con classi .state-chat, .state-sidebar, .state-viewer, .state-modal
+ * - Tap isolation con pointer-events
+ * - Scroll policy: un solo scroll container attivo per stato
+ */
+
+/* ============================================
+   Z-INDEX SCALE
+   ============================================ */
+:root {
+    --z-header: 10;
+    --z-composer: 10;
+    --z-fab: 20;
+    --z-overlay: 30;
+    --z-sidebar: 40;
+    --z-viewer: 50;
+    --z-modal: 60;
+}
+
+/* ============================================
+   MOBILE APP CONTAINER (.mApp)
+   ============================================ */
+.mobileRoot .mApp {
+    height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr auto; /* Header, Main, Composer */
+    overflow: hidden;
+    position: relative;
+    background-color: var(--color-off-white);
+}
+
+/* ============================================
+   HEADER MOBILE (.mHeader) - Sticky
+   ============================================ */
+.mobileRoot .mHeader {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-header);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background-color: var(--color-white);
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+    isolation: isolate;
+    pointer-events: auto;
+}
+
+/* Logo e titolo NON devono intercettare tap */
+.mobileRoot .mHeader .logo-container,
+.mobileRoot .mHeader .chat-title {
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+/* Sidebar toggle button */
+.mobileRoot .mHeader .sidebar-toggle-btn {
+    pointer-events: auto;
+    min-width: 44px;
+    min-height: 44px;
+    z-index: 1001;
+}
+
+/* ============================================
+   MAIN CONTENT MOBILE (.mMain)
+   ============================================ */
+.mobileRoot .mMain {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ============================================
+   SCROLLER MOBILE (.mScroller) - SCROLL ROOT
+   ============================================ */
+.mobileRoot .mScroller,
+.mobileRoot #chatScroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
+    padding: 16px;
+}
+
+.mobileRoot .mScroller .welcome-message {
+    text-align: center;
+    padding: 48px 24px;
+    color: var(--color-text-secondary);
+}
+
+.mobileRoot .mScroller .welcome-message h2 {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--color-black);
+    margin-bottom: 8px;
+}
+
+/* ============================================
+   COMPOSER MOBILE (.mComposer) - Sticky
+   ============================================ */
+.mobileRoot .mComposer {
+    position: sticky;
+    bottom: 0;
+    z-index: var(--z-composer);
+    background-color: var(--color-white);
+    border-top: 1px solid var(--color-border);
+    padding: 12px 16px;
+    flex-shrink: 0;
+}
+
+.mobileRoot .mComposer .chat-form {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+}
+
+.mobileRoot .mComposer .chat-input {
+    flex: 1;
+    padding: 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 24px;
+    font-size: 16px; /* Previene zoom su iOS */
+    resize: none;
+    max-height: 120px;
+}
+
+.mobileRoot .mComposer .chat-send-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+/* ============================================
+   OVERLAY MOBILE (.mOverlay) - Solo quando aperto
+   ============================================ */
+.mobileRoot .mOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: var(--z-overlay);
+    display: none;
+    pointer-events: none;
+}
+
+.mobileRoot .mOverlay.is-open {
+    display: block;
+    pointer-events: auto;
+}
+
+/* ============================================
+   SIDEBAR MOBILE (.mSidebar) - Drawer
+   ============================================ */
+.mobileRoot .mSidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100dvh;
+    background-color: var(--color-white);
+    z-index: var(--z-sidebar);
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+}
+
+.mobileRoot .mSidebar.is-open {
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-item {
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-bottom: 4px;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-item:hover {
+    background-color: var(--color-light-gray);
+}
+
+.mobileRoot .mSidebar .chat-sidebar-item.active {
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+}
+
+/* ============================================
+   VIEWER MOBILE (.mViewer) - Sheet
+   ============================================ */
+.mobileRoot .mViewer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
+    background-color: var(--color-white);
+    z-index: var(--z-viewer);
+    display: none;
+    flex-direction: column;
+    pointer-events: none;
+}
+
+.mobileRoot .mViewer:not([hidden]) {
+    display: flex;
+    pointer-events: auto;
+}
+
+.mobileRoot .mViewer .viewer-content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px;
+}
+
+.mobileRoot .mViewer .viewer-header {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobileRoot .mViewer .viewer-close-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================
+   MODAL MOBILE (.mModal) - Top Layer
+   ============================================ */
+.mobileRoot .mModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: var(--z-modal);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.mobileRoot .mModal:not([hidden]) {
+    display: flex;
+    pointer-events: auto;
+}
+
+.mobileRoot .mModal .modal-content {
+    background-color: var(--color-white);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 90%;
+    max-height: 90dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   STATE MACHINE - TAP ISOLATION
+   ============================================ */
+
+/* STATE: CHAT (default) */
+.mobileRoot .mApp.state-chat .mMain,
+.mobileRoot .mApp.state-chat .mComposer {
+    pointer-events: auto;
+}
+
+.mobileRoot .mApp.state-chat .mSidebar,
+.mobileRoot .mApp.state-chat .mOverlay,
+.mobileRoot .mApp.state-chat .mViewer,
+.mobileRoot .mApp.state-chat .mModal {
+    pointer-events: none;
+}
+
+.mobileRoot .mApp.state-chat #chatScroll {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* STATE: SIDEBAR_OPEN */
+.mobileRoot .mApp.state-sidebar .mOverlay,
+.mobileRoot .mApp.state-sidebar .mSidebar {
+    pointer-events: auto;
+}
+
+.mobileRoot .mApp.state-sidebar .mMain,
+.mobileRoot .mApp.state-sidebar .mComposer {
+    pointer-events: none; /* NO tap-through */
+}
+
+.mobileRoot .mApp.state-sidebar #chatScroll {
+    overflow: hidden; /* Disabilita scroll chat */
+}
+
+.mobileRoot .mApp.state-sidebar .chat-sidebar-list {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* STATE: VIEWER_OPEN */
+.mobileRoot .mApp.state-viewer .mViewer {
+    pointer-events: auto;
+}
+
+.mobileRoot .mApp.state-viewer .mSidebar,
+.mobileRoot .mApp.state-viewer .mMain,
+.mobileRoot .mApp.state-viewer .mComposer {
+    pointer-events: none; /* NO tap-through */
+}
+
+.mobileRoot .mApp.state-viewer #chatScroll {
+    overflow: hidden; /* Disabilita scroll chat */
+}
+
+.mobileRoot .mApp.state-viewer .viewer-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* STATE: MODAL_OPEN */
+.mobileRoot .mApp.state-modal .mModal {
+    pointer-events: auto;
+}
+
+.mobileRoot .mApp.state-modal .mSidebar,
+.mobileRoot .mApp.state-modal .mViewer,
+.mobileRoot .mApp.state-modal .mMain,
+.mobileRoot .mApp.state-modal .mComposer {
+    pointer-events: none; /* NO tap-through */
+}
+
+.mobileRoot .mApp.state-modal #chatScroll {
+    overflow: hidden; /* Disabilita scroll chat */
+}
+
+.mobileRoot .mApp.state-modal .modal-content {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+.mobileRoot .hidden {
+    display: none !important;
+}

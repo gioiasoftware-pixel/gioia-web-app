@@ -3,48 +3,80 @@
  * 
  * Fornisce selettori corretti in base al layout attivo (mobile/desktop)
  * Isola la logica di selezione elementi dal resto del codice
+ * 
+ * REGOLA: Tutti i selettori partono dal root container con data-layout-root
+ * per evitare collisioni tra mobile e desktop
  */
+
+/**
+ * Ottiene il root container per il layout corrente
+ * @returns {HTMLElement|null} Root container con data-layout-root
+ */
+function getLayoutRoot() {
+    // Cerca per data-layout-root
+    const mobileRoot = document.querySelector('[data-layout-root="mobile"]');
+    const desktopRoot = document.querySelector('[data-layout-root="desktop"]');
+    
+    // Fallback: usa namespace class
+    if (!mobileRoot && !desktopRoot) {
+        if (document.documentElement.classList.contains('mobileRoot')) {
+            return document.getElementById('mobile-layout');
+        }
+        if (document.documentElement.classList.contains('desktopRoot')) {
+            return document.getElementById('desktop-layout');
+        }
+    }
+    
+    return mobileRoot || desktopRoot || null;
+}
 
 /**
  * Factory per selettori chat in base al layout
  */
 function createChatSelectors() {
-    const isMobile = window.innerWidth <= 768;
+    const root = getLayoutRoot();
+    const isMobile = root?.getAttribute('data-layout-root') === 'mobile' || 
+                     document.documentElement.classList.contains('mobileRoot');
     
     if (isMobile) {
         return {
-            // Mobile selectors
-            scrollContainer: () => document.getElementById('chatScroll') || document.querySelector('.mScroller'),
-            form: () => document.getElementById('chat-form-mobile'),
-            input: () => document.getElementById('chat-input-mobile'),
-            sendButton: () => document.getElementById('chat-send-btn-mobile'),
-            sidebar: () => document.getElementById('chatSidebar'),
-            sidebarList: () => document.getElementById('chat-sidebar-list-mobile'),
-            sidebarToggle: () => document.getElementById('sidebar-toggle'),
-            newChatButton: () => document.getElementById('new-chat-btn-mobile'),
-            layout: 'mobile'
+            // Mobile selectors - partono dal root container
+            scrollContainer: () => {
+                if (!root) return null;
+                return root.querySelector('#chatScroll') || root.querySelector('.mScroller');
+            },
+            form: () => root?.querySelector('#chat-form-mobile') || null,
+            input: () => root?.querySelector('#chat-input-mobile') || null,
+            sendButton: () => root?.querySelector('#chat-send-btn-mobile') || null,
+            sidebar: () => root?.querySelector('#chatSidebar') || null,
+            sidebarList: () => root?.querySelector('#chat-sidebar-list-mobile') || null,
+            sidebarToggle: () => root?.querySelector('#sidebar-toggle') || null,
+            newChatButton: () => root?.querySelector('#new-chat-btn-mobile') || null,
+            layout: 'mobile',
+            root: root
         };
     } else {
         return {
-            // Desktop selectors
+            // Desktop selectors - partono dal root container
             scrollContainer: () => {
-                let wrapper = document.getElementById('chat-messages-scroll-wrapper');
-                if (!wrapper) {
-                    const container = document.getElementById('chat-messages');
-                    if (container) {
-                        wrapper = container.querySelector('.chat-messages-scroll-wrapper');
-                    }
+                if (!root) return null;
+                const wrapper = root.querySelector('#chat-messages-scroll-wrapper');
+                if (wrapper) return wrapper;
+                const container = root.querySelector('#chat-messages');
+                if (container) {
+                    return container.querySelector('.chat-messages-scroll-wrapper') || container;
                 }
-                return wrapper || document.getElementById('chat-messages');
+                return null;
             },
-            form: () => document.getElementById('chat-form'),
-            input: () => document.getElementById('chat-input'),
-            sendButton: () => document.getElementById('chat-send-btn'),
-            sidebar: () => document.getElementById('chat-sidebar'),
-            sidebarList: () => document.getElementById('chat-sidebar-list'),
-            sidebarToggle: () => document.getElementById('sidebar-toggle-desktop'),
-            newChatButton: () => document.getElementById('new-chat-btn'),
-            layout: 'desktop'
+            form: () => root?.querySelector('#chat-form') || null,
+            input: () => root?.querySelector('#chat-input') || null,
+            sendButton: () => root?.querySelector('#chat-send-btn') || null,
+            sidebar: () => root?.querySelector('#chat-sidebar') || null,
+            sidebarList: () => root?.querySelector('#chat-sidebar-list') || null,
+            sidebarToggle: () => root?.querySelector('#sidebar-toggle-desktop') || null,
+            newChatButton: () => root?.querySelector('#new-chat-btn') || null,
+            layout: 'desktop',
+            root: root
         };
     }
 }

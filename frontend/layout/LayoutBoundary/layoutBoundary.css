@@ -1,38 +1,20 @@
 /**
  * LayoutBoundary CSS - Namespace isolation
  * 
- * Regole:
- * - Nessun stile globale che impatta entrambi i layout
- * - Reset locale per ogni namespace
- * - Scroll container definito via CSS variables
+ * Regole STRETTE:
+ * - SOLO namespace (class root)
+ * - SOLO tokens/CSS variables
+ * - NIENTE layout, NIENTE overflow/height/position su html/body
+ * - Il layout è gestito dai CSS layout-specific (mobile.css / desktop.css)
  */
 
-/* Reset per mobileRoot */
+/* Namespace root - SOLO identificazione, NO layout */
 .mobileRoot {
-    /* Scroll gestito da .mScroller, non da body */
-    overflow: hidden;
-    height: 100dvh;
-    position: relative;
+    /* Namespace identifier - layout gestito da mobile.css */
 }
 
-.mobileRoot body {
-    overflow: hidden;
-    height: 100dvh;
-    position: relative;
-}
-
-/* Reset per desktopRoot */
 .desktopRoot {
-    /* Scroll gestito da container specifici, non da body */
-    overflow: hidden;
-    height: 100vh;
-    position: relative;
-}
-
-.desktopRoot body {
-    overflow: hidden;
-    height: 100vh;
-    position: relative;
+    /* Namespace identifier - layout gestito da desktop.css */
 }
 
 /* Scroll container principale definito via CSS variable */

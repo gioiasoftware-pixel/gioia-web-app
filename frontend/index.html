@@ -10,15 +10,13 @@
     <!-- CSS isolato: reset e globals (solo tokens, no layout) -->
     <link rel="stylesheet" href="/static/styles/reset.css">
     <link rel="stylesheet" href="/static/styles/globals.css">
-    <!-- LayoutBoundary CSS (namespace isolation) -->
+    <!-- LayoutBoundary CSS (namespace isolation - SOLO namespace, NO layout) -->
     <link rel="stylesheet" href="/static/layout/LayoutBoundary/layoutBoundary.css">
-    <!-- CSS legacy (da migrare gradualmente) -->
-    <!-- CSS isolato: reset e globals (solo tokens, no layout) -->
-    <link rel="stylesheet" href="/static/styles/reset.css">
-    <link rel="stylesheet" href="/static/styles/globals.css">
-    <!-- LayoutBoundary CSS (namespace isolation) -->
-    <link rel="stylesheet" href="/static/layout/LayoutBoundary/layoutBoundary.css">
-    <!-- CSS legacy (da migrare gradualmente) -->
+    <!-- Mobile Layout CSS (isolato dentro .mobileRoot) -->
+    <link rel="stylesheet" href="/static/layout/MobileLayout/mobile.css">
+    <!-- CSS legacy FENCED: regole pericolose isolate nei namespace -->
+    <link rel="stylesheet" href="/static/styles/legacy-fenced.css">
+    <!-- CSS legacy: resto delle regole (dopo fence per evitare override) -->
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -96,7 +94,7 @@
     <!-- Chat Page (hidden initially) -->
     <div id="chat-page" class="chat-page hidden">
         <!-- MOBILE LAYOUT: Wrapper .mApp per architettura mobile pulita -->
-        <div id="mobile-layout" class="mApp layout-container" style="display: none;">
+        <div id="mobile-layout" class="mApp layout-container" data-layout-root="mobile" style="display: none;">
             <!-- Header Mobile - Solo logo e hamburger -->
             <header class="mHeader">
                 <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn">
@@ -169,7 +167,7 @@
         </div>
 
         <!-- DESKTOP LAYOUT: Mantiene struttura esistente per compatibilità -->
-        <div id="desktop-layout" class="desktop-layout layout-container" style="display: none;">
+        <div id="desktop-layout" class="desktop-layout layout-container" data-layout-root="desktop" style="display: none;">
             <!-- Sidebar Chat List (desktop: collapsed) -->
             <aside id="chat-sidebar" class="chat-sidebar">
                 <div class="chat-sidebar-header">
