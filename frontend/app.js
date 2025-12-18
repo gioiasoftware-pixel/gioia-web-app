@@ -983,8 +983,13 @@ function diagnoseChatScroll() {
     
     // Verifica problemi CSS
     const cssIssues = [];
+    console.log(`[SCROLL DIAG] 🔍 Valore effettivo overflow-y: "${computedStyle.overflowY}"`);
     if (computedStyle.overflowY !== 'auto' && computedStyle.overflowY !== 'scroll') {
         cssIssues.push(`overflow-y è "${computedStyle.overflowY}" invece di "auto" o "scroll"`);
+        // Forza overflow-y se non è corretto
+        scrollWrapper.style.overflowY = 'auto';
+        scrollWrapper.style.overflowX = 'hidden';
+        console.log('[SCROLL DIAG] 🔧 Overflow-y forzato a "auto" via JavaScript');
     }
     if (computedStyle.minHeight !== '0px' && computedStyle.minHeight !== '0') {
         cssIssues.push(`min-height è "${computedStyle.minHeight}" invece di "0" (necessario per flex scroll)`);
@@ -1099,6 +1104,10 @@ function diagnoseChatScroll() {
     let lastWheelTime = 0;
     let lastScrollTime = 0;
     
+    // Accumulatore per deltaY quando lo scroll non avviene naturalmente
+    let accumulatedDeltaY = 0;
+    let scrollFixTimeout = null;
+    
     const wheelHandler = (e) => {
         wheelEventCount++;
         lastWheelTime = Date.now();
@@ -1119,16 +1128,34 @@ function diagnoseChatScroll() {
             scrollTop: scrollWrapper.scrollTop
         });
         
-        // Verifica se lo scroll avviene dopo l'evento
-        setTimeout(() => {
-            const scrollTopAfter = scrollWrapper.scrollTop;
-            const scrollChanged = scrollTopAfter !== scrollWrapper.scrollTop;
-            if (!scrollChanged && Math.abs(e.deltaY) > 0 && isInside) {
-                console.warn(`[SCROLL DIAG] ⚠️ Wheel event #${wheelEventCount}: Scroll NON avvenuto dopo 50ms`);
-                console.warn('[SCROLL DIAG] 💡 DESCRIZIONE: L\'evento wheel è stato intercettato ma lo scroll non è avvenuto');
-                console.warn('[SCROLL DIAG] 💡 POSSIBILE CAUSA: Evento preventDefault() chiamato da altro listener o CSS che blocca');
-            }
-        }, 50);
+        // Se l'evento è dentro il wrapper e non è stato preventDefault, prova a forzare lo scroll
+        if (isInside && !e.defaultPrevented && Math.abs(e.deltaY) > 0) {
+            const scrollTopBefore = scrollWrapper.scrollTop;
+            const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
+            
+            // Accumula deltaY per scroll più fluido
+            accumulatedDeltaY += e.deltaY;
+            
+            // Verifica se lo scroll avviene dopo l'evento
+            setTimeout(() => {
+                const scrollTopAfter = scrollWrapper.scrollTop;
+                const scrollChanged = Math.abs(scrollTopAfter - scrollTopBefore) > 1;
+                
+                if (!scrollChanged && maxScroll > 0) {
+                    // Scroll non avvenuto, forza manualmente
+                    const newScrollTop = Math.max(0, Math.min(maxScroll, scrollTopBefore + accumulatedDeltaY));
+                    
+                    if (Math.abs(newScrollTop - scrollTopBefore) > 1) {
+                        scrollWrapper.scrollTop = newScrollTop;
+                        console.log(`[SCROLL DIAG] 🔧 Scroll forzato manualmente: ${scrollTopBefore} -> ${scrollWrapper.scrollTop} (delta accumulato: ${accumulatedDeltaY})`);
+                        accumulatedDeltaY = 0; // Reset dopo scroll forzato
+                    }
+                } else {
+                    // Scroll avvenuto naturalmente, reset accumulatore
+                    accumulatedDeltaY = 0;
+                }
+            }, 10);
+        }
     };
     
     const scrollHandler = () => {
@@ -1144,13 +1171,16 @@ function diagnoseChatScroll() {
     scrollWrapper.addEventListener('wheel', wheelHandler, { passive: true });
     scrollWrapper.addEventListener('scroll', scrollHandler, { passive: true });
     
+    // Accumulatore per document wheel handler
+    let documentAccumulatedDeltaY = 0;
+    
     // Aggiungi anche listener in capture phase su document per intercettare eventi prima che vengano bloccati
     const documentWheelCaptureHandler = (e) => {
         const rect = scrollWrapper.getBoundingClientRect();
         const isInside = e.clientX >= rect.left && e.clientX <= rect.right &&
                         e.clientY >= rect.top && e.clientY <= rect.bottom;
         
-        if (isInside && !isMobile) {
+        if (isInside && !isMobile && Math.abs(e.deltaY) > 0) {
             console.log('[SCROLL DIAG] 🎯 Document wheel (capture):', {
                 deltaY: e.deltaY,
                 clientX: e.clientX,
@@ -1160,6 +1190,26 @@ function diagnoseChatScroll() {
                 defaultPrevented: e.defaultPrevented,
                 isInsideWrapper: '✅'
             });
+            
+            // Se l'evento è dentro il wrapper, accumula e forza scroll se necessario
+            if (!e.defaultPrevented) {
+                documentAccumulatedDeltaY += e.deltaY;
+                
+                // Forza scroll dopo un breve delay se non avviene naturalmente
+                clearTimeout(scrollFixTimeout);
+                scrollFixTimeout = setTimeout(() => {
+                    const scrollTopBefore = scrollWrapper.scrollTop;
+                    const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
+                    const newScrollTop = Math.max(0, Math.min(maxScroll, scrollTopBefore + documentAccumulatedDeltaY));
+                    
+                    if (Math.abs(newScrollTop - scrollTopBefore) > 1 && maxScroll > 0) {
+                        scrollWrapper.scrollTop = newScrollTop;
+                        console.log(`[SCROLL DIAG] 🔧 Scroll forzato da document handler: ${scrollTopBefore} -> ${scrollWrapper.scrollTop} (delta: ${documentAccumulatedDeltaY})`);
+                    }
+                    
+                    documentAccumulatedDeltaY = 0;
+                }, 20);
+            }
         }
     };
     

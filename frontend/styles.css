@@ -1704,9 +1704,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 /* Wrapper interno che gestisce lo scroll */
 .chat-messages-scroll-wrapper {
     flex: 1;
-    min-height: 0; /* CRITICO: permette al flex item di scrollare correttamente */
-    overflow-y: auto;
-    overflow-x: hidden;
+    min-height: 0 !important; /* CRITICO: permette al flex item di scrollare correttamente */
+    overflow-y: auto !important; /* CRITICO: forza scroll verticale */
+    overflow-x: hidden !important;
     padding: 24px;
     display: flex;
     flex-direction: column;
@@ -1714,7 +1714,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     touch-action: pan-y; /* Permette scroll verticale su mobile */
     -webkit-overflow-scrolling: touch; /* Scroll fluido su iOS */
     /* Assicura che l'elemento possa ricevere eventi wheel su desktop */
-    pointer-events: auto;
+    pointer-events: auto !important;
     position: relative;
     z-index: 1;
 }
