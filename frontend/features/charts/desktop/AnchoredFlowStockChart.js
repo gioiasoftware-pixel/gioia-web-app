@@ -383,12 +383,18 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             // Verifica se il canvas ha pixel disegnati (controllo approssimativo)
             try {
                 const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
-                const hasPixels = imageData.data.some((pixel, i) => i % 4 !== 3 && pixel !== 0); // Controlla se ci sono pixel non trasparenti
-                console.log('[AnchoredFlowStockChart] Canvas ha pixel disegnati:', hasPixels);
-                if (!hasPixels) {
-                    console.warn('[AnchoredFlowStockChart] ATTENZIONE: Canvas sembra vuoto, forzo resize');
-                    chart.resize();
+                if (ctx && canvas.width > 0 && canvas.height > 0) {
+                    const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
+                    const hasPixels = imageData.data.some((pixel, i) => i % 4 !== 3 && pixel !== 0); // Controlla se ci sono pixel non trasparenti
+                    console.log('[AnchoredFlowStockChart] Canvas ha pixel disegnati:', hasPixels);
+                    if (!hasPixels && chart && typeof chart.resize === 'function') {
+                        console.warn('[AnchoredFlowStockChart] ATTENZIONE: Canvas sembra vuoto, forzo resize');
+                        try {
+                            chart.resize();
+                        } catch (resizeError) {
+                            console.warn('[AnchoredFlowStockChart] Errore durante resize:', resizeError);
+                        }
+                    }
                 }
             } catch (e) {
                 console.warn('[AnchoredFlowStockChart] Impossibile verificare pixel canvas:', e);
@@ -492,6 +498,16 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     const rawMovements = movementsData.movements || [];
     console.log('[AnchoredFlowStockChart] Movimenti raw dall\'API:', rawMovements.length);
     
+    // Log primi movimenti per debug
+    if (rawMovements.length > 0) {
+        console.log('[AnchoredFlowStockChart] Primi movimenti raw:', rawMovements.slice(0, 3).map(m => ({
+            date: m.date || m.at,
+            type: m.type,
+            quantity_change: m.quantity_change,
+            quantity_after: m.quantity_after
+        })));
+    }
+    
     const movements = rawMovements.map(mov => ({
         at: mov.date || mov.at,
         delta: mov.type === 'consumo' 
@@ -500,6 +516,16 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     }));
     
     console.log('[AnchoredFlowStockChart] Movimenti convertiti:', movements.length);
+    
+    // Log range date movimenti
+    if (movements.length > 0) {
+        const dates = movements.map(m => new Date(m.at)).sort((a, b) => a.getTime() - b.getTime());
+        console.log('[AnchoredFlowStockChart] Range date movimenti:', {
+            first: dates[0].toISOString(),
+            last: dates[dates.length - 1].toISOString(),
+            count: dates.length
+        });
+    }
 
     // Calcola opening stock
     // Se abbiamo current_stock dall'API, usalo come stock finale
@@ -515,13 +541,35 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     // In questo caso, usa lo stock più basso tra i movimenti o un valore di default
     if (openingStock < 0 && movements.length > 0) {
         console.warn('[AnchoredFlowStockChart] Opening stock negativo, correggo:', openingStock);
-        // Trova lo stock minimo dai movimenti (se disponibile)
-        const minStockFromMovements = Math.min(...movements.map(m => {
-            // Se i movimenti hanno quantity_after, usa quello
-            return m.quantity_after || currentStock;
-        }).filter(s => s > 0));
-        openingStock = Math.max(1, minStockFromMovements || currentStock || 1);
-        console.warn('[AnchoredFlowStockChart] Opening stock corretto a:', openingStock);
+        
+        // Cerca quantity_after nei movimenti raw dall'API
+        const stocksFromMovements = rawMovements
+            .map(mov => {
+                const qty = mov.quantity_after || mov.quantity || null;
+                return qty !== null && Number.isFinite(qty) && qty > 0 ? qty : null;
+            })
+            .filter(s => s !== null);
+        
+        if (stocksFromMovements.length > 0) {
+            const minStock = Math.min(...stocksFromMovements);
+            if (Number.isFinite(minStock) && minStock > 0) {
+                openingStock = minStock;
+                console.warn('[AnchoredFlowStockChart] Opening stock corretto da movimenti:', openingStock);
+            } else {
+                openingStock = Math.max(1, currentStock || 1);
+                console.warn('[AnchoredFlowStockChart] Min stock invalido, uso default:', openingStock);
+            }
+        } else {
+            // Se non abbiamo stock dai movimenti, usa currentStock o un valore di default
+            openingStock = Math.max(1, currentStock || 1);
+            console.warn('[AnchoredFlowStockChart] Nessun stock dai movimenti, uso default:', openingStock);
+        }
+    }
+    
+    // Assicura che openingStock sia sempre un numero finito valido
+    if (!Number.isFinite(openingStock) || openingStock < 0 || isNaN(openingStock)) {
+        console.error('[AnchoredFlowStockChart] Opening stock invalido, uso default:', openingStock);
+        openingStock = Math.max(1, currentStock || 1);
     }
     
     console.log('[AnchoredFlowStockChart] Opening stock calcolato:', {

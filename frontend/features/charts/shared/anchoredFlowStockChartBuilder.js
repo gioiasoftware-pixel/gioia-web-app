@@ -193,7 +193,45 @@ function buildAnchoredFlowStockChart(movements, opts) {
         opts.granularity ??
         (preset === 'day' ? 'hour' : 'day');
 
-    const { from, to } = computeRollingRange(now, preset);
+    let { from, to } = computeRollingRange(now, preset);
+    
+    // Se ci sono movimenti ma sono tutti fuori dal range, estendi il range per includerli
+    if (movements.length > 0) {
+        const movementDates = movements.map(m => toDate(m.at));
+        const minDate = new Date(Math.min(...movementDates.map(d => d.getTime())));
+        const maxDate = new Date(Math.max(...movementDates.map(d => d.getTime())));
+        
+        // Se tutti i movimenti sono prima del range, estendi il range
+        if (maxDate < from) {
+            console.warn('[AnchoredFlowStockChartBuilder] Tutti i movimenti sono prima del range, estendo range', {
+                originalFrom: from,
+                newFrom: minDate,
+                maxMovement: maxDate
+            });
+            from = bucketStart(minDate, granularity);
+        }
+        
+        // Se tutti i movimenti sono dopo il range, estendi il range
+        if (minDate > to) {
+            console.warn('[AnchoredFlowStockChartBuilder] Tutti i movimenti sono dopo il range, estendo range', {
+                originalTo: to,
+                newTo: maxDate,
+                minMovement: minDate
+            });
+            to = maxDate;
+        }
+        
+        // Se i movimenti sono sparsi, estendi il range per includerli tutti
+        if (minDate < from || maxDate > to) {
+            console.warn('[AnchoredFlowStockChartBuilder] Estendo range per includere tutti i movimenti', {
+                originalRange: { from, to },
+                movementRange: { min: minDate, max: maxDate }
+            });
+            from = bucketStart(minDate < from ? minDate : from, granularity);
+            to = maxDate > to ? maxDate : to;
+        }
+    }
+    
     const buckets = generateBuckets(from, to, granularity);
 
     // Filter + sort movements in range
@@ -201,6 +239,22 @@ function buildAnchoredFlowStockChart(movements, opts) {
         .map(m => ({ at: toDate(m.at), delta: m.delta }))
         .filter(m => m.at >= from && m.at <= to)
         .sort((a, b) => a.at.getTime() - b.at.getTime());
+    
+    // Log per debug: quanti movimenti sono nel range
+    if (movements.length > 0 && mv.length === 0) {
+        console.warn('[AnchoredFlowStockChartBuilder] ATTENZIONE: Nessun movimento nel range dopo estensione', {
+            totalMovements: movements.length,
+            range: { from, to },
+            firstMovement: movements[0]?.at,
+            lastMovement: movements[movements.length - 1]?.at
+        });
+    } else {
+        console.log('[AnchoredFlowStockChartBuilder] Movimenti nel range:', {
+            total: movements.length,
+            inRange: mv.length,
+            range: { from, to }
+        });
+    }
 
     // Aggregate to buckets
     const agg = new Map();
