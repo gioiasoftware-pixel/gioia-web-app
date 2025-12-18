@@ -100,11 +100,29 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // IMPORTANTE: In Chart.js, fill: '-1' riempie verso il dataset precedente nell'array.
     // L'ordine nell'array è cruciale per far funzionare correttamente il fill.
     
-    // STRATEGIA: Usiamo l'area rifornimenti come esempio positivo e la replichiamo per consumi
-    // Rifornimenti (funziona): base_inflow → inflow_area con fill: '-1' verso base
-    // Consumi (replica speculare): base_outflow → outflow_area con fill: '-1' verso base
+    // STRATEGIA: Usiamo l'area rifornimenti come esempio positivo
+    // Rifornimenti (funziona): base_inflow → inflow_area con fill: '-1' verso base (area sopra base)
+    // Consumi (speculare ma invertito): outflow_area → base_outflow con fill: '+1' verso base (area sotto base)
+    // IMPORTANTE: Per consumi dobbiamo invertire l'ordine perché l'area è SOTTO la base
 
-    // 1. Base invisibile per area consumi (linea stock) - STESSA LOGICA di base_inflow
+    // 1. Outflow area (consumi) - DEVE essere PRIMA della base nell'array
+    // fill: '+1' riempie verso il dataset successivo (base stock) - verso l'ALTO fino alla base
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: 'Consumi',
+            data: outflowAreaBottom, // bottom dell'area (stockNorm - outflow)
+            type: 'line',
+            borderColor: colors.outflow + '80',
+            backgroundColor: colors.outflow + '40',
+            fill: '+1', // riempie verso il dataset successivo (base stock) - verso l'ALTO
+            pointRadius: 0,
+            order: 0, // renderizzata sotto la stock line
+            tension: 0.4,
+        });
+    }
+
+    // 2. Base invisibile per area consumi (linea stock) - DEVE essere DOPO l'area nell'array
+    // Serve come target per fill: '+1' dell'area consumi
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: '_base_outflow', // dataset interno, nascosto
@@ -116,22 +134,6 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             pointRadius: 0,
             fill: false,
             order: 0, // ordine basso, renderizzato per primo
-            tension: 0.4,
-        });
-    }
-
-    // 2. Outflow area (consumi) - REPLICA SPECULARE di inflow area (rifornimenti)
-    // STESSA LOGICA: fill: '-1' verso il dataset precedente (base stock)
-    if (!hasNoMovement || options.showAreasWhenNoMovement) {
-        datasets.push({
-            label: 'Consumi',
-            data: outflowAreaBottom, // bottom dell'area (stockNorm - outflow)
-            type: 'line',
-            borderColor: colors.outflow + '80',
-            backgroundColor: colors.outflow + '40',
-            fill: '-1', // STESSO di rifornimenti: riempie verso il dataset precedente (base stock)
-            pointRadius: 0,
-            order: 0, // renderizzata sotto la stock line
             tension: 0.4,
         });
     }
