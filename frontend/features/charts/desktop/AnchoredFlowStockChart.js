@@ -101,8 +101,25 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // fill: '-1' riempie verso il dataset precedente nell'array.
     // L'ordine nell'array è cruciale per far funzionare correttamente il fill.
 
-    // 1. Outflow area (consumi) - parte dalla linea stock e va verso il basso (a testa in giù)
-    // Deve essere PRIMA della stock line nell'array, così fill: '+1' riempie verso la stock line successiva
+    // 1. Base invisibile per area consumi (linea stock) - deve essere prima dell'area consumi
+    // Questa linea serve come base d'appoggio per l'area consumi (fill: '+1' riempie verso il dataset successivo)
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: '_base_outflow', // dataset interno, nascosto
+            data: stockLineBase, // linea stock (base per area consumi)
+            type: 'line',
+            borderColor: 'transparent',
+            backgroundColor: 'transparent',
+            borderWidth: 0,
+            pointRadius: 0,
+            fill: false,
+            order: 0, // ordine basso, renderizzato per primo
+            tension: 0.4,
+        });
+    }
+
+    // 2. Outflow area (consumi) - parte dalla linea stock e va verso il basso (a testa in giù)
+    // Deve essere DOPO la base stock nell'array, così fill: '+1' riempie verso la base stock successiva
     // IMPORTANTE: order deve essere più basso della stock line per essere renderizzata sotto
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
@@ -111,16 +128,15 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             type: 'line',
             borderColor: colors.outflow + '80',
             backgroundColor: colors.outflow + '40',
-            fill: '+1', // riempi verso il dataset successivo nell'array (stock line)
+            fill: '+1', // riempi verso il dataset successivo nell'array (base stock)
             pointRadius: 0,
             order: 0, // renderizzata per prima (sotto tutto) per non sovrapporsi alla stock line
             tension: 0.4,
         });
     }
 
-    // 2. Stock line (sempre visibile, enfatizzata se no movement)
-    // Serve come base d'appoggio per entrambe le aree:
-    // - Per consumi: il dataset precedente (outflow) usa fill: '+1' per riempire verso questa
+    // 3. Stock line (sempre visibile, enfatizzata se no movement)
+    // Serve come base d'appoggio per l'area rifornimenti:
     // - Per rifornimenti: il dataset successivo (inflow) usa fill: '-1' per riempire verso questa
     const stockLineDataset = {
         label: 'Stock',
@@ -141,7 +157,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     
     datasets.push(stockLineDataset);
 
-    // 3. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
+    // 4. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
     // Deve essere IMMEDIATAMENTE DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
@@ -157,7 +173,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         });
     }
 
-    // 3.5. Linea "Stock di Oggi" (linea guida orizzontale azzurrina alla quota dello stock di oggi)
+    // 4.5. Linea "Stock di Oggi" (linea guida orizzontale azzurrina alla quota dello stock di oggi)
     // Questa linea parte dall'asse Y e raggiunge la quantità di oggi (ultimo punto disponibile)
     // È solo una guida visiva, non interattiva
     datasets.push({
@@ -175,7 +191,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         // borderDash non impostato = linea continua (Chart.js si aspetta array o undefined, non false)
     });
 
-    // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
+    // 5. POI markers (solo se non no movement o se esplicitamente richiesti)
     if (!hasNoMovement && options.showPOI !== false) {
         if (poiInData.some(v => v !== null)) {
             datasets.push({
