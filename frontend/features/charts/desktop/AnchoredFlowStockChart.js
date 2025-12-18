@@ -74,8 +74,10 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // Dataset per stock line (baseline = 0 normalizzato, che corrisponde alla MEDIA stock)
     const stockLineData = points.map(p => p.stockNorm);
 
-    // Dataset per baseline (linea guida orizzontale alla media stock) - trasparente, solo visiva
-    const baselineData = points.map(() => 0); // y=0 normalizzato = media stock
+    // Dataset per linea "Stock di Oggi" (linea guida orizzontale alla quota dello stock di oggi)
+    // anchorStock è lo stock di oggi in valori assoluti, normalizzato rispetto a mediaStock
+    const todayStockNorm = anchorStock - mediaStock; // normalizzato rispetto alla media
+    const todayStockLineData = points.map(() => todayStockNorm); // linea orizzontale alla quota di oggi
 
     // Dataset per aree (normalizzate rispetto alla MEDIA stock):
     // - Rifornimenti (Inflow): da stockNorm (y0 = base = linea stock) a stockNorm + inflow (y1) - sopra baseline (rialzo)
@@ -154,23 +156,22 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         });
     }
 
-    // 3.5. Baseline (linea guida orizzontale alla media stock) - trasparente, non interattiva
-    // Questa linea rappresenta la media stock nel periodo (y=0 normalizzato)
-    // È solo una guida visiva, NON serve come base per le aree (le aree partono dalla stock line)
-    // Deve essere DOPO le aree nell'array per non interferire con fill: '+1' e fill: '-1'
+    // 3.5. Linea "Stock di Oggi" (linea guida orizzontale azzurrina alla quota dello stock di oggi)
+    // Questa linea parte dall'asse Y e raggiunge la quantità di oggi (ultimo punto disponibile)
+    // È solo una guida visiva, non interattiva
     datasets.push({
-        label: '_baseline', // dataset interno, nascosto (non appare in tooltip grazie al filter)
-        data: baselineData, // y=0 normalizzato = media stock
+        label: '_today_stock', // dataset interno, nascosto (non appare in tooltip grazie al filter)
+        data: todayStockLineData, // quota normalizzata dello stock di oggi
         type: 'line',
-        borderColor: colors.baseline + '30', // molto trasparente (30 = ~19% opacità in hex)
+        borderColor: '#87CEEB', // azzurro chiaro (sky blue)
         backgroundColor: 'transparent',
-        borderWidth: 1,
+        borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 0, // nessun hover point
         fill: false,
         order: 0, // renderizzata per prima visivamente, sotto tutto
         tension: 0, // linea retta orizzontale
-        borderDash: [2, 4], // linea tratteggiata sottile
+        borderDash: false, // linea continua
     });
 
     // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
@@ -352,9 +353,10 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                                 return '';
                             }
                             
-                            // Se è la baseline (value ≈ 0), mostra etichetta speciale con media
-                            if (Math.abs(value) < 0.01) {
-                                return `Media: ${realStock}`;
+                            // Se è la linea dello stock di oggi, mostra etichetta speciale
+                            const todayStockNorm = anchorStock - mediaStock;
+                            if (Math.abs(value - todayStockNorm) < 0.01) {
+                                return `Oggi: ${Math.round(anchorStock)}`;
                             }
                             
                             // Per tutti gli altri tick, mostra solo il numero
@@ -365,15 +367,17 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                     },
                     grid: {
                         color: function(context) {
-                            // Baseline (stock oggi) più visibile
-                            if (Math.abs(context.tick.value) < 0.01) {
-                                return colors.baseline;
+                            // Linea stock di oggi (azzurrina) più visibile
+                            const todayStockNorm = anchorStock - mediaStock;
+                            if (Math.abs(context.tick.value - todayStockNorm) < 0.01) {
+                                return '#87CEEB'; // azzurro chiaro
                             }
                             return '#e0e0e0';
                         },
                         lineWidth: function(context) {
-                            // Baseline più spessa
-                            if (Math.abs(context.tick.value) < 0.01) {
+                            // Linea stock di oggi più spessa
+                            const todayStockNorm = anchorStock - mediaStock;
+                            if (Math.abs(context.tick.value - todayStockNorm) < 0.01) {
                                 return 2;
                             }
                             return 1;
