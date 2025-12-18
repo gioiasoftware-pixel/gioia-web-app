@@ -946,13 +946,40 @@ function diagnoseChatScroll() {
     console.log('[SCROLL DIAG] 🔍 ========== DIAGNOSTICA SCROLL CHAT DESKTOP ==========');
     
     // 1. Verifica esistenza elemento scroll wrapper
-    const scrollWrapper = document.getElementById('chat-messages-scroll-wrapper') || document.getElementById('chat-messages');
+    // Cerca prima il wrapper scrollabile (quello corretto)
+    let scrollWrapper = document.getElementById('chat-messages-scroll-wrapper');
+    
+    // Se non trovato, cerca dentro il container
+    if (!scrollWrapper) {
+        const container = document.getElementById('chat-messages');
+        if (container) {
+            scrollWrapper = container.querySelector('.chat-messages-scroll-wrapper');
+        }
+    }
+    
+    // Se ancora non trovato, usa il container come fallback (non ideale ma meglio di niente)
+    if (!scrollWrapper) {
+        scrollWrapper = document.getElementById('chat-messages');
+    }
     
     if (!scrollWrapper) {
         console.error('[SCROLL DIAG] ❌ PROBLEMA: Scroll wrapper non trovato!');
-        console.error('[SCROLL DIAG] 🔍 Cercato: #chat-messages-scroll-wrapper e #chat-messages');
+        console.error('[SCROLL DIAG] 🔍 Cercato: #chat-messages-scroll-wrapper, .chat-messages-scroll-wrapper dentro #chat-messages, e #chat-messages');
         console.error('[SCROLL DIAG] 💡 DESCRIZIONE: L\'elemento che dovrebbe gestire lo scroll non esiste nel DOM');
         return;
+    }
+    
+    // Se abbiamo trovato il container invece del wrapper, avvisa
+    if (scrollWrapper.id === 'chat-messages' && !scrollWrapper.classList.contains('chat-messages-scroll-wrapper')) {
+        console.warn('[SCROLL DIAG] ⚠️ ATTENZIONE: Trovato container invece del wrapper scrollabile!');
+        console.warn('[SCROLL DIAG] 💡 Cercando wrapper dentro il container...');
+        const wrapperInside = scrollWrapper.querySelector('.chat-messages-scroll-wrapper');
+        if (wrapperInside) {
+            scrollWrapper = wrapperInside;
+            console.log('[SCROLL DIAG] ✅ Wrapper trovato dentro il container!');
+        } else {
+            console.warn('[SCROLL DIAG] ⚠️ Wrapper non trovato, userò il container (potrebbe non funzionare correttamente)');
+        }
     }
     
     console.log('[SCROLL DIAG] ✅ Scroll wrapper trovato:', scrollWrapper);
@@ -1465,7 +1492,21 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
     if (isMobile) {
         scrollWrapper = document.getElementById('chatScroll') || document.querySelector('.mScroller');
     } else {
-        scrollWrapper = document.getElementById('chat-messages-scroll-wrapper') || document.getElementById('chat-messages');
+        // Cerca prima il wrapper scrollabile (quello corretto)
+        scrollWrapper = document.getElementById('chat-messages-scroll-wrapper');
+        
+        // Se non trovato, cerca dentro il container
+        if (!scrollWrapper) {
+            const container = document.getElementById('chat-messages');
+            if (container) {
+                scrollWrapper = container.querySelector('.chat-messages-scroll-wrapper');
+            }
+        }
+        
+        // Se ancora non trovato, usa il container come fallback
+        if (!scrollWrapper) {
+            scrollWrapper = document.getElementById('chat-messages');
+        }
     }
     if (!scrollWrapper) {
         console.error('[CHAT] Scroller non trovato!');
