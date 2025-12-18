@@ -955,12 +955,122 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
     // Aggiungi al DOM
     scrollContainer.appendChild(messageElement);
     
+    // Setup bottoni wine card se è HTML con wine card
+    if (isHtml && role === 'ai') {
+        setTimeout(() => {
+            setupWineCardButtonsMobile(messageElement);
+        }, 100);
+    }
+    
     // Scroll automatico
     requestAnimationFrame(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
     });
     
     return messageElement;
+}
+
+// ============================================
+// WINE CARD BUTTONS MOBILE
+// ============================================
+
+/**
+ * Setup bottoni circolari grigi per wine cards su mobile
+ * Sostituisce i bookmarks desktop con bottoni circolari grigi
+ */
+function setupWineCardButtonsMobile(messageEl) {
+    // Cerca la card vino dentro il messaggio
+    const wineCard = messageEl.querySelector('.wine-card[data-wine-id]');
+    if (!wineCard) return;
+    
+    const wineId = wineCard.dataset.wineId;
+    if (!wineId) return;
+    
+    // Controlla se i bottoni sono già stati aggiunti
+    if (wineCard.querySelector('.wine-card-buttons-mobile')) {
+        return; // Già configurato
+    }
+    
+    // Crea wrapper se non esiste (come desktop)
+    let wrapper = wineCard.parentElement;
+    if (!wrapper || !wrapper.classList.contains('wine-card-wrapper')) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'wine-card-wrapper';
+        const parent = wineCard.parentElement;
+        parent.insertBefore(wrapper, wineCard);
+        wrapper.appendChild(wineCard);
+    }
+    
+    // Crea container bottoni mobile
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'wine-card-buttons-mobile';
+    
+    // Bottone "Modifica" - icona matita
+    const editButton = document.createElement('button');
+    editButton.className = 'wine-card-button-mobile wine-card-button-edit';
+    editButton.title = 'Modifica';
+    editButton.dataset.action = 'edit';
+    editButton.dataset.wineId = wineId;
+    editButton.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <path d="M11.5 4.5L15.5 8.5M3 17H7L16 8L12 4L3 13V17Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+    
+    // Bottone "Mostra in inventario" - icona inventario/lista
+    const inventoryButton = document.createElement('button');
+    inventoryButton.className = 'wine-card-button-mobile wine-card-button-inventory';
+    inventoryButton.title = 'Mostra in inventario';
+    inventoryButton.dataset.action = 'inventory';
+    inventoryButton.dataset.wineId = wineId;
+    inventoryButton.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+    `;
+    
+    // Event listeners
+    editButton.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleWineCardEditMobile(wineCard, wineId);
+    });
+    
+    inventoryButton.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        handleWineCardShowInInventoryMobile(wineCard, wineId);
+    });
+    
+    buttonsContainer.appendChild(editButton);
+    buttonsContainer.appendChild(inventoryButton);
+    
+    // Aggiungi container bottoni al wrapper
+    wrapper.appendChild(buttonsContainer);
+}
+
+/**
+ * Gestisce il click su "Modifica" wine card mobile
+ */
+async function handleWineCardEditMobile(wineCard, wineId) {
+    // Per ora usa la funzione desktop (da implementare mobile-specific se necessario)
+    if (typeof handleWineCardEdit === 'function') {
+        await handleWineCardEdit(wineCard, wineId);
+    } else {
+        console.warn('[MOBILE] handleWineCardEdit non disponibile');
+    }
+}
+
+/**
+ * Gestisce il click su "Mostra in inventario" wine card mobile
+ */
+async function handleWineCardShowInInventoryMobile(wineCard, wineId) {
+    // Per ora usa la funzione desktop (da implementare mobile-specific se necessario)
+    if (typeof handleWineCardShowInInventory === 'function') {
+        await handleWineCardShowInInventory(wineCard, wineId);
+    } else {
+        console.warn('[MOBILE] handleWineCardShowInInventory non disponibile');
+    }
 }
 
 // ============================================
