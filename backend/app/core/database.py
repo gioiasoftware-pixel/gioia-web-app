@@ -141,7 +141,8 @@ class DatabaseManager:
                 logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
                 return []
             
-            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            # Usa user.id invece di telegram_id per nome tabella
+            table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             try:
                 query = sql_text(f"""
@@ -208,7 +209,7 @@ class DatabaseManager:
                 logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
                 return None
             
-            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             try:
                 query = sql_text(f"""
@@ -269,7 +270,7 @@ class DatabaseManager:
                 logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
                 return []
             
-            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             try:
                 # Normalizzazione avanzata: rimuovi caratteri speciali problematici e normalizza spazi
@@ -574,7 +575,11 @@ class DatabaseManager:
                     LIMIT 1
                 """)
                 
-                pattern = f"{telegram_id}/% INVENTARIO"
+                # Cerca tabelle usando user_id invece di telegram_id
+                user = await self.get_user_by_telegram_id(telegram_id)
+                if not user:
+                    return False, None
+                pattern = f"{user.id}/% INVENTARIO"
                 result = await session.execute(
                     check_tables_query,
                     {"pattern": pattern}
@@ -614,7 +619,7 @@ class DatabaseManager:
                 logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per log_chat_message")
                 return False
             
-            table_name = f'"{telegram_id}/{user.business_name} LOG interazione"'
+            table_name = f'"{user.id}/{user.business_name} LOG interazione"'
             try:
                 # Normalizza ruolo su tipi ammessi (stesso sistema Telegram bot)
                 interaction_type = 'chat_user' if role == 'user' or role == 'chat_user' else 'chat_assistant'
@@ -687,7 +692,7 @@ class DatabaseManager:
                 logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per get_recent_chat_messages")
                 return []
             
-            table_name = f'"{telegram_id}/{user.business_name} LOG interazione"'
+            table_name = f'"{user.id}/{user.business_name} LOG interazione"'
             try:
                 # Verifica se la colonna conversation_id esiste
                 has_conversation_id = False

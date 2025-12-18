@@ -1072,7 +1072,8 @@ INFORMAZIONI UTENTE:
             if not user or not user.business_name:
                 return None
             
-            table_name = f'"{telegram_id}/{user.business_name} INVENTARIO"'
+            # Usa user.id invece di telegram_id per nome tabella
+            table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             # Determina ORDER BY e NULLS LAST/FIRST
             if query_type == 'max':

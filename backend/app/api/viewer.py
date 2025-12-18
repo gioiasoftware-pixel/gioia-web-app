@@ -45,25 +45,8 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
                 }
             }
 
-        # Se l'utente non ha telegram_id, usa user_id come fallback
-        # Ma le tabelle dinamiche sono basate su telegram_id, quindi potrebbe non esistere
-        if not telegram_id:
-            logger.warning(f"[VIEWER] Utente user_id={user_id} non ha telegram_id, impossibile accedere a tabelle dinamiche")
-            return {
-                "rows": [],
-                "facets": {
-                    "type": {},
-                    "vintage": {},
-                    "winery": {},
-                    "supplier": {}
-                },
-                "meta": {
-                    "total_rows": 0,
-                    "last_update": datetime.utcnow().isoformat()
-                }
-            }
-
-        table_name = f'"{telegram_id}/{business_name} INVENTARIO"'
+        # Usa user_id invece di telegram_id per nome tabella
+        table_name = f'"{user_id}/{business_name} INVENTARIO"'
 
         async with AsyncSessionLocal() as session:
             # Verifica che la tabella esista (nome senza virgolette per information_schema)
@@ -220,7 +203,7 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
                 detail="Inventario non disponibile"
             )
 
-        table_name = f'"{telegram_id}/{business_name} INVENTARIO"'
+        table_name = f'"{user_id}/{business_name} INVENTARIO"'
 
         async with AsyncSessionLocal() as session:
             # Verifica che la tabella esista (nome senza virgolette per information_schema)
@@ -336,11 +319,12 @@ async def get_wine_movements(
                 detail="Inventario non disponibile"
             )
 
-        table_name = f'"{telegram_id}/{business_name} Consumi e rifornimenti"'
+        # Leggi da "Storico vino" (fonte unica di verità) invece di "Consumi e rifornimenti"
+        table_storico = f'"{user_id}/{business_name} Storico vino"'
 
         async with AsyncSessionLocal() as session:
             # Verifica che la tabella esista
-            table_name_check = table_name.strip('"')
+            table_name_check = table_storico.strip('"')
             check_table_query = sql_text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables 
@@ -355,26 +339,25 @@ async def get_wine_movements(
             table_exists = result.scalar()
 
             if not table_exists:
-                logger.info(f"[VIEWER] Tabella movimenti {table_name} non esiste per telegram_id={telegram_id}, business_name={business_name}")
+                logger.info(f"[VIEWER] Tabella Storico vino {table_storico} non esiste per user_id={user_id}, business_name={business_name}")
                 return {
-                    "movements": [],
-                    "wine_name": wine_name
+                    "wine_name": wine_name,
+                    "current_stock": 0,
+                    "opening_stock": 0,
+                    "movements": []
                 }
 
-            # Recupera movimenti per il vino (ricerca case-insensitive)
-            # Prima prova corrispondenza esatta, poi pattern matching
-            query_movements = sql_text(f"""
+            # Cerca storico vino
+            import json
+            query_storico = sql_text(f"""
                 SELECT 
-                    id,
-                    wine_name,
-                    wine_producer,
-                    movement_type,
-                    quantity_change,
-                    quantity_before,
-                    quantity_after,
-                    movement_date,
-                    notes
-                FROM {table_name}
+                    current_stock,
+                    history,
+                    first_movement_date,
+                    last_movement_date,
+                    total_consumi,
+                    total_rifornimenti
+                FROM {table_storico}
                 WHERE user_id = :user_id
                 AND (
                     LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact))
@@ -384,44 +367,68 @@ async def get_wine_movements(
                     CASE 
                         WHEN LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact)) THEN 1
                         ELSE 2
-                    END,
-                    movement_date DESC
-                LIMIT 100
+                    END
+                LIMIT 1
             """)
 
             result = await session.execute(
-                query_movements,
+                query_storico,
                 {
                     "user_id": user_id,
                     "wine_name_exact": wine_name,
                     "wine_name_pattern": f"%{wine_name}%"
                 }
             )
-            movements_rows = result.fetchall()
+            storico_row = result.fetchone()
 
-            # Formatta movimenti per risposta
+            if not storico_row:
+                # Nessun movimento per questo vino
+                return {
+                    "wine_name": wine_name,
+                    "current_stock": 0,
+                    "opening_stock": 0,
+                    "movements": []
+                }
+
+            # Estrai history (JSONB)
+            history = storico_row[1] if storico_row[1] else []
+            if isinstance(history, str):
+                history = json.loads(history)
+
+            # Converti history in formato per frontend
             movements = []
-            for mov in movements_rows:
+            for entry in history:
                 movements.append({
-                    "id": mov.id,
-                    "wine_name": mov.wine_name or wine_name,
-                    "wine_producer": mov.wine_producer,
-                    "type": mov.movement_type,  # 'consumo' o 'rifornimento'
-                    "quantity_change": mov.quantity_change or 0,
-                    "quantity_before": mov.quantity_before or 0,
-                    "quantity_after": mov.quantity_after or 0,
-                    "date": mov.movement_date.isoformat() if mov.movement_date else None,
-                    "notes": mov.notes
+                    "at": entry.get("date"),
+                    "type": entry.get("type"),
+                    "quantity_change": entry.get("quantity") if entry.get("type") == "rifornimento" else -entry.get("quantity", 0),
+                    "quantity_before": entry.get("quantity_before", 0),
+                    "quantity_after": entry.get("quantity_after", 0)
                 })
 
+            # Ordina per data
+            movements.sort(key=lambda x: x["at"] if x["at"] else "")
+
+            # Stock finale = current_stock dalla tabella (fonte unica di verità)
+            current_stock = storico_row[0] or 0
+
+            # Opening stock = primo movimento quantity_before (o 0 se non c'è)
+            opening_stock = movements[0]["quantity_before"] if movements else 0
+
             logger.info(
-                f"[VIEWER] Movimenti recuperati: wine_name='{wine_name}', count={len(movements)}, "
-                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}"
+                f"[VIEWER] Movimenti recuperati da Storico vino: wine_name='{wine_name}', count={len(movements)}, "
+                f"current_stock={current_stock}, user_id={user_id}, business_name={business_name}"
             )
 
             return {
+                "wine_name": wine_name,
+                "current_stock": current_stock,
+                "opening_stock": opening_stock,
                 "movements": movements,
-                "wine_name": wine_name
+                "total_consumi": storico_row[4] or 0,
+                "total_rifornimenti": storico_row[5] or 0,
+                "first_movement_date": storico_row[2].isoformat() if storico_row[2] else None,
+                "last_movement_date": storico_row[3].isoformat() if storico_row[3] else None
             }
 
     except HTTPException:
