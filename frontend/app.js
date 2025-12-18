@@ -377,16 +377,6 @@ async function debugLog(message, type = 'info', context = null) {
     // DISABILITATO: Log verde rimosso
     // Funzione mantenuta per compatibilità ma non fa nulla
     return;
-                level: type,
-                context: context,
-                timestamp: new Date().toISOString()
-            })
-        }).catch(() => {
-            // Ignora errori di rete silenziosamente
-        });
-    } catch (e) {
-        // Ignora errori silenziosamente per non bloccare l'app
-    }
 }
 
 // ============================================
