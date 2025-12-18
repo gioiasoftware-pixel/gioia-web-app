@@ -285,10 +285,23 @@ function buildAnchoredFlowStockChart(movements, opts) {
 
     // Baseline dinamica = MEDIA stock nel periodo (non stock di oggi)
     const anchorTime = now;
-    // Se abbiamo stock finale esplicito (da quantity_after ultimo movimento), usalo
+    // Se abbiamo stock finale esplicito (da quantity_after ultimo movimento), usalo e correggi l'ultimo punto
     // Altrimenti usa lo stock calcolato dall'ultimo punto
     const calculatedFinalStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock;
     const anchorStock = opts.finalStock !== undefined ? opts.finalStock : calculatedFinalStock; // Stock di oggi (per riferimento)
+    
+    // Se abbiamo finalStock esplicito e differisce da quello calcolato, correggi l'ultimo punto
+    if (opts.finalStock !== undefined && pointsAbs.length > 0) {
+        const lastPoint = pointsAbs[pointsAbs.length - 1];
+        if (Math.abs(lastPoint.stock - opts.finalStock) > 0.1) {
+            console.log('[AnchoredFlowStockChartBuilder] Correggo stock ultimo punto:', {
+                calculated: lastPoint.stock,
+                correct: opts.finalStock,
+                difference: lastPoint.stock - opts.finalStock
+            });
+            lastPoint.stock = opts.finalStock;
+        }
+    }
     
     // Calcola media stock nel periodo
     const mediaStock = pointsAbs.length > 0
