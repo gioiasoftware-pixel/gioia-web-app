@@ -166,6 +166,32 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         }
     }
 
+    // Verifica che ci siano dataset validi
+    if (datasets.length === 0) {
+        console.error('[AnchoredFlowStockChart] Nessun dataset da renderizzare');
+        return null;
+    }
+    
+    // Verifica che i dataset abbiano dati
+    const datasetsWithData = datasets.filter(ds => {
+        const hasData = Array.isArray(ds.data) && ds.data.length > 0;
+        if (!hasData) {
+            console.warn('[AnchoredFlowStockChart] Dataset senza dati:', ds.label);
+        }
+        return hasData;
+    });
+    
+    if (datasetsWithData.length === 0) {
+        console.error('[AnchoredFlowStockChart] Nessun dataset con dati validi');
+        return null;
+    }
+    
+    console.log('[AnchoredFlowStockChart] Datasets validi:', {
+        total: datasets.length,
+        withData: datasetsWithData.length,
+        labels: datasets.map(ds => ds.label)
+    });
+
     // Configurazione Chart.js
     const chartConfig = {
         type: 'line',
@@ -340,9 +366,28 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             });
             console.log('[AnchoredFlowStockChart] Chart data:', {
                 dataLength: chart.data.labels.length,
-                datasetsCount: chart.data.datasets.length
+                datasetsCount: chart.data.datasets.length,
+                datasets: chart.data.datasets.map(ds => ({
+                    label: ds.label,
+                    dataLength: ds.data?.length || 0,
+                    hasData: Array.isArray(ds.data) && ds.data.length > 0
+                }))
             });
-        }, 100);
+            
+            // Verifica se il canvas ha pixel disegnati (controllo approssimativo)
+            try {
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, Math.min(100, canvas.width), Math.min(100, canvas.height));
+                const hasPixels = imageData.data.some((pixel, i) => i % 4 !== 3 && pixel !== 0); // Controlla se ci sono pixel non trasparenti
+                console.log('[AnchoredFlowStockChart] Canvas ha pixel disegnati:', hasPixels);
+                if (!hasPixels) {
+                    console.warn('[AnchoredFlowStockChart] ATTENZIONE: Canvas sembra vuoto, forzo resize');
+                    chart.resize();
+                }
+            } catch (e) {
+                console.warn('[AnchoredFlowStockChart] Impossibile verificare pixel canvas:', e);
+            }
+        }, 200);
         
         return chart;
     } catch (error) {
@@ -385,13 +430,15 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     
     // Verifica dimensioni container
     const containerRect = container.getBoundingClientRect();
+    const containerStyle = window.getComputedStyle(container);
     console.log('[AnchoredFlowStockChart] Container dimensions:', { 
-        width: containerRect.width, 
-        height: containerRect.height,
+        rect: { width: containerRect.width, height: containerRect.height },
         computed: {
-            width: window.getComputedStyle(container).width,
-            height: window.getComputedStyle(container).height
-        }
+            width: containerStyle.width,
+            height: containerStyle.height
+        },
+        display: containerStyle.display,
+        visibility: containerStyle.visibility
     });
     
     // Pulisci container
@@ -403,22 +450,37 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         return null;
     }
     
-    // Assicura che il canvas abbia dimensioni
-    const containerStyle = window.getComputedStyle(container);
-    const containerHeight = containerStyle.height || containerRect.height || 400;
-    const containerWidth = containerStyle.width || containerRect.width || 800;
+    // FORZA dimensioni esplicite sul canvas
+    // Chart.js con maintainAspectRatio: false richiede dimensioni esplicite
+    let containerHeight = parseFloat(containerStyle.height) || containerRect.height;
+    let containerWidth = parseFloat(containerStyle.width) || containerRect.width;
     
-    console.log('[AnchoredFlowStockChart] Canvas dimensions:', { 
-        width: containerWidth, 
-        height: containerHeight 
-    });
-    
-    // Imposta dimensioni esplicite sul canvas se necessario
-    if (!canvas.width || !canvas.height) {
-        canvas.style.width = '100%';
-        canvas.style.height = '100%';
-        console.log('[AnchoredFlowStockChart] Canvas style impostato');
+    // Se non ha dimensioni, usa valori di default
+    if (!containerHeight || containerHeight <= 0) {
+        containerHeight = 400;
+        container.style.height = containerHeight + 'px';
+        console.warn('[AnchoredFlowStockChart] Container senza altezza, imposto 400px');
     }
+    if (!containerWidth || containerWidth <= 0) {
+        containerWidth = container.parentElement?.clientWidth || 800;
+        console.warn('[AnchoredFlowStockChart] Container senza larghezza, uso:', containerWidth);
+    }
+    
+    // Imposta dimensioni esplicite sul canvas (sia style che attributi)
+    canvas.style.width = containerWidth + 'px';
+    canvas.style.height = containerHeight + 'px';
+    canvas.style.display = 'block'; // Importante per Chart.js
+    canvas.width = containerWidth;
+    canvas.height = containerHeight;
+    
+    console.log('[AnchoredFlowStockChart] Canvas dimensions forzate:', { 
+        width: canvas.width, 
+        height: canvas.height,
+        styleWidth: canvas.style.width,
+        styleHeight: canvas.style.height,
+        containerWidth,
+        containerHeight
+    });
 
     // Converti movimenti API in formato WineMovement
     const movements = (movementsData.movements || []).map(mov => ({
@@ -469,17 +531,42 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         minAbsDomain: options.minAbsDomain,
     });
     console.log('[AnchoredFlowStockChart] Chart data built:', {
-        ...chartData,
         pointsCount: chartData.points.length,
         anchorStock: chartData.anchorStock,
-        yDomain: chartData.yDomain
+        yDomain: chartData.yDomain,
+        hasNoMovement: chartData.hasNoMovement,
+        firstPoint: chartData.points[0],
+        lastPoint: chartData.points[chartData.points.length - 1]
     });
+    
+    // Verifica che i dati siano validi
+    if (chartData.points.length === 0) {
+        console.error('[AnchoredFlowStockChart] Nessun punto nel grafico');
+        container.innerHTML = '<div class="error-state">Nessun dato disponibile per il periodo selezionato</div>';
+        return null;
+    }
+    
+    // Verifica che il dominio Y sia valido
+    if (!Number.isFinite(chartData.yDomain[0]) || !Number.isFinite(chartData.yDomain[1])) {
+        console.error('[AnchoredFlowStockChart] Dominio Y invalido:', chartData.yDomain);
+        container.innerHTML = '<div class="error-state">Errore nel calcolo del dominio del grafico</div>';
+        return null;
+    }
 
     // Render
     console.log('[AnchoredFlowStockChart] Rendering chart');
     try {
         const chart = renderAnchoredFlowStockChart(canvas, chartData, options);
         console.log('[AnchoredFlowStockChart] Chart renderizzato:', !!chart);
+        
+        // Forza resize dopo un breve delay per assicurare che Chart.js disegni
+        setTimeout(() => {
+            if (chart && typeof chart.resize === 'function') {
+                console.log('[AnchoredFlowStockChart] Forzo resize chart');
+                chart.resize();
+            }
+        }, 100);
+        
         return chart;
     } catch (error) {
         console.error('[AnchoredFlowStockChart] Errore durante rendering:', error);
