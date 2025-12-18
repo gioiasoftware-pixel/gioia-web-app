@@ -592,7 +592,8 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     });
     console.log('[AnchoredFlowStockChart] Chart data built:', {
         pointsCount: chartData.points.length,
-        anchorStock: chartData.anchorStock,
+        mediaStock: chartData.mediaStock, // Media stock (baseline dinamica)
+        anchorStock: chartData.anchorStock, // Stock di oggi (per riferimento)
         yDomain: chartData.yDomain,
         hasNoMovement: chartData.hasNoMovement,
         firstPoint: chartData.points[0],

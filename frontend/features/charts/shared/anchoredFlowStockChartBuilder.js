@@ -72,13 +72,14 @@
  * @typedef {Object} AnchoredChartData
  * @property {{from: Date, to: Date}} range
  * @property {'day' | 'hour'} granularity
- * @property {Date} anchorTime - oggi
- * @property {number} anchorStock - stock di oggi (fine ultimo bucket)
+ * @property {Date} anchorTime - oggi (per riferimento)
+ * @property {number} anchorStock - stock di oggi (fine ultimo bucket, per riferimento)
+ * @property {number} mediaStock - media stock nel periodo (usata per baseline e normalizzazione)
  * @property {FlowPointAbs[]} pointsAbs
  * @property {FlowPointNorm[]} points
- * @property {[number, number]} yDomain - dominio Y in coordinate normalizzate
- * @property {(tickNorm: number) => string} yTickFormatter - formatter per valori stock reali
- * @property {(i: number) => {at: Date, inflow: number, outflow: number, stock: number, anchorStock: number} | null} tooltipForIndex
+ * @property {[number, number]} yDomain - dominio Y in coordinate normalizzate (rispetto a mediaStock)
+ * @property {(tickNorm: number) => string} yTickFormatter - formatter per valori stock reali (tickNorm + mediaStock)
+ * @property {(i: number) => {at: Date, inflow: number, outflow: number, stock: number, mediaStock: number, anchorStock: number} | null} tooltipForIndex
  * @property {boolean} hasNoMovement - true se non ci sono movimenti (vino fermo)
  */
 
@@ -155,7 +156,7 @@ function computeRollingRange(now, preset) {
 
 /* ----------------------- Domain ----------------------- */
 
-function computeYDomainNorm(pointsAbs, anchorStock, padMul, minAbs) {
+function computeYDomainNorm(pointsAbs, mediaStock, padMul, minAbs) {
     let minAbsY = Number.POSITIVE_INFINITY;
     let maxAbsY = Number.NEGATIVE_INFINITY;
 
@@ -170,8 +171,8 @@ function computeYDomainNorm(pointsAbs, anchorStock, padMul, minAbs) {
         return [-minAbs, +minAbs];
     }
 
-    const minNorm = minAbsY - anchorStock;
-    const maxNorm = maxAbsY - anchorStock;
+    const minNorm = minAbsY - mediaStock;
+    const maxNorm = maxAbsY - mediaStock;
 
     const peak = Math.max(Math.abs(minNorm), Math.abs(maxNorm));
     const padded = Math.max(minAbs, peak * padMul);
