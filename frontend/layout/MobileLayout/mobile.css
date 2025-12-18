@@ -500,6 +500,7 @@
 /* STATE: VIEWER_OPEN */
 .mobileRoot .mApp.state-viewer .mViewer {
     pointer-events: auto !important;
+    display: flex !important; /* Forza display quando nello stato viewer */
 }
 
 .mobileRoot .mApp.state-viewer .mSidebar,

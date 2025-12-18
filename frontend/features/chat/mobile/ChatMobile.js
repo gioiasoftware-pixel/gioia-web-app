@@ -195,7 +195,9 @@ function openViewerInternal() {
         return;
     }
     
+    // Rimuovi hidden e forza display
     viewer.removeAttribute('hidden');
+    viewer.style.display = 'flex';
 }
 
 /**
@@ -1347,10 +1349,7 @@ async function saveAddWineMobile(form) {
  * Apre il viewer inventario (mobile)
  */
 async function openInventoryViewerMobile() {
-    // Apri viewer
-    openViewer();
-    
-    // Assicurati che il viewer mobile abbia la struttura corretta
+    // Assicurati che il viewer mobile esista e abbia la struttura corretta PRIMA di aprirlo
     const viewerMobile = document.getElementById('viewerPanel');
     if (!viewerMobile) {
         return;
@@ -1394,8 +1393,14 @@ async function openInventoryViewerMobile() {
         `;
     }
     
-    // Setup viewer close button
+    // Setup viewer close button PRIMA di aprire
     setupViewerClose();
+    
+    // Ora apri il viewer (imposta stato e mostra)
+    openViewer();
+    
+    // Forza la visualizzazione del viewer (assicurati che hidden sia rimosso)
+    viewerMobile.removeAttribute('hidden');
     
     // Carica dati inventario
     await loadViewerDataMobile();
