@@ -1100,29 +1100,38 @@ function diagnoseChatScroll() {
         console.error('[SCROLL DIAG] 💡 DESCRIZIONE: Elementi sovrapposti bloccano gli eventi wheel sull\'area scrollabile');
     }
     
-    // 5. Test scroll programmatico
-    if (isScrollable && maxScroll > 0) {
+    // 5. Test scroll programmatico (solo se non è già al limite)
+    let scrollProgrammaticWorks = false;
+    if (isScrollable && maxScroll > 0 && scrollTop < maxScroll - 10) {
         console.log('[SCROLL DIAG] 🧪 Test scroll programmatico:');
         const originalScrollTop = scrollWrapper.scrollTop;
-        const testScrollAmount = Math.min(50, maxScroll);
+        const testScrollAmount = Math.min(10, maxScroll - scrollTop - 1); // Scroll di 10px o meno, senza superare il limite
         
-        scrollWrapper.scrollTop = originalScrollTop + testScrollAmount;
-        const newScrollTop = scrollWrapper.scrollTop;
-        const scrollWorks = Math.abs(newScrollTop - (originalScrollTop + testScrollAmount)) < 1;
-        
-        console.log('[SCROLL DIAG]   - scrollTop iniziale:', originalScrollTop);
-        console.log('[SCROLL DIAG]   - Tentativo scroll a:', originalScrollTop + testScrollAmount);
-        console.log('[SCROLL DIAG]   - scrollTop effettivo:', newScrollTop);
-        console.log('[SCROLL DIAG]   - Scroll funziona?', scrollWorks ? '✅ SÌ' : '❌ NO');
-        
-        // Ripristina
-        scrollWrapper.scrollTop = originalScrollTop;
-        
-        if (!scrollWorks) {
-            console.error('[SCROLL DIAG] ❌ PROBLEMA: Scroll programmatico non funziona');
-            console.error('[SCROLL DIAG] 💡 DESCRIZIONE: Impostare scrollTop non produce effetto visivo');
-            console.error('[SCROLL DIAG] 💡 POSSIBILE CAUSA: CSS che blocca lo scroll o elemento non scrollabile');
+        if (testScrollAmount > 0) {
+            scrollWrapper.scrollTop = originalScrollTop + testScrollAmount;
+            // Aspetta un frame per permettere al browser di applicare lo scroll
+            requestAnimationFrame(() => {
+                const newScrollTop = scrollWrapper.scrollTop;
+                scrollProgrammaticWorks = Math.abs(newScrollTop - (originalScrollTop + testScrollAmount)) < 2;
+                
+                console.log('[SCROLL DIAG]   - scrollTop iniziale:', originalScrollTop);
+                console.log('[SCROLL DIAG]   - Tentativo scroll a:', originalScrollTop + testScrollAmount);
+                console.log('[SCROLL DIAG]   - scrollTop effettivo:', newScrollTop);
+                console.log('[SCROLL DIAG]   - Scroll funziona?', scrollProgrammaticWorks ? '✅ SÌ' : '❌ NO');
+                
+                // Ripristina
+                scrollWrapper.scrollTop = originalScrollTop;
+                
+                if (!scrollProgrammaticWorks) {
+                    console.warn('[SCROLL DIAG] ⚠️ ATTENZIONE: Scroll programmatico non funziona (ma potrebbe essere normale se ci sono listener che lo bloccano)');
+                }
+            });
+        } else {
+            console.log('[SCROLL DIAG]   - Saltato: già vicino al limite dello scroll');
+            scrollProgrammaticWorks = true; // Considera OK se è al limite
         }
+    } else {
+        scrollProgrammaticWorks = true; // Considera OK se non scrollabile o al limite
     }
     
     // 6. Aggiungi listener per intercettare eventi wheel
@@ -1250,31 +1259,30 @@ function diagnoseChatScroll() {
     console.log('[SCROLL DIAG] 🔍 Verifica listener esistenti:');
     console.log('[SCROLL DIAG]   - Nota: Non possiamo enumerare listener esistenti, ma testeremo il comportamento');
     
-    // 8. Riepilogo finale
+    // 8. Riepilogo finale (dopo che l'utente ha avuto tempo di provare a scrollare)
     setTimeout(() => {
-        console.log('[SCROLL DIAG] 📊 ========== RIEPILOGO FINALE ==========');
+        console.log('[SCROLL DIAG] 📊 ========== RIEPILOGO FINALE (dopo 2s) ==========');
         console.log('[SCROLL DIAG]   - Elemento trovato:', scrollWrapper ? '✅' : '❌');
         console.log('[SCROLL DIAG]   - Overflow-y corretto:', (computedStyle.overflowY === 'auto' || computedStyle.overflowY === 'scroll') ? '✅' : '❌');
         console.log('[SCROLL DIAG]   - Min-height corretto:', (computedStyle.minHeight === '0px' || computedStyle.minHeight === '0') ? '✅' : '❌');
         console.log('[SCROLL DIAG]   - È scrollabile:', isScrollable ? '✅' : '❌');
         console.log('[SCROLL DIAG]   - Elementi sovrapposti:', overlappingElements.length === 0 ? '✅ Nessuno' : `❌ ${overlappingElements.length} trovati`);
-        console.log('[SCROLL DIAG]   - Wheel events ricevuti:', wheelEventCount > 0 ? `✅ ${wheelEventCount}` : '❌ Nessuno');
-        console.log('[SCROLL DIAG]   - Scroll events ricevuti:', scrollEventCount > 0 ? `✅ ${scrollEventCount}` : '❌ Nessuno');
+        console.log('[SCROLL DIAG]   - Wheel events ricevuti:', wheelEventCount > 0 ? `✅ ${wheelEventCount}` : '⚠️ Nessuno (prova a scrollare per vedere se arrivano)');
+        console.log('[SCROLL DIAG]   - Scroll events ricevuti:', scrollEventCount > 0 ? `✅ ${scrollEventCount}` : '⚠️ Nessuno (prova a scrollare per vedere se arrivano)');
         
-        if (wheelEventCount === 0 && isScrollable) {
-            console.error('[SCROLL DIAG] ❌❌❌ PROBLEMA PRINCIPALE: Nessun evento wheel ricevuto!');
-            console.error('[SCROLL DIAG] 💡 DESCRIZIONE: Gli eventi wheel non raggiungono lo scroll wrapper');
-            console.error('[SCROLL DIAG] 💡 POSSIBILI CAUSE:');
-            console.error('[SCROLL DIAG]     1. Elemento sovrapposto che intercetta gli eventi');
-            console.error('[SCROLL DIAG]     2. Listener su parent che previene la propagazione');
-            console.error('[SCROLL DIAG]     3. CSS pointer-events che blocca gli eventi');
+        // Solo mostra errori se ci sono problemi REALI (non solo "nessun evento" perché l'utente non ha ancora provato)
+        if (wheelEventCount === 0 && scrollEventCount === 0 && isScrollable) {
+            console.warn('[SCROLL DIAG] ⚠️ Nota: Nessun evento ricevuto finora. Prova a scrollare con la rotella del mouse per verificare.');
+            console.warn('[SCROLL DIAG] 💡 Se dopo aver scrollato non vedi eventi, potrebbe esserci un problema.');
         } else if (wheelEventCount > 0 && scrollEventCount === 0 && isScrollable) {
-            console.error('[SCROLL DIAG] ❌❌❌ PROBLEMA PRINCIPALE: Eventi wheel ricevuti ma scroll non avviene!');
+            console.error('[SCROLL DIAG] ❌ PROBLEMA: Eventi wheel ricevuti ma scroll non avviene!');
             console.error('[SCROLL DIAG] 💡 DESCRIZIONE: Gli eventi wheel arrivano ma non producono scroll');
             console.error('[SCROLL DIAG] 💡 POSSIBILI CAUSE:');
             console.error('[SCROLL DIAG]     1. preventDefault() chiamato da altro listener');
             console.error('[SCROLL DIAG]     2. CSS overflow che non permette scroll');
             console.error('[SCROLL DIAG]     3. Problema con le dimensioni dell\'elemento');
+        } else if (wheelEventCount > 0 && scrollEventCount > 0) {
+            console.log('[SCROLL DIAG] ✅ TUTTO OK: Eventi wheel e scroll funzionano correttamente!');
         }
         
         console.log('[SCROLL DIAG] ==========================================');
