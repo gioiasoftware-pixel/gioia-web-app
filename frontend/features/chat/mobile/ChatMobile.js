@@ -1053,9 +1053,9 @@ function setupWineCardButtonsMobile(messageEl) {
  * Gestisce il click su "Modifica" wine card mobile
  */
 async function handleWineCardEditMobile(wineCard, wineId) {
-    // Per ora usa la funzione desktop (da implementare mobile-specific se necessario)
-    if (typeof handleWineCardEdit === 'function') {
-        await handleWineCardEdit(wineCard, wineId);
+    // Usa funzione desktop esposta su window
+    if (typeof window.handleWineCardEdit === 'function') {
+        await window.handleWineCardEdit(wineCard, wineId);
     } else {
         console.warn('[MOBILE] handleWineCardEdit non disponibile');
     }
@@ -1065,9 +1065,9 @@ async function handleWineCardEditMobile(wineCard, wineId) {
  * Gestisce il click su "Mostra in inventario" wine card mobile
  */
 async function handleWineCardShowInInventoryMobile(wineCard, wineId) {
-    // Per ora usa la funzione desktop (da implementare mobile-specific se necessario)
-    if (typeof handleWineCardShowInInventory === 'function') {
-        await handleWineCardShowInInventory(wineCard, wineId);
+    // Usa funzione desktop esposta su window
+    if (typeof window.handleWineCardShowInInventory === 'function') {
+        await window.handleWineCardShowInInventory(wineCard, wineId);
     } else {
         console.warn('[MOBILE] handleWineCardShowInInventory non disponibile');
     }

@@ -2590,6 +2590,8 @@ window.saveViewerWineEdit = saveViewerWineEdit;
 window.openAddWineModal = openAddWineModal;
 window.closeAddWineModal = closeAddWineModal;
 window.saveAddWine = saveAddWine;
+window.handleWineCardEdit = handleWineCardEdit;
+window.handleWineCardShowInInventory = handleWineCardShowInInventory;
 
 async function handleWineCardShowInInventory(wineCard, wineId) {
     // Apri il viewer se non è già aperto
