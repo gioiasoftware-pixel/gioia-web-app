@@ -75,11 +75,12 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     const stockLineData = points.map(p => p.stockNorm);
 
     // Dataset per aree (normalizzate rispetto alla MEDIA stock):
-    // - Rifornimenti (Inflow): da stockNorm (y0 = baseline/media) a stockNorm + inflow (y1) - sopra baseline (rialzo)
-    // - Consumi (Outflow): da stockNorm - outflow (y0) a stockNorm (y1 = baseline/media) - sotto baseline (ribasso)
-    // Per Chart.js, usiamo fill verso lo zero (baseline normalizzata = 0 = media stock)
-    const inflowAreaData = points.map(p => p.inflow_y1); // top dell'area rifornimenti (sopra baseline)
-    const outflowAreaData = points.map(p => p.outflow_y0); // bottom dell'area consumi (sotto baseline)
+    // - Rifornimenti (Inflow): da stockNorm (y0 = base = linea stock) a stockNorm + inflow (y1) - sopra baseline (rialzo)
+    // - Consumi (Outflow): da stockNorm - outflow (y0) a stockNorm (y1 = base = linea stock) - sotto baseline (ribasso)
+    // Entrambe le aree partono dalla linea stock (stockNorm) come base d'appoggio
+    const inflowAreaTop = points.map(p => p.inflow_y1); // top dell'area rifornimenti (stockNorm + inflow)
+    const outflowAreaBottom = points.map(p => p.outflow_y0); // bottom dell'area consumi (stockNorm - outflow)
+    const stockLineBase = stockLineData; // base comune per entrambe le aree (stockNorm)
 
     // POI markers (solo dove c'è movimento)
     const poiInData = points.map(p => p.hasInflow ? p.poiInY : null);
@@ -91,38 +92,30 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
 
     const datasets = [];
 
-    // 1. Outflow area (sotto baseline, valori negativi) - renderizzata per prima
-    // Riempiamo verso lo zero (baseline normalizzata = 0)
+    // IMPORTANTE: In Chart.js, fill: '+1' riempie verso il dataset successivo nell'array,
+    // fill: '-1' riempie verso il dataset precedente nell'array.
+    // L'ordine nell'array è cruciale per far funzionare correttamente il fill.
+
+    // 1. Outflow area (consumi) - parte dalla linea stock e va verso il basso (a testa in giù)
+    // Deve essere PRIMA della stock line nell'array, così fill: '+1' riempie verso la stock line successiva
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: 'Consumi',
-            data: outflowAreaData, // valori negativi (sotto baseline)
+            data: outflowAreaBottom, // bottom dell'area (stockNorm - outflow)
             type: 'line',
             borderColor: colors.outflow + '80',
             backgroundColor: colors.outflow + '40',
-            fill: 'origin', // riempi verso y=0 (baseline normalizzata)
+            fill: '+1', // riempi verso il dataset successivo nell'array (stock line)
             pointRadius: 0,
-            order: 3,
+            order: 3, // order controlla solo l'ordine di rendering visivo, non il fill
             tension: 0.4,
         });
     }
 
-    // 2. Inflow area (sopra baseline, valori positivi)
-    if (!hasNoMovement || options.showAreasWhenNoMovement) {
-        datasets.push({
-            label: 'Rifornimenti',
-            data: inflowAreaData, // valori positivi (sopra baseline)
-            type: 'line',
-            borderColor: colors.inflow + '80',
-            backgroundColor: colors.inflow + '40',
-            fill: 'origin', // riempi verso y=0 (baseline normalizzata)
-            pointRadius: 0,
-            order: 2,
-            tension: 0.4,
-        });
-    }
-
-    // 3. Stock line (sempre visibile, enfatizzata se no movement)
+    // 2. Stock line (sempre visibile, enfatizzata se no movement)
+    // Serve come base d'appoggio per entrambe le aree:
+    // - Per consumi: il dataset precedente (outflow) usa fill: '+1' per riempire verso questa
+    // - Per rifornimenti: il dataset successivo (inflow) usa fill: '-1' per riempire verso questa
     const stockLineDataset = {
         label: 'Stock',
         data: stockLineData,
@@ -141,6 +134,22 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     }
     
     datasets.push(stockLineDataset);
+
+    // 3. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
+    // Deve essere DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: 'Rifornimenti',
+            data: inflowAreaTop, // top dell'area (stockNorm + inflow)
+            type: 'line',
+            borderColor: colors.inflow + '80',
+            backgroundColor: colors.inflow + '40',
+            fill: '-1', // riempi verso il dataset precedente nell'array (stock line)
+            pointRadius: 0,
+            order: 2, // order controlla solo l'ordine di rendering visivo, non il fill
+            tension: 0.4,
+        });
+    }
 
     // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
     if (!hasNoMovement && options.showPOI !== false) {
