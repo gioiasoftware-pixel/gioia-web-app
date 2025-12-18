@@ -1,26 +1,27 @@
 /**
- * Builder per grafico Flow+Stock ancorato a stock di OGGI
+ * Builder per grafico Flow+Stock con baseline dinamica centrata sulla MEDIA
  * 
- * SPEC + IMPLEMENTATION NOTES — Grafico Flow+Stock ancorato a stock di OGGI
+ * SPEC + IMPLEMENTATION NOTES — Grafico Flow+Stock con baseline dinamica
  *
  * Obiettivo UI:
  * - Un singolo grafico che combina:
- *   1) Grafico di flusso: rifornimenti sopra, consumi sotto
+ *   1) Grafico di flusso: rifornimenti sopra (rialzo), consumi sotto (ribasso)
  *   2) Grafico lineare: linea stock che sale/scende nel tempo
- * - Baseline (linea mediana) = STOCK DI OGGI (non 0).
+ * - Baseline (linea mediana) = MEDIA STOCK NEL PERIODO (non stock di oggi, non 0).
+ * - Asse Y centrato sulla media: metà sopra, metà sotto la media
  * - Asse X temporale CONTINUO (bucket giornalieri/orari, buchi riempiti con 0).
  * - Preset rolling: ultimo giorno / ultima settimana / ultimo mese / ultimo trimestre / ultimo anno
  * - POI: punti d'interesse nei bucket dove inflow>0 e/o outflow>0.
  * - Curve smussate (monotone/basis/catmullRom) per evitare spigoli.
  *
  * Punti chiave (non negoziabili):
- * - Normalizzazione: yNorm = yAbs - anchorStock
- *   => La baseline è a 0 in coordinate, ma i tick mostrano valori reali (tick + anchorStock)
+ * - Normalizzazione: yNorm = yAbs - mediaStock
+ *   => La baseline è a 0 in coordinate, ma i tick mostrano valori reali (tick + mediaStock)
  * - Serie:
- *   stock line: y = stockNorm
- *   inflow area: y0 = stockNorm, y1 = stockNorm + inflow
- *   outflow area: y0 = stockNorm - outflow, y1 = stockNorm
- * - Tooltip deve mostrare valori REALI (stock = stockNorm + anchorStock)
+ *   stock line: y = stockNorm (rispetto alla media)
+ *   inflow area (rifornimenti): y0 = stockNorm, y1 = stockNorm + inflow (sopra baseline, rialzo)
+ *   outflow area (consumi): y0 = stockNorm - outflow, y1 = stockNorm (sotto baseline, ribasso)
+ * - Tooltip deve mostrare valori REALI (stock = stockNorm + mediaStock)
  */
 
 /**
@@ -46,7 +47,7 @@
  * @property {Date} t
  * @property {number} inflow
  * @property {number} outflow
- * @property {number} stockNorm - stock normalizzato rispetto anchorStock (stock di oggi)
+ * @property {number} stockNorm - stock normalizzato rispetto mediaStock (media stock nel periodo)
  * @property {number} inflow_y0 - stockNorm
  * @property {number} inflow_y1 - stockNorm + inflow
  * @property {number} outflow_y0 - stockNorm - outflow
@@ -280,17 +281,23 @@ function buildAnchoredFlowStockChart(movements, opts) {
         pointsAbs.push({ t, inflow, outflow, stock });
     }
 
-    // Anchor baseline = stock of TODAY (last bucket)
+    // Baseline dinamica = MEDIA stock nel periodo (non stock di oggi)
     const anchorTime = now;
-    const anchorStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock;
+    const anchorStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock; // Stock di oggi (per riferimento)
+    
+    // Calcola media stock nel periodo
+    const mediaStock = pointsAbs.length > 0
+        ? pointsAbs.reduce((sum, p) => sum + p.stock, 0) / pointsAbs.length
+        : opts.openingStock;
 
     const padMul = opts.paddingMultiplier ?? 1.2;
     const minAbs = opts.minAbsDomain ?? 1;
-    const yDomain = computeYDomainNorm(pointsAbs, anchorStock, padMul, minAbs);
+    // Usa mediaStock per normalizzazione (non anchorStock)
+    const yDomain = computeYDomainNorm(pointsAbs, mediaStock, padMul, minAbs);
 
-    // Normalize & build POIs
+    // Normalize & build POIs - normalizza rispetto alla MEDIA
     const points = pointsAbs.map(p => {
-        const stockNorm = p.stock - anchorStock;
+        const stockNorm = p.stock - mediaStock; // Normalizza rispetto alla media, non stock di oggi
         const hasInflow = p.inflow > 0;
         const hasOutflow = p.outflow > 0;
 
@@ -318,8 +325,8 @@ function buildAnchoredFlowStockChart(movements, opts) {
     // Check if there's no movement (all inflow/outflow are 0)
     const hasNoMovement = points.every(p => p.inflow === 0 && p.outflow === 0);
 
-    // Y tick formatter (shows real stock)
-    const yTickFormatter = (tickNorm) => `${Math.round(tickNorm + anchorStock)}`;
+    // Y tick formatter (shows real stock) - usa mediaStock invece di anchorStock
+    const yTickFormatter = (tickNorm) => `${Math.round(tickNorm + mediaStock)}`;
 
     const tooltipForIndex = (i) => {
         const p = points[i];
@@ -328,8 +335,9 @@ function buildAnchoredFlowStockChart(movements, opts) {
             at: p.t,
             inflow: p.inflow,
             outflow: p.outflow,
-            stock: p.stockNorm + anchorStock,
-            anchorStock,
+            stock: p.stockNorm + mediaStock, // Stock reale = normalizzato + media
+            mediaStock, // Media stock nel periodo
+            anchorStock, // Stock di oggi (per riferimento)
         };
     };
 
@@ -337,7 +345,8 @@ function buildAnchoredFlowStockChart(movements, opts) {
         range: { from, to },
         granularity,
         anchorTime,
-        anchorStock,
+        anchorStock, // Stock di oggi (per riferimento, non più usato per normalizzazione)
+        mediaStock, // Media stock nel periodo (usata per baseline e normalizzazione)
         pointsAbs,
         points,
         yDomain,

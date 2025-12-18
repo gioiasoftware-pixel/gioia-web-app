@@ -39,7 +39,8 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         yTickFormatter,
         tooltipForIndex,
         hasNoMovement,
-        anchorStock,
+        anchorStock, // Stock di oggi (per riferimento)
+        mediaStock, // Media stock nel periodo (usata per baseline)
     } = chartData;
 
     // Colori brand (da tokens CSS o fallback)
@@ -70,15 +71,15 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         });
     });
 
-    // Dataset per stock line (baseline = 0 normalizzato)
+    // Dataset per stock line (baseline = 0 normalizzato, che corrisponde alla MEDIA stock)
     const stockLineData = points.map(p => p.stockNorm);
 
-    // Dataset per aree: 
-    // - Inflow: da stockNorm (y0) a stockNorm + inflow (y1) - sopra baseline
-    // - Outflow: da stockNorm - outflow (y0) a stockNorm (y1) - sotto baseline
-    // Per Chart.js, usiamo fill verso lo zero (baseline normalizzata = 0)
-    const inflowAreaData = points.map(p => p.inflow_y1); // top dell'area inflow
-    const outflowAreaData = points.map(p => p.outflow_y0); // bottom dell'area outflow
+    // Dataset per aree (normalizzate rispetto alla MEDIA stock):
+    // - Rifornimenti (Inflow): da stockNorm (y0 = baseline/media) a stockNorm + inflow (y1) - sopra baseline (rialzo)
+    // - Consumi (Outflow): da stockNorm - outflow (y0) a stockNorm (y1 = baseline/media) - sotto baseline (ribasso)
+    // Per Chart.js, usiamo fill verso lo zero (baseline normalizzata = 0 = media stock)
+    const inflowAreaData = points.map(p => p.inflow_y1); // top dell'area rifornimenti (sopra baseline)
+    const outflowAreaData = points.map(p => p.outflow_y0); // bottom dell'area consumi (sotto baseline)
 
     // POI markers (solo dove c'è movimento)
     const poiInData = points.map(p => p.hasInflow ? p.poiInY : null);
@@ -239,9 +240,9 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                             if (!tooltip) return null;
 
                             // IMPORTANTE: tooltip.stock è già stock reale (non normalizzato)
-                            // tooltipForIndex restituisce: stock = stockNorm + anchorStock
+                            // tooltipForIndex restituisce: stock = stockNorm + mediaStock
                             if (datasetLabel === 'Stock') {
-                                return `Stock: ${Math.round(tooltip.stock)} bottiglie (Oggi: ${tooltip.anchorStock})`;
+                                return `Stock: ${Math.round(tooltip.stock)} bottiglie (Media: ${Math.round(tooltip.mediaStock)}, Oggi: ${Math.round(tooltip.anchorStock)})`;
                             } else if (datasetLabel === 'Rifornimenti') {
                                 return `Rifornimenti: ${tooltip.inflow} bottiglie`;
                             } else if (datasetLabel === 'Consumi') {
@@ -306,18 +307,18 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                     },
                     ticks: {
                         callback: function(value) {
-                            // IMPORTANTE: value è normalizzato (può essere negativo)
-                            // Converti SEMPRE in stock reale: realStock = value + anchorStock
-                            const realStock = Math.round(value + anchorStock);
+                            // IMPORTANTE: value è normalizzato rispetto alla MEDIA (può essere negativo)
+                            // Converti SEMPRE in stock reale: realStock = value + mediaStock
+                            const realStock = Math.round(value + mediaStock);
                             
                             // Non mostrare mai valori negativi (non ha senso per stock)
                             if (realStock < 0) {
                                 return '';
                             }
                             
-                            // Se è la baseline (value ≈ 0), mostra etichetta speciale
+                            // Se è la baseline (value ≈ 0), mostra etichetta speciale con media
                             if (Math.abs(value) < 0.01) {
-                                return `Oggi: ${realStock}`;
+                                return `Media: ${realStock}`;
                             }
                             
                             // Per tutti gli altri tick, mostra solo il numero
