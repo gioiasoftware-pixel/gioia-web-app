@@ -1134,17 +1134,11 @@ function diagnoseChatScroll() {
         scrollProgrammaticWorks = true; // Considera OK se non scrollabile o al limite
     }
     
-    // 6. Aggiungi listener per intercettare eventi wheel
+    // 6. Aggiungi listener per intercettare eventi wheel (solo per logging, senza forzare scroll)
     let wheelEventCount = 0;
     let scrollEventCount = 0;
     let lastWheelTime = 0;
     let lastScrollTime = 0;
-    
-    // Accumulatore per deltaY quando lo scroll non avviene naturalmente
-    let accumulatedDeltaY = 0;
-    let scrollFixTimeout = null;
-    let lastScrollTop = scrollWrapper.scrollTop;
-    let isScrollingNaturally = false;
     
     const wheelHandler = (e) => {
         wheelEventCount++;
@@ -1165,59 +1159,16 @@ function diagnoseChatScroll() {
             defaultPrevented: e.defaultPrevented,
             scrollTop: scrollWrapper.scrollTop
         });
-        
-        // Se l'evento è dentro il wrapper e non è stato preventDefault
-        if (isInside && !e.defaultPrevented && Math.abs(e.deltaY) > 0) {
-            const scrollTopBefore = scrollWrapper.scrollTop;
-            const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
-            
-            // Accumula deltaY per scroll più fluido
-            accumulatedDeltaY += e.deltaY;
-            
-            // Verifica se lo scroll avviene dopo l'evento (timeout più lungo per dare tempo allo scroll naturale)
-            clearTimeout(scrollFixTimeout);
-            scrollFixTimeout = setTimeout(() => {
-                const scrollTopAfter = scrollWrapper.scrollTop;
-                const scrollChanged = Math.abs(scrollTopAfter - scrollTopBefore) > 0.5;
-                
-                if (!scrollChanged && maxScroll > 0 && !isScrollingNaturally) {
-                    // Scroll non avvenuto naturalmente, forza manualmente solo se necessario
-                    const newScrollTop = Math.max(0, Math.min(maxScroll, scrollTopBefore + accumulatedDeltaY));
-                    
-                    if (Math.abs(newScrollTop - scrollTopBefore) > 0.5) {
-                        scrollWrapper.scrollTop = newScrollTop;
-                        console.log(`[SCROLL DIAG] 🔧 Scroll forzato manualmente: ${scrollTopBefore} -> ${scrollWrapper.scrollTop} (delta accumulato: ${accumulatedDeltaY})`);
-                        accumulatedDeltaY = 0; // Reset dopo scroll forzato
-                    }
-                } else {
-                    // Scroll avvenuto naturalmente, reset accumulatore
-                    accumulatedDeltaY = 0;
-                }
-            }, 50); // Timeout aumentato a 50ms per dare più tempo allo scroll naturale
-        }
     };
     
     const scrollHandler = () => {
         scrollEventCount++;
         lastScrollTime = Date.now();
-        const currentScrollTop = scrollWrapper.scrollTop;
-        
-        // Verifica se lo scroll è naturale (non forzato dal nostro codice)
-        const scrollDiff = Math.abs(currentScrollTop - lastScrollTop);
-        if (scrollDiff > 0.5) {
-            isScrollingNaturally = true;
-            // Reset flag dopo breve delay
-            setTimeout(() => {
-                isScrollingNaturally = false;
-            }, 100);
-        }
-        lastScrollTop = currentScrollTop;
         
         console.log(`[SCROLL DIAG] 🖱️ Scroll event #${scrollEventCount}:`, {
             scrollTop: scrollWrapper.scrollTop,
             scrollHeight: scrollWrapper.scrollHeight,
-            clientHeight: scrollWrapper.clientHeight,
-            natural: isScrollingNaturally ? '✅' : '❌'
+            clientHeight: scrollWrapper.clientHeight
         });
     };
     
