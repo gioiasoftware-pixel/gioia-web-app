@@ -285,23 +285,53 @@ function buildAnchoredFlowStockChart(movements, opts) {
 
     // Baseline dinamica = MEDIA stock nel periodo (non stock di oggi)
     const anchorTime = now;
-    // Se abbiamo stock finale esplicito (da quantity_after ultimo movimento), usalo e correggi l'ultimo punto
+    // Se abbiamo stock finale esplicito (da quantity_after ultimo movimento), usalo
     // Altrimenti usa lo stock calcolato dall'ultimo punto
     const calculatedFinalStock = pointsAbs.length ? pointsAbs[pointsAbs.length - 1].stock : opts.openingStock;
-    const anchorStock = opts.finalStock !== undefined ? opts.finalStock : calculatedFinalStock; // Stock di oggi (per riferimento)
     
-    // Se abbiamo finalStock esplicito e differisce da quello calcolato, correggi l'ultimo punto
+    // Se abbiamo finalStock esplicito e differisce da quello calcolato, 
+    // ricalcola tutti i punti partendo da un openingStock corretto
+    // Questo garantisce coerenza: openingStock + totalDelta = finalStock
     if (opts.finalStock !== undefined && pointsAbs.length > 0) {
         const lastPoint = pointsAbs[pointsAbs.length - 1];
-        if (Math.abs(lastPoint.stock - opts.finalStock) > 0.1) {
-            console.log('[AnchoredFlowStockChartBuilder] Correggo stock ultimo punto:', {
+        const difference = opts.finalStock - lastPoint.stock;
+        
+        if (Math.abs(difference) > 0.1) {
+            console.log('[AnchoredFlowStockChartBuilder] Stock finale non corrisponde, ricalcolo tutti i punti:', {
                 calculated: lastPoint.stock,
                 correct: opts.finalStock,
-                difference: lastPoint.stock - opts.finalStock
+                difference: difference,
+                openingStock: opts.openingStock
             });
-            lastPoint.stock = opts.finalStock;
+            
+            // Ricalcola openingStock per garantire coerenza
+            // Se finalStock = openingStock + totalDelta, allora:
+            // openingStock = finalStock - totalDelta
+            // Ma totalDelta = sum(inflow - outflow) per tutti i bucket
+            let totalDelta = 0;
+            for (const p of pointsAbs) {
+                totalDelta += p.inflow - p.outflow;
+            }
+            
+            const correctedOpeningStock = opts.finalStock - totalDelta;
+            console.log('[AnchoredFlowStockChartBuilder] Ricalcolo con openingStock corretto:', {
+                oldOpeningStock: opts.openingStock,
+                newOpeningStock: correctedOpeningStock,
+                totalDelta: totalDelta,
+                verification: correctedOpeningStock + totalDelta
+            });
+            
+            // Ricalcola tutti i punti con il nuovo openingStock
+            let stock = correctedOpeningStock;
+            for (let i = 0; i < pointsAbs.length; i++) {
+                const point = pointsAbs[i];
+                stock = stock + point.inflow - point.outflow;
+                point.stock = stock;
+            }
         }
     }
+    
+    const anchorStock = opts.finalStock !== undefined ? opts.finalStock : calculatedFinalStock; // Stock di oggi (per riferimento)
     
     // Calcola media stock nel periodo
     const mediaStock = pointsAbs.length > 0

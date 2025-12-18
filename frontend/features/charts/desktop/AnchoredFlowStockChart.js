@@ -711,8 +711,29 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         totalDelta,
         openingStock,
         movementsCount: movements.length,
-        expectedFinalStock: openingStock + totalDelta
+        expectedFinalStock: openingStock + totalDelta,
+        verification: `Se openingStock (${openingStock}) + totalDelta (${totalDelta}) = ${openingStock + totalDelta}, dovrebbe essere = stockFinale (${stockFinale})`
     });
+    
+    // Verifica che openingStock + totalDelta = stockFinale
+    const calculatedFinalFromOpening = openingStock + totalDelta;
+    if (Math.abs(calculatedFinalFromOpening - stockFinale) > 0.1) {
+        console.warn('[AnchoredFlowStockChart] DISALLINEAMENTO: openingStock + totalDelta != stockFinale', {
+            openingStock,
+            totalDelta,
+            calculatedFinal: calculatedFinalFromOpening,
+            expectedFinal: stockFinale,
+            difference: calculatedFinalFromOpening - stockFinale
+        });
+        // Se c'è disallineamento, ricalcola openingStock per garantire coerenza
+        const correctedOpeningStock = stockFinale - totalDelta;
+        console.warn('[AnchoredFlowStockChart] Correggo openingStock:', {
+            old: openingStock,
+            new: correctedOpeningStock,
+            verification: correctedOpeningStock + totalDelta
+        });
+        openingStock = correctedOpeningStock;
+    }
 
     // Build chart data
     console.log('[AnchoredFlowStockChart] Building chart data con movements:', movements.length);
