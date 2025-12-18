@@ -976,7 +976,7 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
 
 /**
  * Setup bottoni circolari grigi per wine cards su mobile
- * Sostituisce i bookmarks desktop con bottoni circolari grigi
+ * I bottoni sono parte integrante della wine card (non segnalibri esterni)
  */
 function setupWineCardButtonsMobile(messageEl) {
     // Cerca la card vino dentro il messaggio
@@ -991,17 +991,7 @@ function setupWineCardButtonsMobile(messageEl) {
         return; // Già configurato
     }
     
-    // Crea wrapper se non esiste (come desktop)
-    let wrapper = wineCard.parentElement;
-    if (!wrapper || !wrapper.classList.contains('wine-card-wrapper')) {
-        wrapper = document.createElement('div');
-        wrapper.className = 'wine-card-wrapper';
-        const parent = wineCard.parentElement;
-        parent.insertBefore(wrapper, wineCard);
-        wrapper.appendChild(wineCard);
-    }
-    
-    // Crea container bottoni mobile
+    // Crea container bottoni mobile DENTRO la wine card
     const buttonsContainer = document.createElement('div');
     buttonsContainer.className = 'wine-card-buttons-mobile';
     
@@ -1045,8 +1035,8 @@ function setupWineCardButtonsMobile(messageEl) {
     buttonsContainer.appendChild(editButton);
     buttonsContainer.appendChild(inventoryButton);
     
-    // Aggiungi container bottoni al wrapper
-    wrapper.appendChild(buttonsContainer);
+    // Aggiungi container bottoni DENTRO la wine card (non nel wrapper)
+    wineCard.appendChild(buttonsContainer);
 }
 
 /**
