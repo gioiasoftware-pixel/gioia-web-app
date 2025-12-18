@@ -176,6 +176,11 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            // Assicura che il grafico si ridimensioni correttamente
+            resizeDelay: 0,
+            animation: {
+                duration: 0, // Disabilita animazione iniziale per debug
+            },
             interaction: {
                 mode: 'index',
                 intersect: false,
@@ -312,12 +317,37 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
 
     // Crea grafico
     console.log('[AnchoredFlowStockChart] Creando istanza Chart.js');
+    console.log('[AnchoredFlowStockChart] Canvas prima di Chart.js:', {
+        width: canvas.width,
+        height: canvas.height,
+        clientWidth: canvas.clientWidth,
+        clientHeight: canvas.clientHeight,
+        offsetWidth: canvas.offsetWidth,
+        offsetHeight: canvas.offsetHeight
+    });
+    
     try {
         const chart = new Chart(canvas, chartConfig);
         console.log('[AnchoredFlowStockChart] Chart.js istanza creata:', !!chart);
+        
+        // Verifica che il grafico sia stato disegnato
+        setTimeout(() => {
+            console.log('[AnchoredFlowStockChart] Canvas dopo Chart.js:', {
+                width: canvas.width,
+                height: canvas.height,
+                clientWidth: canvas.clientWidth,
+                clientHeight: canvas.clientHeight
+            });
+            console.log('[AnchoredFlowStockChart] Chart data:', {
+                dataLength: chart.data.labels.length,
+                datasetsCount: chart.data.datasets.length
+            });
+        }, 100);
+        
         return chart;
     } catch (error) {
         console.error('[AnchoredFlowStockChart] Errore creazione Chart.js:', error);
+        console.error('[AnchoredFlowStockChart] Stack:', error.stack);
         throw error;
     }
 }
@@ -352,6 +382,18 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         return null;
     }
     console.log('[AnchoredFlowStockChart] Builder disponibile, procedo');
+    
+    // Verifica dimensioni container
+    const containerRect = container.getBoundingClientRect();
+    console.log('[AnchoredFlowStockChart] Container dimensions:', { 
+        width: containerRect.width, 
+        height: containerRect.height,
+        computed: {
+            width: window.getComputedStyle(container).width,
+            height: window.getComputedStyle(container).height
+        }
+    });
+    
     // Pulisci container
     container.innerHTML = '<canvas></canvas>';
     const canvas = container.querySelector('canvas');
@@ -359,6 +401,23 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     if (!canvas) {
         console.error('[AnchoredFlowStockChart] Canvas non trovato');
         return null;
+    }
+    
+    // Assicura che il canvas abbia dimensioni
+    const containerStyle = window.getComputedStyle(container);
+    const containerHeight = containerStyle.height || containerRect.height || 400;
+    const containerWidth = containerStyle.width || containerRect.width || 800;
+    
+    console.log('[AnchoredFlowStockChart] Canvas dimensions:', { 
+        width: containerWidth, 
+        height: containerHeight 
+    });
+    
+    // Imposta dimensioni esplicite sul canvas se necessario
+    if (!canvas.width || !canvas.height) {
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        console.log('[AnchoredFlowStockChart] Canvas style impostato');
     }
 
     // Converti movimenti API in formato WineMovement
@@ -369,10 +428,35 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
             : (mov.quantity_change || 0),
     }));
 
-    // Calcola opening stock (stock iniziale = stock attuale - delta cumulativo)
+    // Calcola opening stock
+    // Se abbiamo current_stock dall'API, usalo come stock finale
+    // Altrimenti calcoliamo: openingStock = currentStock - totalDelta
     const totalDelta = movements.reduce((sum, m) => sum + m.delta, 0);
     const currentStock = movementsData.current_stock || movementsData.opening_stock || 0;
-    const openingStock = currentStock - totalDelta;
+    
+    // Se abbiamo current_stock, l'opening stock è quello all'inizio del periodo
+    // openingStock = currentStock - totalDelta (se totalDelta è positivo, significa che abbiamo aggiunto stock)
+    let openingStock = currentStock - totalDelta;
+    
+    // Se openingStock è negativo o zero, potrebbe essere un errore nei dati
+    // In questo caso, usa lo stock più basso tra i movimenti o un valore di default
+    if (openingStock < 0 && movements.length > 0) {
+        console.warn('[AnchoredFlowStockChart] Opening stock negativo, correggo:', openingStock);
+        // Trova lo stock minimo dai movimenti (se disponibile)
+        const minStockFromMovements = Math.min(...movements.map(m => {
+            // Se i movimenti hanno quantity_after, usa quello
+            return m.quantity_after || currentStock;
+        }).filter(s => s > 0));
+        openingStock = Math.max(1, minStockFromMovements || currentStock || 1);
+        console.warn('[AnchoredFlowStockChart] Opening stock corretto a:', openingStock);
+    }
+    
+    console.log('[AnchoredFlowStockChart] Opening stock calcolato:', {
+        currentStock,
+        totalDelta,
+        openingStock,
+        movementsCount: movements.length
+    });
 
     // Build chart data
     console.log('[AnchoredFlowStockChart] Building chart data con movements:', movements.length);
@@ -380,11 +464,16 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         now: options.now || new Date(),
         preset: options.preset || 'week',
         granularity: options.granularity,
-        openingStock: openingStock,
+        openingStock: Math.max(0, openingStock), // Assicura non negativo
         paddingMultiplier: options.paddingMultiplier,
         minAbsDomain: options.minAbsDomain,
     });
-    console.log('[AnchoredFlowStockChart] Chart data built:', chartData);
+    console.log('[AnchoredFlowStockChart] Chart data built:', {
+        ...chartData,
+        pointsCount: chartData.points.length,
+        anchorStock: chartData.anchorStock,
+        yDomain: chartData.yDomain
+    });
 
     // Render
     console.log('[AnchoredFlowStockChart] Rendering chart');

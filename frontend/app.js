@@ -3781,23 +3781,55 @@ function loadAndRenderMovementsChart(wineName, preset) {
         
         if (isDesktop && window.AnchoredFlowStockChart && window.AnchoredFlowStockChart.create) {
             console.log('[VIEWER] Usando nuovo componente desktop');
-            try {
-                currentMovementsChart = window.AnchoredFlowStockChart.create(chartContainer, data, {
-                    preset: preset,
-                    now: new Date(),
+            
+            // Assicura che il container sia visibile e abbia dimensioni prima di creare il grafico
+            const ensureContainerReady = () => {
+                const rect = chartContainer.getBoundingClientRect();
+                const hasDimensions = rect.width > 0 && rect.height > 0;
+                console.log('[VIEWER] Container ready check:', {
+                    width: rect.width,
+                    height: rect.height,
+                    hasDimensions,
+                    display: window.getComputedStyle(chartContainer).display,
+                    visibility: window.getComputedStyle(chartContainer).visibility
                 });
-                console.log('[VIEWER] Grafico creato:', !!currentMovementsChart);
-                if (!currentMovementsChart) {
-                    throw new Error('Grafico non creato (ritornato null)');
+                return hasDimensions;
+            };
+            
+            // Se il container non è pronto, aspetta un frame
+            if (!ensureContainerReady()) {
+                console.log('[VIEWER] Container non pronto, aspetto...');
+                requestAnimationFrame(() => {
+                    if (!ensureContainerReady()) {
+                        // Se ancora non è pronto, aspetta un po' di più
+                        setTimeout(() => createChart(), 100);
+                        return;
+                    }
+                    createChart();
+                });
+            } else {
+                createChart();
+            }
+            
+            function createChart() {
+                try {
+                    currentMovementsChart = window.AnchoredFlowStockChart.create(chartContainer, data, {
+                        preset: preset,
+                        now: new Date(),
+                    });
+                    console.log('[VIEWER] Grafico creato:', !!currentMovementsChart);
+                    if (!currentMovementsChart) {
+                        throw new Error('Grafico non creato (ritornato null)');
+                    }
+                } catch (error) {
+                    console.error('[VIEWER] Errore creazione grafico desktop:', error);
+                    console.error('[VIEWER] Stack trace:', error.stack);
+                    chartContainer.innerHTML = `<div class="error-state">Errore nel rendering del grafico: ${error.message}<br><small>Usando grafico legacy come fallback...</small></div>`;
+                    // Fallback al grafico legacy in caso di errore
+                    setTimeout(() => {
+                        renderLegacyMovementsChart(chartContainer, data);
+                    }, 1000);
                 }
-            } catch (error) {
-                console.error('[VIEWER] Errore creazione grafico desktop:', error);
-                console.error('[VIEWER] Stack trace:', error.stack);
-                chartContainer.innerHTML = `<div class="error-state">Errore nel rendering del grafico: ${error.message}<br><small>Usando grafico legacy come fallback...</small></div>`;
-                // Fallback al grafico legacy in caso di errore
-                setTimeout(() => {
-                    renderLegacyMovementsChart(chartContainer, data);
-                }, 1000);
             }
         } else {
             console.log('[VIEWER] Usando grafico legacy (fallback)');
