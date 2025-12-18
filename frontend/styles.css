@@ -71,9 +71,21 @@ html, body {
 }
 
 /* Blocca scroll quando sidebar è aperta (soluzione blindata) */
-html.no-scroll,
-body.no-scroll {
-    overflow: hidden;
+/* no-scroll solo su mobile per bloccare scroll body quando sidebar/modali sono aperti */
+@media (max-width: 768px) {
+    html.no-scroll,
+    body.no-scroll {
+        overflow: hidden;
+    }
+}
+
+/* Su desktop, no-scroll NON deve bloccare lo scroll (permette scroll chat) */
+@media (min-width: 769px) {
+    html.no-scroll,
+    body.no-scroll {
+        /* Non bloccare overflow su desktop - permette scroll chat */
+        overflow: visible;
+    }
 }
 
 button, a, input, textarea, select, label {
@@ -1700,6 +1712,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
    ============================================ */
 .chat-messages-container {
     flex: 1;
+    min-height: 0; /* CRITICO: permette al flex item di scrollare correttamente */
     display: flex;
     flex-direction: column;
     /* Container NON scrollabile - solo il wrapper interno scrolla */
@@ -1709,13 +1722,19 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 /* Wrapper interno che gestisce lo scroll */
 .chat-messages-scroll-wrapper {
     flex: 1;
+    min-height: 0; /* CRITICO: permette al flex item di scrollare correttamente */
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 24px;
     display: flex;
     flex-direction: column;
     gap: 16px;
     touch-action: pan-y; /* Permette scroll verticale su mobile */
     -webkit-overflow-scrolling: touch; /* Scroll fluido su iOS */
+    /* Assicura che l'elemento possa ricevere eventi wheel su desktop */
+    pointer-events: auto;
+    position: relative;
+    z-index: 1;
 }
 
 /* Welcome message dentro il wrapper scroll */
