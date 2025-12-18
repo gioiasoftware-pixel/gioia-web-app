@@ -217,14 +217,22 @@ function setupViewerClose() {
     const viewer = document.getElementById('viewerPanel');
     if (!viewer) return;
     
-    const closeBtn = viewer.querySelector('.viewer-close-btn');
+    // Prova sia con ID che con classe
+    let closeBtn = document.getElementById('viewer-close-btn-mobile');
+    if (!closeBtn) {
+        closeBtn = viewer.querySelector('.viewer-close-btn');
+    }
+    
     if (!closeBtn) return;
     
-    // Rimuovi listener esistenti
+    // Rimuovi listener esistenti clonando il bottone
     const newCloseBtn = closeBtn.cloneNode(true);
     closeBtn.parentNode.replaceChild(newCloseBtn, closeBtn);
     
-    newCloseBtn.addEventListener('click', () => {
+    // Aggiungi listener
+    newCloseBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         closeViewer();
     });
 }
@@ -1349,48 +1357,15 @@ async function saveAddWineMobile(form) {
  * Apre il viewer inventario (mobile)
  */
 async function openInventoryViewerMobile() {
-    // Assicurati che il viewer mobile esista e abbia la struttura corretta PRIMA di aprirlo
     const viewerMobile = document.getElementById('viewerPanel');
     if (!viewerMobile) {
         return;
     }
     
-    let mobileContent = viewerMobile.querySelector('.viewer-content');
-    
-    // Se non esiste, crea struttura base
-    if (!mobileContent || !mobileContent.innerHTML.trim()) {
-        viewerMobile.innerHTML = `
-            <div class="viewer-content">
-                <div class="viewer-header">
-                    <h2>Inventario</h2>
-                    <button class="viewer-close-btn" type="button">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="viewer-body">
-                    <div id="viewer-search-container" style="padding: 16px; border-bottom: 1px solid var(--color-border);">
-                        <input type="text" id="viewer-search-mobile" placeholder="Cerca nell'inventario..." style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 16px;">
-                    </div>
-                    <div id="viewer-table-container" style="overflow-y: auto; flex: 1;">
-                        <table id="viewer-table" style="width: 100%; border-collapse: collapse;">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>Annata</th>
-                                    <th>Quantità</th>
-                                    <th>Prezzo (€)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="viewer-table-body">
-                                <tr><td colspan="4" class="loading">Caricamento...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        `;
+    // Verifica che la struttura HTML esista (dovrebbe essere già presente in index.html)
+    const viewerContent = viewerMobile.querySelector('.viewer-content');
+    if (!viewerContent) {
+        return;
     }
     
     // Setup viewer close button PRIMA di aprire
@@ -1414,19 +1389,19 @@ async function loadViewerDataMobile() {
     const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
     
     if (!token || !apiBase) {
-        const tableBody = document.getElementById('viewer-table-body');
+        const tableBody = document.getElementById('viewer-table-body-mobile');
         if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: Configurazione non valida</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="4" class="viewer-error">Errore: Configurazione non valida</td></tr>';
         }
         return;
     }
     
-    const tableBody = document.getElementById('viewer-table-body');
+    const tableBody = document.getElementById('viewer-table-body-mobile');
     if (!tableBody) {
         return;
     }
     
-    tableBody.innerHTML = '<tr><td colspan="4" class="loading">Caricamento...</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="4" class="viewer-loading">Caricamento...</td></tr>';
     
     try {
         // Usa endpoint viewer snapshot
@@ -1444,12 +1419,11 @@ async function loadViewerDataMobile() {
         
         const data = await response.json();
         
-        // Debug: log struttura dati
+        // Renderizza tabella se ci sono dati
         if (data && data.rows) {
-            // Renderizza tabella
             renderViewerTableMobile(data.rows);
         } else {
-            tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Nessun dato disponibile</td></tr>';
+            tableBody.innerHTML = '<tr><td colspan="4" class="viewer-empty">Nessun dato disponibile</td></tr>';
         }
         
         // Salva dati globalmente per filtri/ricerca (se necessario)
@@ -1458,7 +1432,7 @@ async function loadViewerDataMobile() {
         }
         
     } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="4" class="viewer-error">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
     }
 }
 
@@ -1466,13 +1440,13 @@ async function loadViewerDataMobile() {
  * Renderizza tabella inventario nel viewer mobile
  */
 function renderViewerTableMobile(rows) {
-    const tableBody = document.getElementById('viewer-table-body');
+    const tableBody = document.getElementById('viewer-table-body-mobile');
     if (!tableBody) {
         return;
     }
     
     if (!rows || rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Nessun vino trovato</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="4" class="viewer-empty">Nessun vino trovato</td></tr>';
         return;
     }
     
