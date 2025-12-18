@@ -513,8 +513,8 @@
     height: 40px !important;
     border-radius: 50% !important;
     background-color: var(--color-light-gray) !important;
-    color: var(--color-text-primary) !important;
-    border: none !important;
+    color: var(--color-granaccia) !important;
+    border: 2px solid var(--color-granaccia) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -527,19 +527,26 @@
 
 .mobileRoot .wine-card-button-mobile:hover,
 .mobileRoot .wine-card-button-mobile:active {
-    background-color: var(--color-border) !important;
+    background-color: var(--color-granaccia) !important;
+    color: var(--color-white) !important;
     transform: scale(1.05) !important;
-    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+    box-shadow: 0 3px 6px rgba(154, 24, 46, 0.3) !important;
 }
 
 .mobileRoot .wine-card-button-mobile svg {
     width: 18px !important;
     height: 18px !important;
-    stroke: currentColor !important;
+    stroke: var(--color-granaccia) !important;
+    fill: none !important;
+}
+
+.mobileRoot .wine-card-button-mobile:hover svg,
+.mobileRoot .wine-card-button-mobile:active svg {
+    stroke: var(--color-white) !important;
 }
 
 .mobileRoot .wine-card-button-mobile:active {
-    transform: scale(0.95) translateY(-50%) !important;
+    transform: scale(0.95) !important;
 }
 
 /* Nascondi bookmarks desktop su mobile */
