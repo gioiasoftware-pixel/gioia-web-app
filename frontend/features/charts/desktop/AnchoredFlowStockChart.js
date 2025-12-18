@@ -103,6 +103,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
 
     // 1. Outflow area (consumi) - parte dalla linea stock e va verso il basso (a testa in giù)
     // Deve essere PRIMA della stock line nell'array, così fill: '+1' riempie verso la stock line successiva
+    // IMPORTANTE: order deve essere più basso della stock line per essere renderizzata sotto
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
         datasets.push({
             label: 'Consumi',
@@ -112,7 +113,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             backgroundColor: colors.outflow + '40',
             fill: '+1', // riempi verso il dataset successivo nell'array (stock line)
             pointRadius: 0,
-            order: 3, // order controlla solo l'ordine di rendering visivo, non il fill
+            order: 0, // renderizzata per prima (sotto tutto) per non sovrapporsi alla stock line
             tension: 0.4,
         });
     }
@@ -151,7 +152,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
             backgroundColor: colors.inflow + '40',
             fill: '-1', // riempi verso il dataset precedente nell'array (stock line)
             pointRadius: 0,
-            order: 2, // order controlla solo l'ordine di rendering visivo, non il fill
+            order: 2, // renderizzata sopra la stock line
             tension: 0.4,
         });
     }
@@ -169,7 +170,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         pointRadius: 0,
         pointHoverRadius: 0, // nessun hover point
         fill: false,
-        order: 0, // renderizzata per prima visivamente, sotto tutto
+        order: -1, // renderizzata per prima visivamente, sotto tutto (anche sotto area consumi)
         tension: 0, // linea retta orizzontale
         // borderDash non impostato = linea continua (Chart.js si aspetta array o undefined, non false)
     });
