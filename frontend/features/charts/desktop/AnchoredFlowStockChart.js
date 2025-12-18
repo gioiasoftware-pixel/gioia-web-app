@@ -171,7 +171,7 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
         fill: false,
         order: 0, // renderizzata per prima visivamente, sotto tutto
         tension: 0, // linea retta orizzontale
-        borderDash: false, // linea continua
+        // borderDash non impostato = linea continua (Chart.js si aspetta array o undefined, non false)
     });
 
     // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
