@@ -4123,14 +4123,12 @@ function toggleSidebar() {
             // Chiudi sidebar
             sidebar.classList.remove('is-open');
             overlay.classList.remove('is-open');
-            document.documentElement.classList.remove('no-scroll');
             console.log('[SIDEBAR] CLOSE');
             debugLog('Sidebar chiusa (is-open rimosso)', 'info', 'SIDEBAR');
         } else {
             // Apri sidebar
             sidebar.classList.add('is-open');
             overlay.classList.add('is-open');
-            document.documentElement.classList.add('no-scroll');
             
             // Debug dettagliato posizione e stili
             const computedStyle = window.getComputedStyle(sidebar);
@@ -4234,7 +4232,6 @@ function loadSidebarState() {
         if (sidebarMobile) {
             // Rimuovi is-open se presente (chiudi sidebar)
             sidebarMobile.classList.remove('is-open');
-            document.documentElement.classList.remove('no-scroll');
             console.log('[SIDEBAR] Sidebar chiusa di default (is-open rimosso)');
             debugLog('loadSidebarState MOBILE: Sidebar chiusa di default (is-open rimosso)', 'info', 'SIDEBAR');
         }

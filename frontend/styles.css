@@ -70,24 +70,6 @@ html, body {
     touch-action: pan-y pinch-zoom; /* Permette scroll verticale e zoom, blocca gesture orizzontali */
 }
 
-/* Blocca scroll quando sidebar è aperta (soluzione blindata) */
-/* no-scroll solo su mobile per bloccare scroll body quando sidebar/modali sono aperti */
-@media (max-width: 768px) {
-    html.no-scroll,
-    body.no-scroll {
-        overflow: hidden;
-    }
-}
-
-/* Su desktop, no-scroll NON deve bloccare lo scroll (permette scroll chat) */
-@media (min-width: 769px) {
-    html.no-scroll,
-    body.no-scroll {
-        /* Non bloccare overflow su desktop - permette scroll chat */
-        overflow: visible;
-    }
-}
-
 button, a, input, textarea, select, label {
     touch-action: manipulation; /* Previene double-tap zoom, migliora responsività */
     -webkit-tap-highlight-color: rgba(154, 24, 46, 0.1); /* Highlight discreto */
