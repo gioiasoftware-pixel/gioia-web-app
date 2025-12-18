@@ -434,6 +434,15 @@
                 <h2 id="viewer-movements-modal-wine-name">Movimenti Vino</h2>
                 <button type="button" class="viewer-movements-modal-close" id="viewer-movements-modal-close">&times;</button>
             </div>
+            <div class="viewer-movements-modal-controls" id="viewer-movements-modal-controls">
+                <div class="viewer-movements-period-presets">
+                    <button type="button" class="period-preset-btn active" data-preset="day" title="Ultime 24 ore">Giorno</button>
+                    <button type="button" class="period-preset-btn" data-preset="week" title="Ultimi 7 giorni">Settimana</button>
+                    <button type="button" class="period-preset-btn" data-preset="month" title="Ultimi 30 giorni">Mese</button>
+                    <button type="button" class="period-preset-btn" data-preset="quarter" title="Ultimi 90 giorni">Trimestre</button>
+                    <button type="button" class="period-preset-btn" data-preset="year" title="Ultimi 365 giorni">Anno</button>
+                </div>
+            </div>
             <div class="viewer-movements-modal-body">
                 <div id="viewer-movements-chart-container">
                     <canvas id="viewer-movements-chart"></canvas>
@@ -449,6 +458,9 @@
     </script>
     <!-- LayoutBoundary: isolamento HARD mobile/desktop -->
     <script src="/static/layout/LayoutBoundary/LayoutBoundary.js"></script>
+    <!-- Chart components -->
+    <script src="/static/features/charts/shared/anchoredFlowStockChartBuilder.js"></script>
+    <script src="/static/features/charts/desktop/AnchoredFlowStockChart.js"></script>
     <!-- Chat API e Selectors (shared) -->
     <script src="/static/features/chat/shared/chatAPI.js"></script>
     <script src="/static/features/chat/shared/chatSelectors.js"></script>

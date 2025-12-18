@@ -3658,6 +3658,11 @@ function handleViewerDownloadCSV() {
     });
 }
 
+// Stato per grafico movimenti
+let currentMovementsChart = null;
+let currentMovementsWineName = null;
+let currentMovementsPreset = 'week';
+
 function showMovementsChart(wineName) {
     if (!authToken) {
         alert('Token non valido');
@@ -3667,6 +3672,7 @@ function showMovementsChart(wineName) {
     const modal = document.getElementById('viewer-movements-modal');
     const modalTitle = document.getElementById('viewer-movements-modal-wine-name');
     const chartContainer = document.getElementById('viewer-movements-chart-container');
+    const controlsContainer = document.getElementById('viewer-movements-modal-controls');
     
     if (!modal || !modalTitle || !chartContainer) {
         console.error('[VIEWER] Elementi modal non trovati:', { modal: !!modal, modalTitle: !!modalTitle, chartContainer: !!chartContainer });
@@ -3684,10 +3690,63 @@ function showMovementsChart(wineName) {
     }
     console.log('[VIEWER] Modal display dopo modifica:', window.getComputedStyle(modal).display);
     
+    // Salva nome vino corrente
+    currentMovementsWineName = wineName;
+    
+    // Setup controlli periodo (solo su desktop)
+    const isDesktop = !isMobileView();
+    if (isDesktop && controlsContainer) {
+        setupPeriodPresets(controlsContainer, wineName);
+    } else if (controlsContainer) {
+        controlsContainer.style.display = 'none';
+    }
+    
+    // Carica e mostra grafico
+    loadAndRenderMovementsChart(wineName, currentMovementsPreset);
+}
+
+function setupPeriodPresets(container, wineName) {
+    container.style.display = 'block';
+    
+    // Rimuovi listener precedenti
+    const oldButtons = container.querySelectorAll('.period-preset-btn');
+    oldButtons.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+    });
+    
+    // Aggiungi listener ai nuovi bottoni
+    const buttons = container.querySelectorAll('.period-preset-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const preset = btn.dataset.preset;
+            currentMovementsPreset = preset;
+            
+            // Aggiorna stato attivo
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            // Ricarica grafico
+            if (currentMovementsWineName) {
+                loadAndRenderMovementsChart(currentMovementsWineName, preset);
+            }
+        });
+        
+        // Imposta attivo se corrisponde al preset corrente
+        if (btn.dataset.preset === currentMovementsPreset) {
+            btn.classList.add('active');
+        }
+    });
+}
+
+function loadAndRenderMovementsChart(wineName, preset) {
+    const chartContainer = document.getElementById('viewer-movements-chart-container');
+    if (!chartContainer) return;
+    
     // Mostra loading
     chartContainer.innerHTML = '<div class="loading">Caricamento movimenti...</div>';
     
-    // Fetch movimenti (endpoint da implementare nel backend)
+    // Fetch movimenti
     fetch(`${API_BASE_URL}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`, {
         headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -3700,229 +3759,241 @@ function showMovementsChart(wineName) {
         return response.json();
     })
     .then(data => {
-        const movements = data.movements || [];
+        // Distruggi grafico precedente
+        if (currentMovementsChart) {
+            currentMovementsChart.destroy();
+            currentMovementsChart = null;
+        }
         
-        if (movements.length === 0) {
-            // Mostra grafico vuoto
-            chartContainer.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
-            const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
-            
-            if (movementsChart) {
-                movementsChart.destroy();
-            }
-            
-            movementsChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: [],
-                    datasets: []
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: { display: false },
-                        title: {
-                            display: true,
-                            text: 'Nessun movimento registrato per questo vino',
-                            font: { size: 14, color: '#666' }
-                        }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
+        // Su desktop, usa nuovo componente ancorato
+        const isDesktop = !isMobileView();
+        if (isDesktop && window.AnchoredFlowStockChart && window.AnchoredFlowStockChart.create) {
+            // Usa nuovo componente desktop
+            currentMovementsChart = window.AnchoredFlowStockChart.create(chartContainer, data, {
+                preset: preset,
+                now: new Date(),
             });
-            return;
+        } else {
+            // Fallback: usa vecchio grafico (mobile o se componente non disponibile)
+            renderLegacyMovementsChart(chartContainer, data);
         }
-        
-        // Prepara dati per grafico di flusso
-        // Stock al centro, consumi sotto (negativi), rifornimenti sopra (positivi)
-        const labels = [];
-        const consumiData = []; // Valori negativi
-        const rifornimentiData = []; // Valori positivi
-        const stockData = []; // Linea di stock al centro
-        
-        movements.forEach(mov => {
-            const date = new Date(mov.date);
-            labels.push(date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
-            
-            if (mov.type === 'consumo') {
-                // Consumi: valori negativi (sotto la linea di stock)
-                consumiData.push(-Math.abs(mov.quantity_change));
-                rifornimentiData.push(0);
-            } else {
-                // Rifornimenti: valori positivi (sopra la linea di stock)
-                consumiData.push(0);
-                rifornimentiData.push(Math.abs(mov.quantity_change));
-            }
-            
-            // Stock: quantità attuale (sarà la baseline al centro)
-            stockData.push(mov.quantity_after || 0);
-        });
-        
-        // Calcola il valore medio di stock per posizionare la baseline al centro
-        const avgStock = stockData.length > 0 
-            ? stockData.reduce((a, b) => a + b, 0) / stockData.length 
-            : 0;
-        
-        // Crea grafico
-        chartContainer.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
-        const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
-        
-        // Distruggi grafico precedente se esiste
-        if (movementsChart) {
-            movementsChart.destroy();
-        }
-        
-        movementsChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Consumi',
-                        data: consumiData,
-                        backgroundColor: '#9a182e', // Rosso granaccia
-                        borderColor: '#9a182e',
-                        borderWidth: 1,
-                        order: 2
-                    },
-                    {
-                        label: 'Rifornimenti',
-                        data: rifornimentiData,
-                        backgroundColor: '#ffb347', // Giallo aranciato
-                        borderColor: '#ffb347',
-                        borderWidth: 1,
-                        order: 2
-                    },
-                    {
-                        label: 'Stock',
-                        data: stockData.map(() => avgStock), // Linea costante al centro
-                        type: 'line',
-                        borderColor: '#333333',
-                        backgroundColor: 'transparent',
-                        borderWidth: 2,
-                        borderDash: [5, 5],
-                        pointRadius: 0,
-                        fill: false,
-                        order: 1,
-                        yAxisID: 'y1'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                },
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 15
-                        }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.datasetIndex === 0) {
-                                    // Consumi: mostra valore positivo
-                                    label += Math.abs(context.parsed.y) + ' bottiglie';
-                                } else if (context.datasetIndex === 1) {
-                                    // Rifornimenti
-                                    label += context.parsed.y + ' bottiglie';
-                                } else {
-                                    // Stock
-                                    label += context.parsed.y + ' bottiglie';
-                                }
-                                return label;
-                            }
-                        }
-                    },
-                    title: {
-                        display: false
-                    }
-                },
-                scales: {
-                    x: {
-                        stacked: false,
-                        title: {
-                            display: true,
-                            text: 'Data',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        }
-                    },
-                    y: {
-                        stacked: false,
-                        beginAtZero: false,
-                        title: {
-                            display: true,
-                            text: 'Movimenti (bottiglie)',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        },
-                        ticks: {
-                            callback: function(value) {
-                                return Math.abs(value) + '';
-                            }
-                        },
-                        grid: {
-                            color: function(context) {
-                                if (context.tick.value === 0) {
-                                    return '#333333'; // Linea più scura per lo zero
-                                }
-                                return '#e0e0e0';
-                            },
-                            lineWidth: function(context) {
-                                if (context.tick.value === 0) {
-                                    return 2; // Linea più spessa per lo zero
-                                }
-                                return 1;
-                            }
-                        }
-                    },
-                    y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                            display: true,
-                            text: 'Stock (bottiglie)',
-                            font: {
-                                size: 12,
-                                weight: 'bold'
-                            }
-                        },
-                        grid: {
-                            drawOnChartArea: false
-                        },
-                        ticks: {
-                            display: true
-                        }
-                    }
-                }
-            }
-        });
-        
     })
     .catch(error => {
         console.error('[VIEWER] Errore caricamento movimenti:', error);
         chartContainer.innerHTML = `<div class="error-state">Errore nel caricamento dei movimenti: ${error.message}</div>`;
     });
+}
+
+function renderLegacyMovementsChart(container, data) {
+    const movements = data.movements || [];
+    
+    if (movements.length === 0) {
+        container.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
+        const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
+        
+        if (movementsChart) {
+            movementsChart.destroy();
+        }
+        
+        movementsChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: []
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'Nessun movimento registrato per questo vino',
+                        font: { size: 14, color: '#666' }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+        currentMovementsChart = movementsChart;
+        return;
+    }
+    
+    // Prepara dati per grafico di flusso legacy (mobile)
+    const labels = [];
+    const consumiData = [];
+    const rifornimentiData = [];
+    const stockData = [];
+    
+    movements.forEach(mov => {
+        const date = new Date(mov.date);
+        labels.push(date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' }));
+        
+        if (mov.type === 'consumo') {
+            consumiData.push(-Math.abs(mov.quantity_change));
+            rifornimentiData.push(0);
+        } else {
+            consumiData.push(0);
+            rifornimentiData.push(Math.abs(mov.quantity_change));
+        }
+        
+        stockData.push(mov.quantity_after || 0);
+    });
+    
+    const avgStock = stockData.length > 0 
+        ? stockData.reduce((a, b) => a + b, 0) / stockData.length 
+        : 0;
+    
+    container.innerHTML = '<canvas id="viewer-movements-chart"></canvas>';
+    const ctx = document.getElementById('viewer-movements-chart').getContext('2d');
+    
+    if (movementsChart) {
+        movementsChart.destroy();
+    }
+    
+    movementsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Consumi',
+                    data: consumiData,
+                    backgroundColor: '#9a182e',
+                    borderColor: '#9a182e',
+                    borderWidth: 1,
+                    order: 2
+                },
+                {
+                    label: 'Rifornimenti',
+                    data: rifornimentiData,
+                    backgroundColor: '#ffb347',
+                    borderColor: '#ffb347',
+                    borderWidth: 1,
+                    order: 2
+                },
+                {
+                    label: 'Stock',
+                    data: stockData.map(() => avgStock),
+                    type: 'line',
+                    borderColor: '#333333',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 1,
+                    yAxisID: 'y1'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.datasetIndex === 0) {
+                                label += Math.abs(context.parsed.y) + ' bottiglie';
+                            } else if (context.datasetIndex === 1) {
+                                label += context.parsed.y + ' bottiglie';
+                            } else {
+                                label += context.parsed.y + ' bottiglie';
+                            }
+                            return label;
+                        }
+                    }
+                },
+                title: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    stacked: false,
+                    title: {
+                        display: true,
+                        text: 'Data',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    }
+                },
+                y: {
+                    stacked: false,
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Movimenti (bottiglie)',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return Math.abs(value) + '';
+                        }
+                    },
+                    grid: {
+                        color: function(context) {
+                            if (context.tick.value === 0) {
+                                return '#333333';
+                            }
+                            return '#e0e0e0';
+                        },
+                        lineWidth: function(context) {
+                            if (context.tick.value === 0) {
+                                return 2;
+                            }
+                            return 1;
+                        }
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Stock (bottiglie)',
+                        font: {
+                            size: 12,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        display: true
+                    }
+                }
+            }
+        }
+    });
+    
+    currentMovementsChart = movementsChart;
 }
 
 function closeMovementsModal() {

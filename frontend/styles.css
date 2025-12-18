@@ -2253,6 +2253,41 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         color: var(--color-text-primary);
     }
 
+    .viewer-movements-modal-controls {
+        padding: 16px 32px;
+        border-bottom: 1px solid var(--color-border);
+        background-color: var(--color-light-gray, #f5f5f5);
+    }
+
+    .viewer-movements-period-presets {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .period-preset-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-white);
+        color: var(--color-text-primary);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .period-preset-btn:hover {
+        background-color: var(--color-light-gray, #f5f5f5);
+        border-color: var(--color-granaccia, #9a182e);
+    }
+
+    .period-preset-btn.active {
+        background-color: var(--color-granaccia, #9a182e);
+        color: var(--color-white);
+        border-color: var(--color-granaccia, #9a182e);
+    }
+
     .viewer-movements-modal-body {
         padding: 32px;
         overflow-y: auto;
@@ -4366,6 +4401,41 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 
     .viewer-movements-modal-close:hover {
         color: var(--color-text-primary);
+    }
+
+    .viewer-movements-modal-controls {
+        padding: 16px 32px;
+        border-bottom: 1px solid var(--color-border);
+        background-color: var(--color-light-gray, #f5f5f5);
+    }
+
+    .viewer-movements-period-presets {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .period-preset-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-white);
+        color: var(--color-text-primary);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .period-preset-btn:hover {
+        background-color: var(--color-light-gray, #f5f5f5);
+        border-color: var(--color-granaccia, #9a182e);
+    }
+
+    .period-preset-btn.active {
+        background-color: var(--color-granaccia, #9a182e);
+        color: var(--color-white);
+        border-color: var(--color-granaccia, #9a182e);
     }
 
     .viewer-movements-modal-body {

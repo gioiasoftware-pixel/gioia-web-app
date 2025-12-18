@@ -1,0 +1,363 @@
+/**
+ * AnchoredFlowStockChart - Componente grafico Flow+Stock per desktop
+ * 
+ * Rendering del grafico ancorato a stock di oggi usando Chart.js
+ * Gestisce:
+ * - Serie stock (linea)
+ * - Serie inflow (area sopra baseline)
+ * - Serie outflow (area sotto baseline)
+ * - POI (punti di interesse)
+ * - Preset periodo (day/week/month/quarter/year)
+ * - Caso vino non venduto (linea piatta, nessuna area)
+ */
+
+/**
+ * Crea e renderizza il grafico Flow+Stock ancorato
+ * @param {HTMLCanvasElement} canvas - elemento canvas
+ * @param {Object} chartData - dati del grafico da buildAnchoredFlowStockChart
+ * @param {Object} options - opzioni di rendering
+ * @returns {Chart} istanza Chart.js
+ */
+function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
+    const buildAnchoredFlowStockChart = window.AnchoredFlowStockChartBuilder?.build;
+    if (!buildAnchoredFlowStockChart) {
+        console.error('[AnchoredFlowStockChart] Builder non disponibile');
+        return null;
+    }
+    const {
+        points,
+        yDomain,
+        yTickFormatter,
+        tooltipForIndex,
+        hasNoMovement,
+        anchorStock,
+    } = chartData;
+
+    // Colori brand (da tokens CSS o fallback)
+    const colors = {
+        inflow: options.inflowColor || '#87AE73', // Verde salvia per rifornimenti
+        outflow: options.outflowColor || '#9a182e', // Granaccia (colore logo) per consumi
+        stock: options.stockColor || '#333333', // Grigio scuro
+        baseline: options.baselineColor || '#666666', // Grigio medio
+        poi: options.poiColor || '#000000', // Nero
+    };
+
+    // Labels per asse X (formato data)
+    const labels = points.map(p => {
+        if (chartData.granularity === 'hour') {
+            return p.t.toLocaleString('it-IT', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        return p.t.toLocaleDateString('it-IT', { 
+            day: '2-digit', 
+            month: '2-digit',
+            year: chartData.range.to.getTime() - chartData.range.from.getTime() > 90 * 24 * 60 * 60 * 1000 
+                ? 'numeric' 
+                : undefined
+        });
+    });
+
+    // Dataset per stock line (baseline = 0 normalizzato)
+    const stockLineData = points.map(p => p.stockNorm);
+
+    // Dataset per aree: 
+    // - Inflow: da stockNorm (y0) a stockNorm + inflow (y1) - sopra baseline
+    // - Outflow: da stockNorm - outflow (y0) a stockNorm (y1) - sotto baseline
+    // Per Chart.js, usiamo fill verso lo zero (baseline normalizzata = 0)
+    const inflowAreaData = points.map(p => p.inflow_y1); // top dell'area inflow
+    const outflowAreaData = points.map(p => p.outflow_y0); // bottom dell'area outflow
+
+    // POI markers (solo dove c'è movimento)
+    const poiInData = points.map(p => p.hasInflow ? p.poiInY : null);
+    const poiOutData = points.map(p => p.hasOutflow ? p.poiOutY : null);
+
+    // Se non ci sono movimenti, enfatizza la linea stock
+    const stockLineWidth = hasNoMovement ? 3 : 2;
+    const stockLineStyle = hasNoMovement ? 'solid' : [5, 5]; // dashed se c'è movimento
+
+    const datasets = [];
+
+    // 1. Outflow area (sotto baseline, valori negativi) - renderizzata per prima
+    // Riempiamo verso lo zero (baseline normalizzata = 0)
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: 'Consumi',
+            data: outflowAreaData, // valori negativi (sotto baseline)
+            type: 'line',
+            borderColor: colors.outflow + '80',
+            backgroundColor: colors.outflow + '40',
+            fill: 'origin', // riempi verso y=0 (baseline normalizzata)
+            pointRadius: 0,
+            order: 3,
+            tension: 0.4,
+        });
+    }
+
+    // 2. Inflow area (sopra baseline, valori positivi)
+    if (!hasNoMovement || options.showAreasWhenNoMovement) {
+        datasets.push({
+            label: 'Rifornimenti',
+            data: inflowAreaData, // valori positivi (sopra baseline)
+            type: 'line',
+            borderColor: colors.inflow + '80',
+            backgroundColor: colors.inflow + '40',
+            fill: 'origin', // riempi verso y=0 (baseline normalizzata)
+            pointRadius: 0,
+            order: 2,
+            tension: 0.4,
+        });
+    }
+
+    // 3. Stock line (sempre visibile, enfatizzata se no movement)
+    datasets.push({
+        label: 'Stock',
+        data: stockLineData,
+        type: 'line',
+        borderColor: colors.stock,
+        backgroundColor: 'transparent',
+        borderWidth: stockLineWidth,
+        borderDash: stockLineStyle,
+        pointRadius: 0,
+        order: 1,
+        tension: 0.4,
+    });
+
+    // 4. POI markers (solo se non no movement o se esplicitamente richiesti)
+    if (!hasNoMovement && options.showPOI !== false) {
+        if (poiInData.some(v => v !== null)) {
+            datasets.push({
+                label: '_poi_inflow',
+                data: poiInData,
+                type: 'scatter',
+                borderColor: colors.poi,
+                backgroundColor: colors.poi,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                showLine: false,
+                order: 4,
+            });
+        }
+
+        if (poiOutData.some(v => v !== null)) {
+            datasets.push({
+                label: '_poi_outflow',
+                data: poiOutData,
+                type: 'scatter',
+                borderColor: colors.poi,
+                backgroundColor: colors.poi,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                showLine: false,
+                order: 4,
+            });
+        }
+    }
+
+    // Configurazione Chart.js
+    const chartConfig = {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: datasets,
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                legend: {
+                    display: !hasNoMovement,
+                    position: 'top',
+                    labels: {
+                        filter: (item) => !item.text.startsWith('_'), // nascondi dataset interni
+                        usePointStyle: true,
+                        padding: 15,
+                    },
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            const datasetLabel = context.dataset.label || '';
+                            if (datasetLabel.startsWith('_')) return null; // nascondi dataset interni
+
+                            const index = context.dataIndex;
+                            const tooltip = tooltipForIndex(index);
+                            if (!tooltip) return null;
+
+                            if (datasetLabel === 'Stock') {
+                                return `Stock: ${Math.round(tooltip.stock)} bottiglie (Oggi: ${tooltip.anchorStock})`;
+                            } else if (datasetLabel === 'Rifornimenti') {
+                                return `Rifornimenti: ${tooltip.inflow} bottiglie`;
+                            } else if (datasetLabel === 'Consumi') {
+                                return `Consumi: ${tooltip.outflow} bottiglie`;
+                            }
+                            return null;
+                        },
+                        title: function(context) {
+                            const index = context[0].dataIndex;
+                            const tooltip = tooltipForIndex(index);
+                            if (!tooltip) return '';
+                            return tooltip.at.toLocaleString('it-IT', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: chartData.granularity === 'hour' ? '2-digit' : undefined,
+                                minute: chartData.granularity === 'hour' ? '2-digit' : undefined,
+                            });
+                        },
+                    },
+                },
+                title: {
+                    display: hasNoMovement,
+                    text: hasNoMovement 
+                        ? `Nessun movimento negli ultimi ${getPeriodLabel(chartData.preset || 'week')}. Stock attuale: ${Math.round(anchorStock)} bottiglie.`
+                        : '',
+                    font: {
+                        size: 14,
+                        color: '#666',
+                    },
+                    padding: {
+                        top: 10,
+                        bottom: 10,
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tempo',
+                        font: {
+                            size: 12,
+                            weight: 'bold',
+                        },
+                    },
+                    grid: {
+                        display: true,
+                        color: '#e0e0e0',
+                    },
+                },
+                y: {
+                    min: yDomain[0],
+                    max: yDomain[1],
+                    title: {
+                        display: true,
+                        text: 'Stock (bottiglie)',
+                        font: {
+                            size: 12,
+                            weight: 'bold',
+                        },
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return yTickFormatter(value);
+                        },
+                    },
+                    grid: {
+                        color: function(context) {
+                            if (Math.abs(context.tick.value) < 0.01) {
+                                return colors.baseline; // Linea baseline più visibile
+                            }
+                            return '#e0e0e0';
+                        },
+                        lineWidth: function(context) {
+                            if (Math.abs(context.tick.value) < 0.01) {
+                                return 2; // Linea baseline più spessa
+                            }
+                            return 1;
+                        },
+                    },
+                },
+            },
+        },
+    };
+
+    // Crea grafico
+    const chart = new Chart(canvas, chartConfig);
+
+    // Aggiungi annotation per baseline (opzionale, se Chart.js annotation plugin disponibile)
+    if (window.Chart && window.Chart.helpers && typeof window.Chart.helpers.drawLine === 'function') {
+        // Baseline annotation manuale se necessario
+    }
+
+    return chart;
+}
+
+/**
+ * Helper per label periodo
+ */
+function getPeriodLabel(preset) {
+    const labels = {
+        day: '24 ore',
+        week: '7 giorni',
+        month: '30 giorni',
+        quarter: '90 giorni',
+        year: '365 giorni',
+    };
+    return labels[preset] || 'periodo';
+}
+
+/**
+ * Crea e mostra il grafico in un container
+ * @param {HTMLElement} container - container HTML
+ * @param {Object} movementsData - dati movimenti da API
+ * @param {Object} options - opzioni
+ * @returns {Chart} istanza Chart.js
+ */
+function createAnchoredFlowStockChart(container, movementsData, options = {}) {
+    const buildAnchoredFlowStockChart = window.AnchoredFlowStockChartBuilder?.build;
+    if (!buildAnchoredFlowStockChart) {
+        console.error('[AnchoredFlowStockChart] Builder non disponibile');
+        return null;
+    }
+    // Pulisci container
+    container.innerHTML = '<canvas></canvas>';
+    const canvas = container.querySelector('canvas');
+
+    if (!canvas) {
+        console.error('[AnchoredFlowStockChart] Canvas non trovato');
+        return null;
+    }
+
+    // Converti movimenti API in formato WineMovement
+    const movements = (movementsData.movements || []).map(mov => ({
+        at: mov.date || mov.at,
+        delta: mov.type === 'consumo' 
+            ? -(mov.quantity_change || 0)
+            : (mov.quantity_change || 0),
+    }));
+
+    // Calcola opening stock (stock iniziale = stock attuale - delta cumulativo)
+    const totalDelta = movements.reduce((sum, m) => sum + m.delta, 0);
+    const currentStock = movementsData.current_stock || movementsData.opening_stock || 0;
+    const openingStock = currentStock - totalDelta;
+
+    // Build chart data
+    const chartData = buildAnchoredFlowStockChart(movements, {
+        now: options.now || new Date(),
+        preset: options.preset || 'week',
+        granularity: options.granularity,
+        openingStock: openingStock,
+        paddingMultiplier: options.paddingMultiplier,
+        minAbsDomain: options.minAbsDomain,
+    });
+
+    // Render
+    return renderAnchoredFlowStockChart(canvas, chartData, options);
+}
+
+// Export per uso globale
+if (typeof window !== 'undefined') {
+    window.AnchoredFlowStockChart = {
+        create: createAnchoredFlowStockChart,
+        render: renderAnchoredFlowStockChart,
+    };
+}
