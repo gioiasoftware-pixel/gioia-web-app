@@ -361,6 +361,19 @@ function initChatMobile() {
         });
     }
     
+    // Setup nuovo chat button
+    const newChatBtn = document.getElementById('new-chat-btn-mobile');
+    if (newChatBtn) {
+        const newBtn = newChatBtn.cloneNode(true);
+        newChatBtn.parentNode.replaceChild(newBtn, newChatBtn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleNewChatMobile();
+        });
+    }
+    
     // Setup overlay
     setupSidebarOverlay();
     
@@ -369,6 +382,19 @@ function initChatMobile() {
     
     // Setup conversazioni click (auto-close sidebar)
     setupConversationsClick();
+    
+    // Carica conversazioni e conversazione corrente
+    loadConversationsMobile();
+    
+    // Carica conversazione corrente da localStorage se presente
+    const savedConversationId = localStorage.getItem('current_conversation_id');
+    if (savedConversationId) {
+        window.currentConversationId = parseInt(savedConversationId);
+        loadConversationMessagesMobile(window.currentConversationId);
+    } else {
+        // Mostra welcome message se nessuna conversazione salvata
+        showWelcomeMessageMobile();
+    }
 }
 
 /**
@@ -388,6 +414,343 @@ function setupConversationsClick() {
             }, 100); // Piccolo delay per permettere al click di propagarsi
         }
     });
+}
+
+// ============================================
+// CONVERSATIONS MANAGEMENT
+// ============================================
+
+let conversationsMobile = []; // Cache locale conversazioni mobile
+
+/**
+ * Helper: Escape HTML per sicurezza
+ */
+function escapeHtmlMobile(text) {
+    if (typeof text !== 'string') return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Helper: Formatta timestamp conversazione
+ */
+function formatConversationTimeMobile(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Adesso';
+    if (diffMins < 60) return `${diffMins}m fa`;
+    if (diffHours < 24) return `${diffHours}h fa`;
+    if (diffDays < 7) return `${diffDays}g fa`;
+    
+    return date.toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+}
+
+/**
+ * Carica le conversazioni dalla API
+ */
+async function loadConversationsMobile() {
+    if (!window.authToken) return;
+    
+    const sidebarList = document.getElementById('chat-sidebar-list-mobile');
+    if (!sidebarList) return;
+    
+    sidebarList.innerHTML = '<div class="chat-sidebar-loading">Caricamento chat...</div>';
+    
+    try {
+        // Usa ChatAPI se disponibile, altrimenti fallback a fetch diretto
+        if (window.ChatAPI?.loadConversations) {
+            conversationsMobile = await window.ChatAPI.loadConversations();
+        } else {
+            // Fallback: fetch diretto (come desktop)
+            const response = await fetch(`${window.API_BASE_URL || 'http://localhost:8000'}/api/chat/conversations`, {
+                headers: {
+                    'Authorization': `Bearer ${window.authToken}`,
+                },
+            });
+            
+            if (!response.ok) {
+                throw new Error('Errore caricamento conversazioni');
+            }
+            
+            conversationsMobile = await response.json();
+        }
+        
+        if (!conversationsMobile || !Array.isArray(conversationsMobile)) {
+            conversationsMobile = [];
+        }
+        
+        renderConversationsListMobile();
+    } catch (error) {
+        console.error('Errore caricamento conversazioni mobile:', error);
+        sidebarList.innerHTML = '<div class="chat-sidebar-error">Errore caricamento chat</div>';
+        conversationsMobile = [];
+    }
+}
+
+/**
+ * Renderizza la lista conversazioni nella sidebar mobile
+ */
+function renderConversationsListMobile() {
+    const sidebarList = document.getElementById('chat-sidebar-list-mobile');
+    if (!sidebarList) return;
+    
+    if (!conversationsMobile || conversationsMobile.length === 0) {
+        sidebarList.innerHTML = '<div class="chat-sidebar-empty">Nessuna chat ancora</div>';
+        return;
+    }
+    
+    // Usa currentConversationId globale se disponibile
+    const currentId = window.currentConversationId || null;
+    
+    sidebarList.innerHTML = conversationsMobile.map(conv => `
+        <div class="chat-sidebar-item ${conv.id === currentId ? 'active' : ''}" 
+             data-conversation-id="${conv.id}">
+            <div class="chat-sidebar-item-content">
+                <div class="chat-sidebar-item-title">${escapeHtmlMobile(conv.title || 'Nuova chat')}</div>
+                <div class="chat-sidebar-item-time-wrapper">
+                    <div class="chat-sidebar-item-time">${formatConversationTimeMobile(conv.last_message_at || conv.updated_at)}</div>
+                    <button class="chat-sidebar-item-delete" 
+                            data-conversation-id="${conv.id}"
+                            title="Cancella chat">
+                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                            <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+    
+    // Aggiungi event listeners per selezione conversazione
+    sidebarList.querySelectorAll('.chat-sidebar-item').forEach(item => {
+        item.addEventListener('pointerup', (e) => {
+            // Non selezionare se il click è sul pulsante di cancellazione
+            if (e.target.closest('.chat-sidebar-item-delete')) {
+                return;
+            }
+            const conversationId = parseInt(item.dataset.conversationId);
+            selectConversationMobile(conversationId);
+        });
+    });
+    
+    // Aggiungi event listeners per delete button
+    sidebarList.querySelectorAll('.chat-sidebar-item-delete').forEach(btn => {
+        btn.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            const conversationId = parseInt(btn.dataset.conversationId);
+            deleteConversationMobile(conversationId);
+        });
+    });
+}
+
+/**
+ * Seleziona una conversazione e carica i suoi messaggi
+ */
+async function selectConversationMobile(conversationId) {
+    if (conversationId === window.currentConversationId) return;
+    
+    window.currentConversationId = conversationId;
+    localStorage.setItem('current_conversation_id', conversationId.toString());
+    
+    // Aggiorna UI sidebar mobile
+    document.querySelectorAll('#chat-sidebar-list-mobile .chat-sidebar-item').forEach(item => {
+        item.classList.toggle('active', parseInt(item.dataset.conversationId) === conversationId);
+    });
+    
+    // Carica messaggi conversazione
+    await loadConversationMessagesMobile(conversationId);
+    
+    // Auto-chiudi sidebar dopo selezione
+    if (currentMobileState === MOBILE_STATES.SIDEBAR_OPEN) {
+        closeSidebar();
+    }
+}
+
+/**
+ * Carica i messaggi di una conversazione
+ */
+async function loadConversationMessagesMobile(conversationId) {
+    if (!window.authToken || !conversationId) return;
+    
+    // Pulisci messaggi correnti
+    clearChatMessagesMobile(false);
+    
+    try {
+        const response = await window.ChatAPI?.loadMessages(conversationId);
+        
+        // Gestisci sia array diretto che oggetto con proprietà messages
+        let messages = Array.isArray(response) ? response : (response?.messages || []);
+        
+        if (!messages || messages.length === 0) {
+            showWelcomeMessageMobile();
+            return;
+        }
+        
+        // Renderizza messaggi
+        messages.forEach(msg => {
+            // Determina se è HTML
+            const content = msg.content || '';
+            const trimmedContent = content.trim();
+            const isHtml = trimmedContent.startsWith('<div') || 
+                          trimmedContent.startsWith('&lt;div') ||
+                          trimmedContent.includes('class="wine-card"') ||
+                          trimmedContent.includes('class="wines-list-card"') ||
+                          trimmedContent.includes('class="movement-card"') ||
+                          trimmedContent.includes('class="inventory-list-card"') ||
+                          trimmedContent.includes('class="stats-card"');
+            
+            // Decodifica HTML escapato se necessario
+            let finalContent = content;
+            if (isHtml && trimmedContent.startsWith('&lt;')) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = content;
+                finalContent = tempDiv.innerHTML;
+            } else if (isHtml && (trimmedContent.startsWith('<') || trimmedContent.includes('class="'))) {
+                finalContent = content;
+            }
+            
+            addChatMessageMobile(msg.role, finalContent, false, false, null, isHtml);
+        });
+        
+        // Scrolla in fondo
+        const scrollContainer = document.getElementById('chatScroll');
+        if (scrollContainer) {
+            requestAnimationFrame(() => {
+                scrollContainer.scrollTop = scrollContainer.scrollHeight;
+            });
+        }
+    } catch (error) {
+        console.error('Errore caricamento messaggi mobile:', error);
+        addChatMessageMobile('ai', 'Errore caricamento messaggi', false, true);
+    }
+}
+
+/**
+ * Elimina una conversazione (con modal di conferma)
+ */
+async function deleteConversationMobile(conversationId) {
+    if (!window.authToken) return;
+    
+    // Mostra modal di conferma invece di confirm()
+    const confirmHtml = `
+        <div class="modal-content">
+            <h3>Conferma cancellazione</h3>
+            <p>Sei sicuro di voler cancellare questa chat?</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary modal-cancel-btn">Annulla</button>
+                <button class="btn btn-danger modal-confirm-btn">Elimina</button>
+            </div>
+        </div>
+    `;
+    
+    window.ChatMobile.openModal(confirmHtml, {
+        closeOnOutsideClick: false,
+        onClose: () => {}
+    });
+    
+    // Setup bottoni modal
+    const modal = document.getElementById('anyModal');
+    const cancelBtn = modal?.querySelector('.modal-cancel-btn');
+    const confirmBtn = modal?.querySelector('.modal-confirm-btn');
+    
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            window.ChatMobile.closeModal();
+        });
+    }
+    
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', async () => {
+            try {
+                await window.ChatAPI?.deleteConversation(conversationId);
+                
+                // Se era la conversazione corrente, resetta
+                if (conversationId === window.currentConversationId) {
+                    window.currentConversationId = null;
+                    localStorage.removeItem('current_conversation_id');
+                    clearChatMessagesMobile(true);
+                }
+                
+                // Ricarica lista conversazioni
+                await loadConversationsMobile();
+                
+                // Chiudi modal
+                window.ChatMobile.closeModal();
+            } catch (error) {
+                console.error('Errore cancellazione chat mobile:', error);
+                window.ChatMobile.closeModal();
+                // Mostra errore (potresti aggiungere un toast/alert mobile-friendly)
+                alert(`Errore: ${error.message || 'Errore cancellazione chat'}`);
+            }
+        });
+    }
+}
+
+/**
+ * Gestisce la creazione di una nuova conversazione
+ */
+async function handleNewChatMobile() {
+    if (!window.authToken) return;
+    
+    try {
+        // Resetta conversation_id (verrà creata al primo messaggio)
+        window.currentConversationId = null;
+        localStorage.removeItem('current_conversation_id');
+        
+        // Pulisci chat corrente e mostra welcome message
+        clearChatMessagesMobile(true);
+        
+        // Aggiorna UI sidebar (rimuovi selezione)
+        document.querySelectorAll('#chat-sidebar-list-mobile .chat-sidebar-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Ricarica lista conversazioni per aggiornare UI
+        await loadConversationsMobile();
+        
+        // Chiudi sidebar se aperta
+        if (currentMobileState === MOBILE_STATES.SIDEBAR_OPEN) {
+            closeSidebar();
+        }
+    } catch (error) {
+        console.error('Errore creazione nuova chat mobile:', error);
+    }
+}
+
+/**
+ * Pulisce i messaggi della chat mobile
+ */
+function clearChatMessagesMobile(keepWelcome = true) {
+    const scrollContainer = document.getElementById('chatScroll');
+    if (!scrollContainer) return;
+    
+    scrollContainer.innerHTML = '';
+    
+    if (keepWelcome) {
+        showWelcomeMessageMobile();
+    }
+}
+
+/**
+ * Mostra il welcome message nella chat mobile
+ */
+function showWelcomeMessageMobile() {
+    const scrollContainer = document.getElementById('chatScroll');
+    if (!scrollContainer) return;
+    
+    scrollContainer.innerHTML = `
+        <div class="welcome-message">
+            <h2>Ciao! Come posso aiutarti?</h2>
+            <p>Chiedimi informazioni sul tuo inventario vini</p>
+        </div>
+    `;
 }
 
 /**
@@ -412,19 +775,52 @@ async function handleChatSubmitMobile(e) {
     const message = input.value.trim();
     if (!message) return;
     
+    // Rimuovi welcome message se presente
+    const scrollContainer = document.getElementById('chatScroll');
+    if (scrollContainer) {
+        const welcomeMsg = scrollContainer.querySelector('.welcome-message');
+        if (welcomeMsg) {
+            welcomeMsg.remove();
+        }
+    }
+    
     // Pulisci input
     input.value = '';
     
     // Aggiungi messaggio utente
     addChatMessageMobile('user', message);
     
+    // Aggiungi messaggio loading AI
+    const loadingMessage = addChatMessageMobile('ai', '', true, false);
+    
     // Invia al server
     try {
         const response = await window.ChatAPI?.sendMessage(message);
+        
+        // Rimuovi messaggio loading
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
+        
+        // Gestisci nuovo conversation_id se ricevuto
+        if (response && response.conversation_id) {
+            const newConversationId = response.conversation_id;
+            if (newConversationId !== window.currentConversationId) {
+                window.currentConversationId = newConversationId;
+                localStorage.setItem('current_conversation_id', newConversationId.toString());
+                // Ricarica lista conversazioni per aggiornare UI
+                await loadConversationsMobile();
+            }
+        }
+        
         if (response && response.message) {
             addChatMessageMobile('ai', response.message, false, false, null, response.is_html);
         }
     } catch (error) {
+        // Rimuovi messaggio loading
+        if (loadingMessage) {
+            loadingMessage.remove();
+        }
         addChatMessageMobile('ai', 'Errore invio messaggio', false, true);
     }
 }
@@ -543,6 +939,15 @@ if (typeof window !== 'undefined') {
         
         // Modal
         openModal,
-        closeModal
+        closeModal,
+        
+        // Conversations
+        loadConversations: loadConversationsMobile,
+        selectConversation: selectConversationMobile,
+        loadMessages: loadConversationMessagesMobile,
+        deleteConversation: deleteConversationMobile,
+        newChat: handleNewChatMobile,
+        clearMessages: clearChatMessagesMobile,
+        showWelcome: showWelcomeMessageMobile
     };
 }
