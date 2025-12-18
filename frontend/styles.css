@@ -27,18 +27,18 @@
 }
 
 body.dark-theme {
-    --color-granaccia: #ffb347; /* giallo aranciato per accenti */
-    --color-white: #000000;
+    --color-granaccia: #ffd700; /* giallo oro per accenti */
+    --color-white: #1a1a1a; /* grigio scuro al posto del nero */
     --color-black: #ffffff;
-    --color-off-white: #050505;
-    --color-light-gray: #111111;
-    --color-border: #333333;
+    --color-off-white: #1a1a1a; /* grigio scuro al posto del nero */
+    --color-light-gray: #2a2a2a; /* grigio scuro leggermente più chiaro */
+    --color-border: #404040; /* bordo più visibile su grigio scuro */
     --color-text-primary: #f5f5f5;
     --color-text-secondary: #cccccc;
     --color-text-light: #aaaaaa;
-    --color-chat-bg: #000000;
-    --color-chat-user-bg: #ffb347;
-    --color-chat-ai-bg: #111111;
+    --color-chat-bg: #1a1a1a; /* grigio scuro al posto del nero */
+    --color-chat-user-bg: #ffd700; /* giallo oro */
+    --color-chat-ai-bg: #2a2a2a; /* grigio scuro leggermente più chiaro */
     
     /* Variabili per toggle switch robusto in dark mode */
     --border: var(--color-border);
@@ -315,7 +315,7 @@ body.dark-theme {
 
 body.dark-theme .sidebar-toggle-btn:active,
 body.dark-theme .sidebar-toggle-btn.clicked {
-    background-color: #ffb347; /* giallo aranciato per dark mode */
+    background-color: #ffd700; /* giallo oro per dark mode */
     color: var(--color-black);
 }
 
@@ -469,8 +469,8 @@ body.dark-theme .chat-sidebar-item-delete {
 }
 
 body.dark-theme .chat-sidebar-item-delete:hover {
-    background-color: rgba(255, 179, 71, 0.15);
-    color: #ffb347;
+    background-color: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
 }
 
 body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete {
@@ -1047,12 +1047,12 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     body.dark-theme .mobile-quick-action-btn:active,
     body.dark-theme .mobile-quick-action-btn:hover {
         background-color: var(--color-light-gray);
-        color: #ffb347;
+        color: #ffd700;
     }
     
     body.dark-theme .mobile-quick-action-btn:active .mobile-quick-action-label,
     body.dark-theme .mobile-quick-action-btn:hover .mobile-quick-action-label {
-        color: #ffb347;
+        color: #ffd700;
     }
     
     /* ============================================
