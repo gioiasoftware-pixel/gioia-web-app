@@ -107,27 +107,20 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
 
     // 1. Outflow area (consumi) - DEVE essere PRIMA della base nell'array
     // fill: '+1' riempie verso il dataset successivo (base stock) - verso l'ALTO fino alla base
+    // IMPORTANTE: L'area consumi deve essere un'area colorata SOTTO la stock line, come nell'esempio
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
-        // Debug: verifica valori area consumi
-        const sampleOutflow = outflowAreaBottom.slice(0, 3);
-        const sampleStock = stockLineBase.slice(0, 3);
-        console.log('[AnchoredFlowStockChart] Area consumi - valori sample:', {
-            outflowAreaBottom: sampleOutflow,
-            stockLineBase: sampleStock,
-            diff: sampleOutflow.map((v, i) => v - sampleStock[i]),
-            hasOutflow: points.slice(0, 3).map(p => p.outflow > 0)
-        });
-        
         datasets.push({
             label: 'Consumi',
             data: outflowAreaBottom, // bottom dell'area (stockNorm - outflow)
             type: 'line',
-            borderColor: colors.outflow + '80',
-            backgroundColor: colors.outflow + '40',
-            fill: '+1', // riempie verso il dataset successivo (base stock) - verso l'ALTO
+            borderColor: colors.outflow + '80', // bordo rosso semi-trasparente
+            backgroundColor: colors.outflow + '40', // area rossa semi-trasparente (deve essere visibile!)
+            fill: '+1', // riempie verso il dataset successivo (base stock) - verso l'ALTO fino alla base
             pointRadius: 0,
             order: 0, // renderizzata sotto la stock line
             tension: 0.4,
+            // Assicura che l'area sia sempre visibile
+            spanGaps: false,
         });
     }
 
@@ -189,26 +182,17 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // Parte dalla base stock e va verso l'alto (rialzo)
     // fill: '-1' riempie verso il dataset precedente (base stock)
     if (!hasNoMovement || options.showAreasWhenNoMovement) {
-        // Debug: verifica valori area rifornimenti (per confronto)
-        const sampleInflow = inflowAreaTop.slice(0, 3);
-        const sampleStockInflow = stockLineBase.slice(0, 3);
-        console.log('[AnchoredFlowStockChart] Area rifornimenti - valori sample:', {
-            inflowAreaTop: sampleInflow,
-            stockLineBase: sampleStockInflow,
-            diff: sampleInflow.map((v, i) => v - sampleStockInflow[i]),
-            hasInflow: points.slice(0, 3).map(p => p.inflow > 0)
-        });
-        
         datasets.push({
             label: 'Rifornimenti',
             data: inflowAreaTop, // top dell'area (stockNorm + inflow)
             type: 'line',
-            borderColor: colors.inflow + '80',
-            backgroundColor: colors.inflow + '40',
+            borderColor: colors.inflow + '80', // bordo verde semi-trasparente
+            backgroundColor: colors.inflow + '40', // area verde semi-trasparente
             fill: '-1', // riempi verso il dataset precedente nell'array (base stock)
             pointRadius: 0,
             order: 2, // renderizzata sopra la stock line
             tension: 0.4,
+            spanGaps: false,
         });
     }
 
