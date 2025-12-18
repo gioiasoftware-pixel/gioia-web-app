@@ -1,0 +1,63 @@
+/**
+ * Reset CSS - SOLO reset/normalize minimo
+ * 
+ * NIENTE layout, NIENTE overflow tricks, NIENTE stili che impattano entrambi i layout
+ */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    /* NO overflow/height/position qui - gestito da LayoutBoundary */
+    font-size: 16px;
+}
+
+body {
+    /* NO overflow/height/position qui - gestito da LayoutBoundary */
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset liste */
+ul, ol {
+    list-style: none;
+}
+
+/* Reset link */
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+/* Reset immagini */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Reset button */
+button {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+}
+
+/* Reset input */
+input, textarea, select {
+    font: inherit;
+    border: none;
+    outline: none;
+}
+
+/* Reset table */
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}

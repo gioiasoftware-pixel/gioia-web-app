@@ -7,6 +7,18 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="format-detection" content="telephone=no">
     <title>Gio.ia - Login</title>
+    <!-- CSS isolato: reset e globals (solo tokens, no layout) -->
+    <link rel="stylesheet" href="/static/styles/reset.css">
+    <link rel="stylesheet" href="/static/styles/globals.css">
+    <!-- LayoutBoundary CSS (namespace isolation) -->
+    <link rel="stylesheet" href="/static/layout/LayoutBoundary/layoutBoundary.css">
+    <!-- CSS legacy (da migrare gradualmente) -->
+    <!-- CSS isolato: reset e globals (solo tokens, no layout) -->
+    <link rel="stylesheet" href="/static/styles/reset.css">
+    <link rel="stylesheet" href="/static/styles/globals.css">
+    <!-- LayoutBoundary CSS (namespace isolation) -->
+    <link rel="stylesheet" href="/static/layout/LayoutBoundary/layoutBoundary.css">
+    <!-- CSS legacy (da migrare gradualmente) -->
     <link rel="stylesheet" href="/static/styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -391,6 +403,15 @@
         // Configurazione API URL - usa stesso dominio quando servito da backend
         window.API_BASE_URL = window.location.origin;
     </script>
+    <!-- LayoutBoundary: isolamento HARD mobile/desktop -->
+    <script src="/static/layout/LayoutBoundary/LayoutBoundary.js"></script>
+    <!-- Chat API e Selectors (shared) -->
+    <script src="/static/features/chat/shared/chatAPI.js"></script>
+    <script src="/static/features/chat/shared/chatSelectors.js"></script>
+    <!-- Chat implementations (layout-specific) -->
+    <script src="/static/features/chat/mobile/ChatMobile.js"></script>
+    <script src="/static/features/chat/desktop/ChatDesktop.js"></script>
+    <!-- Main app -->
     <script src="/static/app.js"></script>
 </body>
 </html>

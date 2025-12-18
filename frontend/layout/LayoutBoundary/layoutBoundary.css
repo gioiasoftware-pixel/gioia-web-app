@@ -1,0 +1,59 @@
+/**
+ * LayoutBoundary CSS - Namespace isolation
+ * 
+ * Regole:
+ * - Nessun stile globale che impatta entrambi i layout
+ * - Reset locale per ogni namespace
+ * - Scroll container definito via CSS variables
+ */
+
+/* Reset per mobileRoot */
+.mobileRoot {
+    /* Scroll gestito da .mScroller, non da body */
+    overflow: hidden;
+    height: 100dvh;
+    position: relative;
+}
+
+.mobileRoot body {
+    overflow: hidden;
+    height: 100dvh;
+    position: relative;
+}
+
+/* Reset per desktopRoot */
+.desktopRoot {
+    /* Scroll gestito da container specifici, non da body */
+    overflow: hidden;
+    height: 100vh;
+    position: relative;
+}
+
+.desktopRoot body {
+    overflow: hidden;
+    height: 100vh;
+    position: relative;
+}
+
+/* Scroll container principale definito via CSS variable */
+.mobileRoot {
+    --scroll-container: #chatScroll;
+    --scroll-container-class: .mScroller;
+}
+
+.desktopRoot {
+    --scroll-container: #chat-messages-scroll-wrapper;
+    --scroll-container-class: .chat-messages-scroll-wrapper;
+}
+
+/* Isolamento: nessun stile che attraversa i namespace */
+.mobileRoot .desktop-layout,
+.desktopRoot .mApp {
+    display: none !important;
+}
+
+/* Assicura che solo il layout attivo sia visibile */
+.mobileRoot #desktop-layout,
+.desktopRoot #mobile-layout {
+    display: none !important;
+}

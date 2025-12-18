@@ -49,6 +49,8 @@ function isMobileView() {
 /**
  * Mostra il layout corretto in base alla dimensione dello schermo
  * Nasconde completamente l'altro layout per evitare conflitti CSS
+ * 
+ * INTEGRAZIONE LayoutBoundary: applica namespace CSS per isolamento HARD
  */
 function switchLayout() {
     const mobileLayout = document.getElementById('mobile-layout');
@@ -60,14 +62,29 @@ function switchLayout() {
         return;
     }
     
+    // Cleanup namespace precedente
+    if (typeof window.LayoutBoundary !== 'undefined') {
+        window.LayoutBoundary.cleanup();
+    }
+    
     if (isMobile) {
         // Mostra mobile, nascondi desktop
         mobileLayout.style.display = 'grid'; // mApp usa grid
         desktopLayout.style.display = 'none';
+        
+        // Applica namespace mobile
+        if (typeof window.LayoutBoundary !== 'undefined') {
+            window.LayoutBoundary.init('mobile');
+        }
     } else {
         // Mostra desktop, nascondi mobile
         mobileLayout.style.display = 'none';
         desktopLayout.style.display = 'flex'; // desktop-layout usa flex
+        
+        // Applica namespace desktop
+        if (typeof window.LayoutBoundary !== 'undefined') {
+            window.LayoutBoundary.init('desktop');
+        }
     }
     
     // Log per debug (rimuovere in produzione se necessario)
@@ -97,18 +114,46 @@ function initLayoutManager() {
     // Switch layout all'avvio
     switchLayout();
     
+    // Reset selectors quando cambia layout
+    if (typeof window.ChatSelectors !== 'undefined') {
+        window.ChatSelectors.reset();
+    }
+    
+    // Inizializza chat per il layout corrente
+    initChatForCurrentLayout();
+    
     // Switch layout al resize (con debounce per performance)
     let resizeTimeout;
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             switchLayout();
+            
+            // Reset selectors e reinizializza chat
+            if (typeof window.ChatSelectors !== 'undefined') {
+                window.ChatSelectors.reset();
+            }
+            initChatForCurrentLayout();
+            
             // Chiama anche la funzione esistente per gestire sidebar
             if (typeof handleWindowResize === 'function') {
                 handleWindowResize();
             }
         }, 150); // Debounce di 150ms
     });
+}
+
+/**
+ * Inizializza la chat per il layout corrente (mobile o desktop)
+ */
+function initChatForCurrentLayout() {
+    const isMobile = isMobileView();
+    
+    if (isMobile && typeof window.ChatMobile !== 'undefined') {
+        window.ChatMobile.init();
+    } else if (!isMobile && typeof window.ChatDesktop !== 'undefined') {
+        window.ChatDesktop.init();
+    }
 }
 
 /**
@@ -119,6 +164,12 @@ function refreshLayoutOnShow() {
     // Piccolo delay per assicurarsi che il DOM sia aggiornato
     setTimeout(() => {
         switchLayout();
+        
+        // Reset selectors e reinizializza chat
+        if (typeof window.ChatSelectors !== 'undefined') {
+            window.ChatSelectors.reset();
+        }
+        initChatForCurrentLayout();
     }, 50);
 }
 

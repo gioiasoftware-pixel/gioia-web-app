@@ -1,0 +1,148 @@
+/**
+ * Global CSS - SOLO variabili base, font-face, tokens
+ * 
+ * NIENTE layout, NIENTE overflow tricks, NIENTE stili condivisi tra layout
+ */
+
+/* ============================================
+   CSS VARIABLES (Tokens)
+   ============================================ */
+
+:root {
+    /* Colori brand */
+    --color-granaccia: #9a182e;
+    --color-granaccia-light: #b82d47;
+    --color-granaccia-dark: #7a0f1f;
+    
+    /* Colori base */
+    --color-white: #ffffff;
+    --color-black: #000000;
+    --color-off-white: #f8f9fa;
+    --color-light-gray: #e9ecef;
+    --color-gray: #6c757d;
+    --color-dark-gray: #343a40;
+    
+    /* Colori testo */
+    --color-text-primary: #212529;
+    --color-text-secondary: #6c757d;
+    
+    /* Colori bordi */
+    --color-border: #dee2e6;
+    
+    /* Spacing */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    
+    /* Typography */
+    --font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-size-base: 16px;
+    --font-size-sm: 14px;
+    --font-size-lg: 18px;
+    --font-size-xl: 20px;
+    --font-size-2xl: 24px;
+    
+    /* Border radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+    
+    /* Z-index scale (per mobile) */
+    --z-header: 10;
+    --z-composer: 10;
+    --z-fab: 20;
+    --z-overlay: 30;
+    --z-sidebar: 40;
+    --z-viewer: 50;
+    --z-modal: 60;
+}
+
+/* Dark theme variables */
+body.dark-theme {
+    --color-granaccia: #ffb380;
+    --color-white: #1a1a1a;
+    --color-black: #ffffff;
+    --color-off-white: #2a2a2a;
+    --color-light-gray: #3a3a3a;
+    --color-gray: #9a9a9a;
+    --color-dark-gray: #e0e0e0;
+    --color-text-primary: #ffffff;
+    --color-text-secondary: #9a9a9a;
+    --color-border: #4a4a4a;
+    --color-chat-bg: #1a1a1a;
+    --color-chat-user-bg: #ffb380;
+}
+
+/* ============================================
+   FONT FACE
+   ============================================ */
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiA.woff2') format('woff2');
+}
+
+/* ============================================
+   UTILITY CLASSES (solo presentational, NO layout)
+   ============================================ */
+
+.hidden {
+    display: none !important;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* ============================================
+   NO LAYOUT STYLES QUI
+   ============================================ */
+
+/* Tutti gli stili di layout devono essere in:
+   - layout/MobileLayout/mobile.css
+   - layout/DesktopLayout/desktop.css
+   - features/*/mobile/*.css
+   - features/*/desktop/*.css
+*/
