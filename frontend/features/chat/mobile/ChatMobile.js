@@ -829,6 +829,14 @@ async function handleChatSubmitMobile(e) {
     const message = input.value.trim();
     if (!message) return;
     
+    // Verifica token disponibile
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+    if (!token) {
+        console.error('[MOBILE] authToken non disponibile per invio messaggio');
+        addChatMessageMobile('ai', 'Errore: autenticazione non disponibile', false, true);
+        return;
+    }
+    
     // Rimuovi welcome message se presente
     const scrollContainer = document.getElementById('chatScroll');
     if (scrollContainer) {
@@ -847,19 +855,42 @@ async function handleChatSubmitMobile(e) {
     // Aggiungi messaggio loading AI
     const loadingMessage = addChatMessageMobile('ai', '', true, false);
     
-    // Invia al server
+    // Invia al server usando endpoint desktop (/api/chat/message)
     try {
-        const response = await window.ChatAPI?.sendMessage(message);
+        const apiBaseUrl = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : 'http://localhost:8000');
+        const conversationId = window.currentConversationId || null;
+        
+        console.log('[MOBILE] Invio messaggio:', { message, conversationId, apiBaseUrl });
+        
+        const response = await fetch(`${apiBaseUrl}/api/chat/message`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                message: message,
+                conversation_id: conversationId
+            })
+        });
+        
+        const data = await response.json();
         
         // Rimuovi messaggio loading
         if (loadingMessage) {
             loadingMessage.remove();
         }
         
+        if (!response.ok) {
+            console.error('[MOBILE] Errore API invio messaggio:', response.status, data);
+            throw new Error(data.detail || `Errore invio messaggio: ${response.status}`);
+        }
+        
         // Gestisci nuovo conversation_id se ricevuto
-        if (response && response.conversation_id) {
-            const newConversationId = response.conversation_id;
+        if (data.conversation_id) {
+            const newConversationId = data.conversation_id;
             if (newConversationId !== window.currentConversationId) {
+                console.log('[MOBILE] Nuovo conversation_id ricevuto:', newConversationId);
                 window.currentConversationId = newConversationId;
                 localStorage.setItem('current_conversation_id', newConversationId.toString());
                 // Ricarica lista conversazioni per aggiornare UI
@@ -867,15 +898,19 @@ async function handleChatSubmitMobile(e) {
             }
         }
         
-        if (response && response.message) {
-            addChatMessageMobile('ai', response.message, false, false, null, response.is_html);
+        // Aggiungi risposta AI
+        if (data.message) {
+            addChatMessageMobile('ai', data.message, false, false, null, data.is_html);
+        } else {
+            console.warn('[MOBILE] Nessun messaggio nella risposta:', data);
         }
     } catch (error) {
+        console.error('[MOBILE] Errore invio messaggio:', error);
         // Rimuovi messaggio loading
         if (loadingMessage) {
             loadingMessage.remove();
         }
-        addChatMessageMobile('ai', 'Errore invio messaggio', false, true);
+        addChatMessageMobile('ai', `Errore invio messaggio: ${error.message || 'Errore sconosciuto'}`, false, true);
     }
 }
 
