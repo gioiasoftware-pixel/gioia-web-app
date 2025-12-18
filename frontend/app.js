@@ -2,9 +2,12 @@
 // Se usi Vite, usa: import.meta.env.VITE_API_URL
 // Altrimenti usa questo fallback o configura in index.html
 const API_BASE_URL = window.API_BASE_URL || 'http://localhost:8000';
+// Esponi su window per accesso da moduli esterni
+window.API_BASE_URL = API_BASE_URL;
 
 // State
 let authToken = null;
+// Esponi authToken su window quando viene caricato/aggiornato
 let currentTheme = 'light';
 let currentUser = null;
 let viewerData = null;
@@ -469,6 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Check if user is already logged in
     authToken = localStorage.getItem('auth_token');
+    window.authToken = authToken; // Esponi su window
     
     // Inizializza tema (giorno/notte)
     const savedTheme = localStorage.getItem('gioia_theme');
@@ -796,6 +800,7 @@ async function handleLogin(e) {
         }
 
         authToken = data.access_token;
+        window.authToken = authToken; // Esponi su window
         if (!authToken) {
             console.error('[LOGIN] Token non presente nella risposta:', data);
             throw new Error('Token di autenticazione non ricevuto dal server');

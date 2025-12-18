@@ -466,8 +466,8 @@ function formatConversationTimeMobile(timestamp) {
  * Carica le conversazioni dalla API
  */
 async function loadConversationsMobile() {
-    // Usa authToken globale (come desktop) o window.authToken
-    const token = typeof authToken !== 'undefined' ? authToken : window.authToken;
+    // Usa window.authToken (esposto da app.js) o fallback a variabile globale
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
     if (!token) {
         console.warn('[MOBILE] authToken non disponibile');
         return;
