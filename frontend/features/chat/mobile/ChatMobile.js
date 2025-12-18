@@ -396,6 +396,9 @@ function initChatMobile() {
     // Setup conversazioni click (auto-close sidebar)
     setupConversationsClick();
     
+    // Setup header action buttons
+    setupHeaderActionButtons();
+    
     // Carica conversazioni e conversazione corrente (con delay per assicurare DOM ready)
     setTimeout(() => {
         loadConversationsMobile().then(() => {
@@ -437,6 +440,39 @@ function setupConversationsClick() {
             }, 100); // Piccolo delay per permettere al click di propagarsi
         }
     });
+}
+
+/**
+ * Setup header action buttons (Add Wine, Inventory)
+ */
+function setupHeaderActionButtons() {
+    // Add Wine Button
+    const addWineBtn = document.getElementById('add-wine-btn-mobile');
+    if (addWineBtn) {
+        // Rimuovi listener esistenti
+        const newBtn = addWineBtn.cloneNode(true);
+        addWineBtn.parentNode.replaceChild(newBtn, addWineBtn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openAddWineModalMobile();
+        });
+    }
+    
+    // Inventory Button
+    const inventoryBtn = document.getElementById('inventory-btn-mobile');
+    if (inventoryBtn) {
+        // Rimuovi listener esistenti
+        const newBtn = inventoryBtn.cloneNode(true);
+        inventoryBtn.parentNode.replaceChild(newBtn, inventoryBtn);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openInventoryViewerMobile();
+        });
+    }
 }
 
 // ============================================
@@ -1102,6 +1138,345 @@ function cleanupChatMobile() {
 }
 
 // ============================================
+// ADD WINE MODAL MOBILE
+// ============================================
+
+/**
+ * Apre il modal per aggiungere un nuovo vino (mobile)
+ */
+function openAddWineModalMobile() {
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+    if (!token) {
+        addChatMessageMobile('ai', 'Errore: Token non valido. Effettua il login.', false, true);
+        return;
+    }
+    
+    // Crea HTML del form per aggiungere vino
+    const formHtml = `
+        <div class="modal-header">
+            <h2>Aggiungi Nuovo Vino</h2>
+            <button class="modal-close-btn" type="button">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                    <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+            <form id="add-wine-form-mobile" class="add-wine-form-mobile">
+                <div class="add-wine-form-grid">
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Nome *</label>
+                        <input type="text" class="add-wine-input" name="name" required>
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Produttore</label>
+                        <input type="text" class="add-wine-input" name="producer">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Quantità</label>
+                        <input type="number" class="add-wine-input" name="quantity" min="0">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Prezzo Vendita (€)</label>
+                        <input type="number" class="add-wine-input" name="selling_price" step="0.01" min="0">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Prezzo Acquisto (€)</label>
+                        <input type="number" class="add-wine-input" name="cost_price" step="0.01" min="0">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Annata</label>
+                        <input type="text" class="add-wine-input" name="vintage">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Regione</label>
+                        <input type="text" class="add-wine-input" name="region">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Paese</label>
+                        <input type="text" class="add-wine-input" name="country">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Tipo</label>
+                        <input type="text" class="add-wine-input" name="wine_type">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Fornitore</label>
+                        <input type="text" class="add-wine-input" name="supplier">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Vitigno</label>
+                        <input type="text" class="add-wine-input" name="grape_variety">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Classificazione</label>
+                        <input type="text" class="add-wine-input" name="classification">
+                    </div>
+                    <div class="add-wine-field">
+                        <label class="add-wine-label">Gradazione (% vol)</label>
+                        <input type="text" class="add-wine-input" name="alcohol_content">
+                    </div>
+                    <div class="add-wine-field full-width">
+                        <label class="add-wine-label">Descrizione</label>
+                        <textarea class="add-wine-textarea" name="description"></textarea>
+                    </div>
+                    <div class="add-wine-field full-width">
+                        <label class="add-wine-label">Note</label>
+                        <textarea class="add-wine-textarea" name="notes"></textarea>
+                    </div>
+                </div>
+                <div class="add-wine-actions">
+                    <button class="add-wine-btn cancel" type="button">Annulla</button>
+                    <button class="add-wine-btn save" type="submit">Aggiungi</button>
+                </div>
+            </form>
+        </div>
+    `;
+    
+    // Apri modal con il form
+    openModal(formHtml, {
+        closeOnOutsideClick: false,
+        onClose: () => {
+            // Cleanup se necessario
+        }
+    });
+    
+    // Setup form submit handler
+    const form = document.getElementById('add-wine-form-mobile');
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            saveAddWineMobile(form);
+        });
+    }
+    
+    // Setup cancel button
+    const cancelBtn = document.querySelector('.add-wine-btn.cancel');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            closeModal();
+        });
+    }
+}
+
+/**
+ * Salva il nuovo vino (mobile)
+ */
+async function saveAddWineMobile(form) {
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+    const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
+    
+    if (!token || !apiBase) {
+        addChatMessageMobile('ai', 'Errore: Configurazione non valida.', false, true);
+        return;
+    }
+    
+    const data = {};
+    
+    // Raccogli tutti i valori dal form
+    form.querySelectorAll('input, textarea').forEach(input => {
+        const name = input.name;
+        const value = input.value.trim();
+        
+        if (name === 'quantity') {
+            data[name] = value === '' ? null : parseInt(value);
+        } else if (name === 'selling_price' || name === 'cost_price') {
+            data[name] = value === '' ? null : parseFloat(value);
+        } else {
+            data[name] = value === '' ? null : value;
+        }
+    });
+    
+    // Validazione: nome obbligatorio
+    if (!data.name || !data.name.trim()) {
+        addChatMessageMobile('ai', 'Errore: Il nome del vino è obbligatorio.', false, true);
+        return;
+    }
+    
+    // Disabilita form durante il salvataggio
+    const saveBtn = form.querySelector('.add-wine-btn.save');
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Salvataggio...';
+    }
+    
+    try {
+        const response = await fetch(`${apiBase}/api/wines`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore aggiunta vino' }));
+            throw new Error(errorData.detail || 'Errore aggiunta vino');
+        }
+        
+        const result = await response.json();
+        
+        // Chiudi modal
+        closeModal();
+        
+        // Mostra messaggio successo con wine card HTML
+        if (result.wine_card_html) {
+            addChatMessageMobile('ai', result.wine_card_html, false, false, null, true);
+        } else {
+            addChatMessageMobile('ai', `✅ Vino "${data.name}" aggiunto con successo!`, false, false);
+        }
+        
+    } catch (error) {
+        addChatMessageMobile('ai', `Errore: ${error.message}`, false, true);
+    } finally {
+        // Riabilita form
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Aggiungi';
+        }
+    }
+}
+
+// ============================================
+// INVENTORY VIEWER MOBILE
+// ============================================
+
+/**
+ * Apre il viewer inventario (mobile)
+ */
+async function openInventoryViewerMobile() {
+    // Apri viewer
+    openViewer();
+    
+    // Assicurati che il viewer mobile abbia la struttura corretta
+    const viewerMobile = document.getElementById('viewerPanel');
+    if (!viewerMobile) {
+        return;
+    }
+    
+    let mobileContent = viewerMobile.querySelector('.viewer-content');
+    
+    // Se non esiste, crea struttura base
+    if (!mobileContent || !mobileContent.innerHTML.trim()) {
+        viewerMobile.innerHTML = `
+            <div class="viewer-content">
+                <div class="viewer-header">
+                    <h2>Inventario</h2>
+                    <button class="viewer-close-btn" type="button">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="viewer-body">
+                    <div id="viewer-search-container" style="padding: 16px; border-bottom: 1px solid var(--color-border);">
+                        <input type="text" id="viewer-search-mobile" placeholder="Cerca nell'inventario..." style="width: 100%; padding: 12px; border: 1px solid var(--color-border); border-radius: 8px; font-size: 16px;">
+                    </div>
+                    <div id="viewer-table-container" style="overflow-y: auto; flex: 1;">
+                        <table id="viewer-table" style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>Annata</th>
+                                    <th>Quantità</th>
+                                    <th>Prezzo (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="viewer-table-body">
+                                <tr><td colspan="4" class="loading">Caricamento...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Setup viewer close button
+    setupViewerClose();
+    
+    // Carica dati inventario
+    await loadViewerDataMobile();
+}
+
+/**
+ * Carica dati inventario nel viewer mobile
+ */
+async function loadViewerDataMobile() {
+    const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+    const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
+    
+    if (!token || !apiBase) {
+        const tableBody = document.getElementById('viewer-table-body');
+        if (tableBody) {
+            tableBody.innerHTML = '<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: Configurazione non valida</td></tr>';
+        }
+        return;
+    }
+    
+    const tableBody = document.getElementById('viewer-table-body');
+    if (tableBody) {
+        tableBody.innerHTML = '<tr><td colspan="4" class="loading">Caricamento...</td></tr>';
+    }
+    
+    try {
+        // Usa endpoint viewer snapshot
+        const response = await fetch(`${apiBase}/api/viewer/snapshot`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Errore nel caricamento dei dati' }));
+            throw new Error(errorData.detail || `Errore ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Salva dati globalmente per filtri/ricerca (se necessario)
+        if (typeof window !== 'undefined') {
+            window.viewerData = data;
+        }
+        
+        // Renderizza tabella
+        renderViewerTableMobile(data.rows || []);
+        
+    } catch (error) {
+        if (tableBody) {
+            tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
+        }
+    }
+}
+
+/**
+ * Renderizza tabella inventario nel viewer mobile
+ */
+function renderViewerTableMobile(rows) {
+    const tableBody = document.getElementById('viewer-table-body');
+    if (!tableBody) return;
+    
+    if (!rows || rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center;">Nessun vino trovato</td></tr>';
+        return;
+    }
+    
+    tableBody.innerHTML = rows.map(row => {
+        return `
+            <tr>
+                <td>${escapeHtmlMobile(row.name || '')}</td>
+                <td>${escapeHtmlMobile(row.vintage || 'N/A')}</td>
+                <td>${row.quantity || 0}</td>
+                <td>${row.selling_price ? parseFloat(row.selling_price).toFixed(2) : 'N/A'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// ============================================
 // EXPORT
 // ============================================
 
@@ -1137,6 +1512,10 @@ if (typeof window !== 'undefined') {
         deleteConversation: deleteConversationMobile,
         newChat: handleNewChatMobile,
         clearMessages: clearChatMessagesMobile,
-        showWelcome: showWelcomeMessageMobile
+        showWelcome: showWelcomeMessageMobile,
+        
+        // Add Wine & Inventory
+        openAddWineModal: openAddWineModalMobile,
+        openInventoryViewer: openInventoryViewerMobile
     };
 }
