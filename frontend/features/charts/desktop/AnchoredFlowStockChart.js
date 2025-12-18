@@ -74,6 +74,9 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     // Dataset per stock line (baseline = 0 normalizzato, che corrisponde alla MEDIA stock)
     const stockLineData = points.map(p => p.stockNorm);
 
+    // Dataset per baseline (linea guida orizzontale alla media stock) - trasparente, solo visiva
+    const baselineData = points.map(() => 0); // y=0 normalizzato = media stock
+
     // Dataset per aree (normalizzate rispetto alla MEDIA stock):
     // - Rifornimenti (Inflow): da stockNorm (y0 = base = linea stock) a stockNorm + inflow (y1) - sopra baseline (rialzo)
     // - Consumi (Outflow): da stockNorm - outflow (y0) a stockNorm (y1 = base = linea stock) - sotto baseline (ribasso)
@@ -134,6 +137,24 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
     }
     
     datasets.push(stockLineDataset);
+
+    // 2.5. Baseline (linea guida orizzontale alla media stock) - trasparente, non interattiva
+    // Questa linea rappresenta la media stock nel periodo (y=0 normalizzato)
+    // È solo una guida visiva, non interagisce con tooltip o hover
+    datasets.push({
+        label: '_baseline', // dataset interno, nascosto (non appare in tooltip grazie al filter)
+        data: baselineData, // y=0 normalizzato = media stock
+        type: 'line',
+        borderColor: colors.baseline + '30', // molto trasparente (30 = ~19% opacità in hex)
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        pointRadius: 0,
+        pointHoverRadius: 0, // nessun hover point
+        fill: false,
+        order: 0, // renderizzata per prima, sotto tutto
+        tension: 0, // linea retta orizzontale
+        borderDash: [2, 4], // linea tratteggiata sottile
+    });
 
     // 3. Inflow area (rifornimenti) - parte dalla linea stock e va verso l'alto (rialzo)
     // Deve essere DOPO la stock line nell'array, così fill: '-1' riempie verso la stock line precedente
@@ -239,10 +260,15 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                 },
                 tooltip: {
                     enabled: true,
+                    filter: function(tooltipItem) {
+                        // Nascondi dataset interni (baseline, POI, ecc.) dal tooltip
+                        const label = tooltipItem.dataset.label || '';
+                        return !label.startsWith('_');
+                    },
                     callbacks: {
                         label: function(context) {
                             const datasetLabel = context.dataset.label || '';
-                            if (datasetLabel.startsWith('_')) return null; // nascondi dataset interni
+                            if (datasetLabel.startsWith('_')) return null; // nascondi dataset interni (doppio controllo)
 
                             const index = context.dataIndex;
                             const tooltip = tooltipForIndex(index);
