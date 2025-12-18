@@ -589,14 +589,38 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
         })));
     }
     
-    const movements = rawMovements.map(mov => ({
-        at: mov.date || mov.at,
-        delta: mov.type === 'consumo' 
-            ? -(mov.quantity_change || 0)
-            : (mov.quantity_change || 0),
-    }));
+    const movements = rawMovements.map(mov => {
+        // Debug: log struttura movimento
+        const isConsumo = mov.type === 'consumo' || mov.type === 'CONSUMO' || mov.type === 'Consumo';
+        const quantityChange = mov.quantity_change || mov.quantity || mov.delta || 0;
+        const delta = isConsumo ? -Math.abs(quantityChange) : Math.abs(quantityChange);
+        
+        return {
+            at: mov.date || mov.at,
+            delta: delta,
+        };
+    });
     
     console.log('[AnchoredFlowStockChart] Movimenti convertiti:', movements.length);
+    
+    // Debug: verifica consumi
+    const consumiMovements = movements.filter(m => m.delta < 0);
+    const rifornimentiMovements = movements.filter(m => m.delta > 0);
+    console.log('[AnchoredFlowStockChart] Debug movimenti:', {
+        total: movements.length,
+        consumi: consumiMovements.length,
+        rifornimenti: rifornimentiMovements.length,
+        totalConsumi: consumiMovements.reduce((sum, m) => sum + Math.abs(m.delta), 0),
+        totalRifornimenti: rifornimentiMovements.reduce((sum, m) => sum + m.delta, 0),
+        sampleConsumi: consumiMovements.slice(0, 3),
+        sampleRifornimenti: rifornimentiMovements.slice(0, 3),
+        rawSample: rawMovements.slice(0, 3).map(m => ({
+            type: m.type,
+            quantity_change: m.quantity_change,
+            quantity: m.quantity,
+            delta: m.delta
+        }))
+    });
     
     // Log range date movimenti
     if (movements.length > 0) {
