@@ -1417,9 +1417,11 @@ async function loadViewerDataMobile() {
     }
     
     const tableBody = document.getElementById('viewer-table-body');
-    if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="loading">Caricamento...</td></tr>';
+    if (!tableBody) {
+        return;
     }
+    
+    tableBody.innerHTML = '<tr><td colspan="4" class="loading">Caricamento...</td></tr>';
     
     try {
         // Usa endpoint viewer snapshot
@@ -1437,18 +1439,21 @@ async function loadViewerDataMobile() {
         
         const data = await response.json();
         
+        // Debug: log struttura dati
+        if (data && data.rows) {
+            // Renderizza tabella
+            renderViewerTableMobile(data.rows);
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Nessun dato disponibile</td></tr>';
+        }
+        
         // Salva dati globalmente per filtri/ricerca (se necessario)
         if (typeof window !== 'undefined') {
             window.viewerData = data;
         }
         
-        // Renderizza tabella
-        renderViewerTableMobile(data.rows || []);
-        
     } catch (error) {
-        if (tableBody) {
-            tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
-        }
+        tableBody.innerHTML = `<tr><td colspan="4" style="color: var(--color-granaccia); padding: 16px; text-align: center;">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
     }
 }
 
@@ -1457,20 +1462,29 @@ async function loadViewerDataMobile() {
  */
 function renderViewerTableMobile(rows) {
     const tableBody = document.getElementById('viewer-table-body');
-    if (!tableBody) return;
-    
-    if (!rows || rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center;">Nessun vino trovato</td></tr>';
+    if (!tableBody) {
         return;
     }
     
+    if (!rows || rows.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: var(--color-text-secondary);">Nessun vino trovato</td></tr>';
+        return;
+    }
+    
+    // Mappa i dati usando i nomi corretti dei campi (come nel desktop)
     tableBody.innerHTML = rows.map(row => {
+        // Supporta sia i nomi nuovi che quelli vecchi per compatibilità
+        const name = row.name || row.Nome || '';
+        const vintage = row.vintage || row.Annata || 'N/A';
+        const qty = row.qty !== undefined ? row.qty : (row.quantity !== undefined ? row.quantity : (row.Quantità !== undefined ? row.Quantità : 0));
+        const price = row.price !== undefined ? row.price : (row.selling_price !== undefined ? row.selling_price : (row.Prezzo !== undefined ? row.Prezzo : 0));
+        
         return `
             <tr>
-                <td>${escapeHtmlMobile(row.name || '')}</td>
-                <td>${escapeHtmlMobile(row.vintage || 'N/A')}</td>
-                <td>${row.quantity || 0}</td>
-                <td>${row.selling_price ? parseFloat(row.selling_price).toFixed(2) : 'N/A'}</td>
+                <td>${escapeHtmlMobile(name)}</td>
+                <td>${escapeHtmlMobile(vintage)}</td>
+                <td>${qty}</td>
+                <td>${price ? parseFloat(price).toFixed(2) : 'N/A'}</td>
             </tr>
         `;
     }).join('');
