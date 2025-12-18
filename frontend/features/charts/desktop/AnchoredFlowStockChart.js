@@ -590,9 +590,24 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     }
     
     const movements = rawMovements.map(mov => {
-        // Debug: log struttura movimento
-        const isConsumo = mov.type === 'consumo' || mov.type === 'CONSUMO' || mov.type === 'Consumo';
+        // Debug: log struttura movimento per i primi 3
+        if (rawMovements.indexOf(mov) < 3) {
+            console.log('[AnchoredFlowStockChart] Movimento raw:', {
+                type: mov.type,
+                quantity_change: mov.quantity_change,
+                quantity: mov.quantity,
+                delta: mov.delta,
+                date: mov.date || mov.at,
+                keys: Object.keys(mov)
+            });
+        }
+        
+        // Riconosci consumo: tipo deve essere esattamente 'consumo' (case-sensitive come nel legacy)
+        const isConsumo = mov.type === 'consumo';
         const quantityChange = mov.quantity_change || mov.quantity || mov.delta || 0;
+        
+        // Se è consumo, delta deve essere negativo (come nel legacy: -Math.abs(quantity_change))
+        // Se non è consumo, delta è positivo (rifornimento)
         const delta = isConsumo ? -Math.abs(quantityChange) : Math.abs(quantityChange);
         
         return {
