@@ -648,14 +648,28 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     }
 
     // Calcola opening stock
-    // Se abbiamo current_stock dall'API, usalo come stock finale
-    // Altrimenti calcoliamo: openingStock = currentStock - totalDelta
+    // Strategia: usa quantity_after dell'ultimo movimento come stock finale (più affidabile)
+    // Poi calcola openingStock = stockFinale - totalDelta
     const totalDelta = movements.reduce((sum, m) => sum + m.delta, 0);
-    const currentStock = movementsData.current_stock || movementsData.opening_stock || 0;
     
-    // Se abbiamo current_stock, l'opening stock è quello all'inizio del periodo
-    // openingStock = currentStock - totalDelta (se totalDelta è positivo, significa che abbiamo aggiunto stock)
-    let openingStock = currentStock - totalDelta;
+    // Cerca stock finale dall'ultimo movimento (quantity_after è più affidabile)
+    const lastMovement = rawMovements.length > 0 ? rawMovements[rawMovements.length - 1] : null;
+    const stockFinale = lastMovement?.quantity_after 
+        || movementsData.current_stock 
+        || movementsData.opening_stock 
+        || 0;
+    
+    console.log('[AnchoredFlowStockChart] Stock finale calcolato:', {
+        fromLastMovement: lastMovement?.quantity_after,
+        fromAPI: movementsData.current_stock || movementsData.opening_stock,
+        stockFinale,
+        totalDelta,
+        lastMovementType: lastMovement?.type
+    });
+    
+    // Se abbiamo stock finale, l'opening stock è quello all'inizio del periodo
+    // openingStock = stockFinale - totalDelta
+    let openingStock = stockFinale - totalDelta;
     
     // Se openingStock è negativo o zero, potrebbe essere un errore nei dati
     // In questo caso, usa lo stock più basso tra i movimenti o un valore di default
@@ -680,8 +694,8 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
                 console.warn('[AnchoredFlowStockChart] Min stock invalido, uso default:', openingStock);
             }
         } else {
-            // Se non abbiamo stock dai movimenti, usa currentStock o un valore di default
-            openingStock = Math.max(1, currentStock || 1);
+            // Se non abbiamo stock dai movimenti, usa stockFinale o un valore di default
+            openingStock = Math.max(1, stockFinale || 1);
             console.warn('[AnchoredFlowStockChart] Nessun stock dai movimenti, uso default:', openingStock);
         }
     }
@@ -689,14 +703,15 @@ function createAnchoredFlowStockChart(container, movementsData, options = {}) {
     // Assicura che openingStock sia sempre un numero finito valido
     if (!Number.isFinite(openingStock) || openingStock < 0 || isNaN(openingStock)) {
         console.error('[AnchoredFlowStockChart] Opening stock invalido, uso default:', openingStock);
-        openingStock = Math.max(1, currentStock || 1);
+        openingStock = Math.max(1, stockFinale || 1);
     }
     
     console.log('[AnchoredFlowStockChart] Opening stock calcolato:', {
-        currentStock,
+        stockFinale,
         totalDelta,
         openingStock,
-        movementsCount: movements.length
+        movementsCount: movements.length,
+        expectedFinalStock: openingStock + totalDelta
     });
 
     // Build chart data
