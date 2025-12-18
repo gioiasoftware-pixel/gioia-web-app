@@ -201,6 +201,8 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                             const tooltip = tooltipForIndex(index);
                             if (!tooltip) return null;
 
+                            // IMPORTANTE: tooltip.stock è già stock reale (non normalizzato)
+                            // tooltipForIndex restituisce: stock = stockNorm + anchorStock
                             if (datasetLabel === 'Stock') {
                                 return `Stock: ${Math.round(tooltip.stock)} bottiglie (Oggi: ${tooltip.anchorStock})`;
                             } else if (datasetLabel === 'Rifornimenti') {
@@ -267,19 +269,38 @@ function renderAnchoredFlowStockChart(canvas, chartData, options = {}) {
                     },
                     ticks: {
                         callback: function(value) {
-                            return yTickFormatter(value);
+                            // IMPORTANTE: value è normalizzato (può essere negativo)
+                            // Converti SEMPRE in stock reale: realStock = value + anchorStock
+                            const realStock = Math.round(value + anchorStock);
+                            
+                            // Non mostrare mai valori negativi (non ha senso per stock)
+                            if (realStock < 0) {
+                                return '';
+                            }
+                            
+                            // Se è la baseline (value ≈ 0), mostra etichetta speciale
+                            if (Math.abs(value) < 0.01) {
+                                return `Oggi: ${realStock}`;
+                            }
+                            
+                            // Per tutti gli altri tick, mostra solo il numero
+                            return realStock.toString();
                         },
+                        precision: 0,
+                        stepSize: undefined,
                     },
                     grid: {
                         color: function(context) {
+                            // Baseline (stock oggi) più visibile
                             if (Math.abs(context.tick.value) < 0.01) {
-                                return colors.baseline; // Linea baseline più visibile
+                                return colors.baseline;
                             }
                             return '#e0e0e0';
                         },
                         lineWidth: function(context) {
+                            // Baseline più spessa
                             if (Math.abs(context.tick.value) < 0.01) {
-                                return 2; // Linea baseline più spessa
+                                return 2;
                             }
                             return 1;
                         },
