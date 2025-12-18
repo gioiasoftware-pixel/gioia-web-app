@@ -1143,6 +1143,8 @@ function diagnoseChatScroll() {
     // Accumulatore per deltaY quando lo scroll non avviene naturalmente
     let accumulatedDeltaY = 0;
     let scrollFixTimeout = null;
+    let lastScrollTop = scrollWrapper.scrollTop;
+    let isScrollingNaturally = false;
     
     const wheelHandler = (e) => {
         wheelEventCount++;
@@ -1164,7 +1166,7 @@ function diagnoseChatScroll() {
             scrollTop: scrollWrapper.scrollTop
         });
         
-        // Se l'evento è dentro il wrapper e non è stato preventDefault, prova a forzare lo scroll
+        // Se l'evento è dentro il wrapper e non è stato preventDefault
         if (isInside && !e.defaultPrevented && Math.abs(e.deltaY) > 0) {
             const scrollTopBefore = scrollWrapper.scrollTop;
             const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
@@ -1172,16 +1174,17 @@ function diagnoseChatScroll() {
             // Accumula deltaY per scroll più fluido
             accumulatedDeltaY += e.deltaY;
             
-            // Verifica se lo scroll avviene dopo l'evento
-            setTimeout(() => {
+            // Verifica se lo scroll avviene dopo l'evento (timeout più lungo per dare tempo allo scroll naturale)
+            clearTimeout(scrollFixTimeout);
+            scrollFixTimeout = setTimeout(() => {
                 const scrollTopAfter = scrollWrapper.scrollTop;
-                const scrollChanged = Math.abs(scrollTopAfter - scrollTopBefore) > 1;
+                const scrollChanged = Math.abs(scrollTopAfter - scrollTopBefore) > 0.5;
                 
-                if (!scrollChanged && maxScroll > 0) {
-                    // Scroll non avvenuto, forza manualmente
+                if (!scrollChanged && maxScroll > 0 && !isScrollingNaturally) {
+                    // Scroll non avvenuto naturalmente, forza manualmente solo se necessario
                     const newScrollTop = Math.max(0, Math.min(maxScroll, scrollTopBefore + accumulatedDeltaY));
                     
-                    if (Math.abs(newScrollTop - scrollTopBefore) > 1) {
+                    if (Math.abs(newScrollTop - scrollTopBefore) > 0.5) {
                         scrollWrapper.scrollTop = newScrollTop;
                         console.log(`[SCROLL DIAG] 🔧 Scroll forzato manualmente: ${scrollTopBefore} -> ${scrollWrapper.scrollTop} (delta accumulato: ${accumulatedDeltaY})`);
                         accumulatedDeltaY = 0; // Reset dopo scroll forzato
@@ -1190,27 +1193,38 @@ function diagnoseChatScroll() {
                     // Scroll avvenuto naturalmente, reset accumulatore
                     accumulatedDeltaY = 0;
                 }
-            }, 10);
+            }, 50); // Timeout aumentato a 50ms per dare più tempo allo scroll naturale
         }
     };
     
     const scrollHandler = () => {
         scrollEventCount++;
         lastScrollTime = Date.now();
+        const currentScrollTop = scrollWrapper.scrollTop;
+        
+        // Verifica se lo scroll è naturale (non forzato dal nostro codice)
+        const scrollDiff = Math.abs(currentScrollTop - lastScrollTop);
+        if (scrollDiff > 0.5) {
+            isScrollingNaturally = true;
+            // Reset flag dopo breve delay
+            setTimeout(() => {
+                isScrollingNaturally = false;
+            }, 100);
+        }
+        lastScrollTop = currentScrollTop;
+        
         console.log(`[SCROLL DIAG] 🖱️ Scroll event #${scrollEventCount}:`, {
             scrollTop: scrollWrapper.scrollTop,
             scrollHeight: scrollWrapper.scrollHeight,
-            clientHeight: scrollWrapper.clientHeight
+            clientHeight: scrollWrapper.clientHeight,
+            natural: isScrollingNaturally ? '✅' : '❌'
         });
     };
     
     scrollWrapper.addEventListener('wheel', wheelHandler, { passive: true });
     scrollWrapper.addEventListener('scroll', scrollHandler, { passive: true });
     
-    // Accumulatore per document wheel handler
-    let documentAccumulatedDeltaY = 0;
-    
-    // Aggiungi anche listener in capture phase su document per intercettare eventi prima che vengano bloccati
+    // Listener su document solo per logging, non forza scroll (evita duplicazione)
     const documentWheelCaptureHandler = (e) => {
         const rect = scrollWrapper.getBoundingClientRect();
         const isInside = e.clientX >= rect.left && e.clientX <= rect.right &&
@@ -1226,26 +1240,7 @@ function diagnoseChatScroll() {
                 defaultPrevented: e.defaultPrevented,
                 isInsideWrapper: '✅'
             });
-            
-            // Se l'evento è dentro il wrapper, accumula e forza scroll se necessario
-            if (!e.defaultPrevented) {
-                documentAccumulatedDeltaY += e.deltaY;
-                
-                // Forza scroll dopo un breve delay se non avviene naturalmente
-                clearTimeout(scrollFixTimeout);
-                scrollFixTimeout = setTimeout(() => {
-                    const scrollTopBefore = scrollWrapper.scrollTop;
-                    const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
-                    const newScrollTop = Math.max(0, Math.min(maxScroll, scrollTopBefore + documentAccumulatedDeltaY));
-                    
-                    if (Math.abs(newScrollTop - scrollTopBefore) > 1 && maxScroll > 0) {
-                        scrollWrapper.scrollTop = newScrollTop;
-                        console.log(`[SCROLL DIAG] 🔧 Scroll forzato da document handler: ${scrollTopBefore} -> ${scrollWrapper.scrollTop} (delta: ${documentAccumulatedDeltaY})`);
-                    }
-                    
-                    documentAccumulatedDeltaY = 0;
-                }, 20);
-            }
+            // Non forza scroll qui per evitare duplicazione con wheelHandler
         }
     };
     
