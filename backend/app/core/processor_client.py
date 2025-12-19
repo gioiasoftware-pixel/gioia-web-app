@@ -256,7 +256,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/admin/update-wine-field-with-movement",
                     data={
-                        "telegram_id": user_id,  # Passa user_id come telegram_id per retrocompatibilità
+                        "user_id": user_id,
                         "business_name": business_name,
                         "wine_id": wine_id,
                         "field": "quantity",

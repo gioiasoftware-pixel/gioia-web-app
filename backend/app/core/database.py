@@ -208,14 +208,14 @@ class DatabaseManager:
                     logger.error(f"Errore anche nel fallback vecchia tabella wines: {fallback_error}", exc_info=True)
                     return []
     
-    async def get_wine_by_id(self, telegram_id: int, wine_id: int) -> Optional[Wine]:
+    async def get_wine_by_id(self, user_id: int, wine_id: int) -> Optional[Wine]:
         """
         Recupera un vino specifico per ID dalla tabella dinamica.
         """
         async with AsyncSessionLocal() as session:
-            user = await self.get_user_by_telegram_id(telegram_id)
+            user = await self.get_user_by_id(user_id)
             if not user or not user.business_name:
-                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
+                logger.warning(f"[DB] User user_id={user_id} non trovato o business_name mancante")
                 return None
             
             table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
@@ -231,7 +231,7 @@ class DatabaseManager:
                 row = result.fetchone()
                 
                 if not row:
-                    logger.warning(f"[DB] Vino id={wine_id} non trovato per telegram_id={telegram_id}")
+                    logger.warning(f"[DB] Vino id={wine_id} non trovato per user_id={user_id}")
                     return None
                 
                 # Converti la riga in oggetto Wine
@@ -261,7 +261,7 @@ class DatabaseManager:
                 for key, value in wine_dict.items():
                     setattr(wine, key, value)
                 
-                logger.info(f"[DB] Recuperato vino id={wine_id} per telegram_id={telegram_id}: {wine.name}")
+                logger.info(f"[DB] Recuperato vino id={wine_id} per user_id={user_id}: {wine.name}")
                 return wine
                 
             except Exception as e:
@@ -569,7 +569,7 @@ class DatabaseManager:
             logger.info(f"Email e password aggiornate per user_id={user_id}")
             return True
     
-    async def check_user_has_dynamic_tables(self, telegram_id: int) -> tuple[bool, Optional[str]]:
+    async def check_user_has_dynamic_tables(self, user_id: int) -> tuple[bool, Optional[str]]:
         """
         Verifica se l'utente ha già tabelle dinamiche nel database.
         """
@@ -583,8 +583,8 @@ class DatabaseManager:
                     LIMIT 1
                 """)
                 
-                # Cerca tabelle usando user_id invece di telegram_id
-                user = await self.get_user_by_telegram_id(telegram_id)
+                # Cerca tabelle usando user_id
+                user = await self.get_user_by_id(user_id)
                 if not user:
                     return False, None
                 pattern = f"{user.id}/% INVENTARIO"

@@ -97,7 +97,7 @@ async def migrate_conversations_table(session: AsyncSession):
 async def migrate_log_interaction_tables(session: AsyncSession):
     """
     Aggiunge la colonna conversation_id alle tabelle LOG interazione esistenti.
-    Le tabelle sono dinamiche: "{telegram_id}/{business_name} LOG interazione"
+    Le tabelle sono dinamiche: "{user_id}/{business_name} LOG interazione"
     """
     try:
         # Recupera tutti gli utenti con business_name
@@ -119,12 +119,13 @@ async def migrate_log_interaction_tables(session: AsyncSession):
         tables_skipped = 0
         
         for user in users:
-            telegram_id = user.telegram_id or user.id  # Usa telegram_id o id come fallback
+            user_id = user.id  # Usa user_id direttamente
             business_name = user.business_name
-            table_name = f'"{telegram_id}/{business_name} LOG interazione"'
+            # Cerca tabella con pattern user_id (nuovo formato)
+            table_name = f'"{user_id}/{business_name} LOG interazione"'
             
             try:
-                # Verifica se la tabella esiste
+                # Verifica se la tabella esiste (prima cerca con user_id)
                 check_table_query = sql_text(f"""
                     SELECT EXISTS (
                         SELECT FROM information_schema.tables 
@@ -135,8 +136,17 @@ async def migrate_log_interaction_tables(session: AsyncSession):
                 result = await session.execute(check_table_query, {"table_name": table_name.replace('"', '')})
                 table_exists = result.scalar()
                 
+                # Se non esiste con user_id, prova con telegram_id per retrocompatibilità
+                if not table_exists and user.telegram_id:
+                    old_table_name = f'"{user.telegram_id}/{business_name} LOG interazione"'
+                    result = await session.execute(check_table_query, {"table_name": old_table_name.replace('"', '')})
+                    table_exists = result.scalar()
+                    if table_exists:
+                        table_name = old_table_name
+                        logger.info(f"[MIGRATIONS] Trovata tabella con formato legacy (telegram_id) per user_id={user_id}, useremo quella")
+                
                 if not table_exists:
-                    logger.debug(f"[MIGRATIONS] Tabella {table_name} non esiste, skip")
+                    logger.debug(f"[MIGRATIONS] Tabella LOG interazione non esiste per user_id={user_id}, skip")
                     tables_skipped += 1
                     continue
                 
