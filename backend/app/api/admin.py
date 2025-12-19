@@ -71,6 +71,11 @@ class UserResponse(BaseModel):
     business_name: Optional[str] = None
     username: Optional[str] = None
     telegram_id: Optional[int] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    business_type: Optional[str] = None
+    location: Optional[str] = None
+    phone: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     onboarding_completed: bool = False
@@ -121,8 +126,14 @@ class OnboardingRequest(BaseModel):
 
 class UpdateUserRequest(BaseModel):
     email: Optional[EmailStr] = None
+    username: Optional[str] = None
     business_name: Optional[str] = None
     password: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    business_type: Optional[str] = None
+    location: Optional[str] = None
+    phone: Optional[str] = None
 
 
 class CreateTableRowRequest(BaseModel):
@@ -588,18 +599,36 @@ async def update_user(
             raise HTTPException(status_code=404, detail="Utente non trovato")
         
         # Aggiorna campi
-        if data.email:
+        if data.email is not None:
             # Verifica email non duplicata
             existing = await db_manager.get_user_by_email(data.email)
             if existing and existing.id != user_id:
                 raise HTTPException(status_code=400, detail="Email già registrata")
             user.email = data.email.lower().strip()
         
-        if data.business_name:
-            user.business_name = data.business_name
+        if data.username is not None:
+            user.username = data.username.strip() if data.username else None
         
-        if data.password:
+        if data.business_name is not None:
+            user.business_name = data.business_name.strip() if data.business_name else None
+        
+        if data.password is not None and data.password.strip() != '':
             user.password_hash = hash_password(data.password)
+        
+        if data.first_name is not None:
+            user.first_name = data.first_name.strip() if data.first_name else None
+        
+        if data.last_name is not None:
+            user.last_name = data.last_name.strip() if data.last_name else None
+        
+        if data.business_type is not None:
+            user.business_type = data.business_type.strip() if data.business_type else None
+        
+        if data.location is not None:
+            user.location = data.location.strip() if data.location else None
+        
+        if data.phone is not None:
+            user.phone = data.phone.strip() if data.phone else None
         
         user.updated_at = datetime.utcnow()
         await session.commit()
