@@ -4,6 +4,8 @@ Gestisce utenti, tabelle dinamiche e integrazione con Processor.
 """
 import logging
 import os
+import secrets
+import re
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Query, Body, UploadFile, File, Form, status
@@ -403,19 +405,38 @@ async def get_user(
 
 @router.post("/users")
 async def create_user(
-    username: str = Form(...),
-    email: EmailStr = Form(...),
-    password: str = Form(...),
-    business_name: str = Form(...),
+    business_name: str = Form(...),  # Solo business_name è obbligatorio
+    username: Optional[str] = Form(None),
+    email: Optional[EmailStr] = Form(None),
+    password: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     file_type: Optional[str] = Form("csv"),
     admin_user: dict = Depends(is_admin_user)
 ):
     """
     Crea nuovo utente tramite Processor (onboarding).
+    Solo business_name è obbligatorio. Username, email e password sono opzionali.
     Supporta upload file opzionale.
     """
     from app.core.auth import hash_password
+    
+    # Genera email se non fornita (basata su business_name)
+    if not email or email.strip() == '':
+        # Crea slug da business_name per email
+        business_slug = re.sub(r'[^a-z0-9]+', '-', business_name.lower().strip())
+        business_slug = re.sub(r'^-+|-+$', '', business_slug)  # Rimuovi trattini iniziali/finali
+        if not business_slug:
+            business_slug = 'user'
+        # Aggiungi timestamp per unicità
+        timestamp = int(datetime.utcnow().timestamp())
+        email = f"{business_slug}-{timestamp}@temp.gio.ia"
+        logger.info(f"[CREATE_USER] Email generata automaticamente: {email}")
+    
+    # Genera password se non fornita
+    if not password or password.strip() == '':
+        # Genera password random sicura (16 caratteri)
+        password = secrets.token_urlsafe(12)
+        logger.info(f"[CREATE_USER] Password generata automaticamente")
     
     # Crea utente nel database prima di chiamare Processor
     async with AsyncSessionLocal() as session:
@@ -430,7 +451,8 @@ async def create_user(
             email=email,
             password_hash=password_hash,
             business_name=business_name,
-            telegram_id=None
+            telegram_id=None,
+            username=username if username and username.strip() else None
         )
         
         # Se c'è un file, invialo a Processor per onboarding

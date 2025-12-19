@@ -505,7 +505,8 @@ class DatabaseManager:
         email: str,
         password_hash: str,
         business_name: str,
-        telegram_id: Optional[int] = None
+        telegram_id: Optional[int] = None,
+        username: Optional[str] = None
     ) -> User:
         """Crea nuovo utente"""
         async with AsyncSessionLocal() as session:
@@ -516,12 +517,13 @@ class DatabaseManager:
                 password_hash=password_hash,
                 business_name=business_name,
                 telegram_id=telegram_id,
+                username=username,
                 onboarding_completed=False
             )
             session.add(user)
             await session.commit()
             await session.refresh(user)
-            logger.info(f"[DB] Utente creato: email={email_normalized}, telegram_id={telegram_id}, user_id={user.id}")
+            logger.info(f"[DB] Utente creato: email={email_normalized}, telegram_id={telegram_id}, user_id={user.id}, username={username}")
             return user
     
     async def update_user_password(
