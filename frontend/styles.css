@@ -2941,10 +2941,15 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     transition: max-width 0.3s ease, width 0.3s ease;
     /* La card deve essere sopra i segnalibri */
     z-index: 10;
-    /* Altezza minima standard per allineare correttamente i segnalibri */
-    /* Calcolo: header (~60px) + body minimo (~120px) + padding (40px) = ~220px */
-    /* Aggiungiamo margine per sicurezza: 240px garantisce spazio per 2 bookmarks (80px ciascuno + gap) */
-    min-height: 240px;
+    /* Altezza minima standard per garantire che i segnalibri siano sempre contenuti */
+    /* Calcolo basato su card "Cuvee Prestige" (riferimento): */
+    /* - Header: ~60px (titolo + produttore + border) */
+    /* - Body con 6 campi in 2 colonne: ~140px */
+    /* - Padding top/bottom: 40px */
+    /* - Bookmark totale: 80px + 8px gap + 80px = 168px */
+    /* - Margine sicurezza: 20px */
+    /* Totale: 60 + 140 + 40 + 20 = 260px minimo, arrotondato a 280px per sicurezza */
+    min-height: 280px;
     display: flex;
     flex-direction: column;
 }
@@ -3006,7 +3011,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     gap: 16px;
     /* Assicura che il body si espanda per riempire lo spazio disponibile */
     flex: 1;
-    min-height: 120px;
+    /* Min-height aumentato per garantire spazio sufficiente anche con pochi dati */
+    /* Basato su card "Cuvee Prestige" con 6 campi: ~140px */
+    min-height: 140px;
 }
 
 .wine-card-field {
