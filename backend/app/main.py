@@ -21,14 +21,30 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS Configuration - Allow all origins when serving frontend from same domain
+# CORS Configuration - Allow all origins including Control Panel Admin
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+CONTROL_PANEL_URL = os.getenv("CONTROL_PANEL_URL", "https://controlpaneladmingioia-production.up.railway.app")
+
+# Lista di origini permesse
+allowed_origins = [
+    FRONTEND_URL,
+    CONTROL_PANEL_URL,
+    "https://controlpaneladmingioia-production.up.railway.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
+# Rimuovi duplicati e None
+allowed_origins = list(set([origin for origin in allowed_origins if origin]))
+
+# Se allow_credentials=True, non possiamo usare ["*"], dobbiamo specificare le origini
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all when serving from same domain
+    allow_origins=allowed_origins if allowed_origins else ["*"],  # Fallback a "*" se lista vuota
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Serve static files from frontend directory

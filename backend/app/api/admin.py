@@ -148,37 +148,43 @@ async def get_users(
     """
     Lista utenti con paginazione e ricerca.
     """
-    async with AsyncSessionLocal() as session:
-        # Query base
-        query = select(User)
-        
-        # Filtro ricerca
-        if search:
-            search_term = f"%{search.lower()}%"
-            query = query.where(
-                (func.lower(User.email).like(search_term)) |
-                (func.lower(User.business_name).like(search_term)) |
-                (func.lower(User.username).like(search_term))
+    try:
+        async with AsyncSessionLocal() as session:
+            # Query base
+            query = select(User)
+            
+            # Filtro ricerca
+            if search:
+                search_term = f"%{search.lower()}%"
+                query = query.where(
+                    (func.lower(User.email).like(search_term)) |
+                    (func.lower(User.business_name).like(search_term)) |
+                    (func.lower(User.username).like(search_term))
+                )
+            
+            # Count totale
+            count_query = select(func.count()).select_from(query.subquery())
+            total_result = await session.execute(count_query)
+            total = total_result.scalar() or 0
+            
+            # Paginazione
+            offset = (page - 1) * limit
+            query = query.order_by(User.created_at.desc()).offset(offset).limit(limit)
+            
+            result = await session.execute(query)
+            users = result.scalars().all()
+            
+            return PaginatedUsersResponse(
+                data=[UserResponse.model_validate(u) for u in users],
+                total=total,
+                page=page,
+                limit=limit
             )
-        
-        # Count totale
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await session.execute(count_query)
-        total = total_result.scalar() or 0
-        
-        # Paginazione
-        offset = (page - 1) * limit
-        query = query.order_by(User.created_at.desc()).offset(offset).limit(limit)
-        
-        result = await session.execute(query)
-        users = result.scalars().all()
-        
-        return PaginatedUsersResponse(
-            data=[UserResponse.model_validate(u) for u in users],
-            total=total,
-            page=page,
-            limit=limit
-        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore recupero lista utenti: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
 
 
 @router.get("/users/{user_id}", response_model=UserWithStatsResponse)
