@@ -108,6 +108,13 @@ class UpdateTableRowRequest(BaseModel):
     model_config = ConfigDict(extra='allow')
 
 
+class DashboardKPIResponse(BaseModel):
+    total_users: int = 0
+    active_jobs: int = 0
+    errors_24h: int = 0
+    files_uploaded_7d: int = 0
+
+
 def get_user_table_name(user_id: int, business_name: str, table_type: str) -> str:
     """
     Genera nome tabella dinamica utente.
@@ -338,6 +345,34 @@ async def create_user(
                     "message": "Utente creato ma errore creazione tabelle",
                     "error": str(e)
                 }
+
+
+@router.get("/dashboard/kpi", response_model=DashboardKPIResponse)
+async def get_dashboard_kpi(
+    admin_user: dict = Depends(is_admin_user)
+):
+    """
+    Ottiene KPI dashboard per admin panel.
+    """
+    async with AsyncSessionLocal() as session:
+        try:
+            # Count totale utenti
+            count_users_query = select(func.count(User.id))
+            result = await session.execute(count_users_query)
+            total_users = result.scalar() or 0
+            
+            # Per ora, restituiamo valori mock per active_jobs, errors_24h, files_uploaded_7d
+            # Questi verranno implementati quando avremo il nuovo database per KPI
+            return DashboardKPIResponse(
+                total_users=total_users,
+                active_jobs=0,  # TODO: Implementare quando disponibile
+                errors_24h=0,  # TODO: Implementare quando disponibile
+                files_uploaded_7d=0  # TODO: Implementare quando disponibile
+            )
+        except Exception as e:
+            logger.error(f"Errore calcolo KPI dashboard: {e}", exc_info=True)
+            # Restituisci valori di default in caso di errore
+            return DashboardKPIResponse()
 
 
 @router.patch("/users/{user_id}", response_model=UserResponse)
