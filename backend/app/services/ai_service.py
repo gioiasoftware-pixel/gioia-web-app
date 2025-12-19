@@ -423,7 +423,7 @@ INFORMAZIONI UTENTE:
     
     # ========== HTML CARD GENERATORS ==========
     
-    def _generate_wine_card_html(self, wine, is_new: bool = False) -> str:
+    def _generate_wine_card_html(self, wine, is_new: bool = False, error_info: Optional[Dict[str, Any]] = None) -> str:
         """
         Genera HTML per card informazioni vino.
         Stile gio-ia: bianco con accenti granaccia.
@@ -431,13 +431,19 @@ INFORMAZIONI UTENTE:
         Args:
             wine: Oggetto vino
             is_new: Se True, aggiunge dicitura "Vino aggiunto" nell'header
+            error_info: Dict opzionale con info errore (message, requested_quantity, available_quantity)
         """
         wine_id = getattr(wine, 'id', None)
         wine_id_attr = f' data-wine-id="{wine_id}"' if wine_id else ''
         html = f'<div class="wine-card"{wine_id_attr}>'
         html += '<div class="wine-card-header">'
+        
+        # Badge per nuovo vino o errore
         if is_new:
             html += '<div class="wine-card-badge">✅ Vino aggiunto</div>'
+        elif error_info:
+            html += '<div class="wine-card-badge error-badge">⚠️ Quantità insufficiente</div>'
+        
         html += f'<div><h3 class="wine-card-title">{self._escape_html(wine.name)}</h3>'
         if wine.producer:
             html += f'<div class="wine-card-producer">{self._escape_html(wine.producer)}</div>'
@@ -446,11 +452,21 @@ INFORMAZIONI UTENTE:
         
         html += '<div class="wine-card-body">'
         
+        # Se c'è errore, mostra messaggio prima della quantità
+        if error_info:
+            requested = error_info.get('requested_quantity', 0)
+            available = error_info.get('available_quantity', wine.quantity or 0)
+            html += '<div class="wine-card-error-message">'
+            html += f'<span class="error-text">Richiesto: {requested} bottiglie</span>'
+            html += f'<span class="error-text">Disponibili: {available} bottiglie</span>'
+            html += '</div>'
+        
         # Quantità
         if wine.quantity is not None:
             html += '<div class="wine-card-field">'
-            html += '<span class="wine-card-field-label">Quantità</span>'
-            html += f'<span class="wine-card-field-value quantity">{wine.quantity} bottiglie</span>'
+            html += '<span class="wine-card-field-label">Quantità disponibile</span>'
+            quantity_class = "quantity-low" if error_info else "quantity"
+            html += f'<span class="wine-card-field-value {quantity_class}">{wine.quantity} bottiglie</span>'
             html += '</div>'
         
         # Prezzo vendita
@@ -2068,6 +2084,35 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         return {"success": True, "message": html_card, "use_template": False, "is_html": True}
                     else:
                         error_msg = result.get('error', 'Errore sconosciuto')
+                        
+                        # Se è errore quantità insufficiente, mostra wine card con info disponibile
+                        if "insufficiente" in error_msg.lower() or "disponibili" in error_msg.lower():
+                            # Cerca il vino nel database per mostrare card con quantità disponibile
+                            try:
+                                # Usa il vino trovato prima (se disponibile) o cerca di nuovo
+                                wine_to_show = wines[0] if wines and len(wines) == 1 else None
+                                if not wine_to_show:
+                                    # Cerca di nuovo il vino
+                                    search_results = await db_manager.search_wines(user_id, wine_name, limit=1)
+                                    if search_results:
+                                        wine_to_show = search_results[0]
+                                
+                                if wine_to_show:
+                                    # Mostra wine card con badge errore e quantità disponibile
+                                    html_card = self._generate_wine_card_html(
+                                        wine_to_show,
+                                        is_new=False,
+                                        error_info={
+                                            "message": error_msg,
+                                            "requested_quantity": quantity,
+                                            "available_quantity": wine_to_show.quantity or 0
+                                        }
+                                    )
+                                    return {"success": False, "error": html_card, "is_html": True}
+                            except Exception as e:
+                                logger.warning(f"[TOOLS] Errore recupero vino per card errore: {e}")
+                        
+                        # Fallback: usa error card standard
                         error_html = self._generate_error_message_html(f"Errore: {error_msg}")
                         return {"success": False, "error": error_html, "is_html": True}
                 except Exception as e:
