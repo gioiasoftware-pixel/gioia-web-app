@@ -7,7 +7,7 @@ import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Query, Body, UploadFile, File, Form
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy import select, text as sql_text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -75,9 +75,9 @@ class UserWithStatsResponse(BaseModel):
 
 
 class TableRowResponse(BaseModel):
+    model_config = ConfigDict(extra='allow')
     id: int
     user_id: int
-    [key: str]: Any  # Permette campi dinamici
 
 
 class PaginatedTableResponse(BaseModel):
@@ -101,11 +101,11 @@ class UpdateUserRequest(BaseModel):
 
 
 class CreateTableRowRequest(BaseModel):
-    [key: str]: Any  # Campi dinamici
+    model_config = ConfigDict(extra='allow')
 
 
 class UpdateTableRowRequest(BaseModel):
-    [key: str]: Any  # Campi dinamici
+    model_config = ConfigDict(extra='allow')
 
 
 def get_user_table_name(user_id: int, business_name: str, table_type: str) -> str:
