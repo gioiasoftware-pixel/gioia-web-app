@@ -112,12 +112,27 @@ class DatabaseManager:
     """Gestore database async per web app"""
     
     async def get_user_by_telegram_id(self, telegram_id: int) -> Optional[User]:
-        """Trova utente per Telegram ID"""
+        """
+        Trova utente per Telegram ID o User ID.
+        Se telegram_id non corrisponde a nessun utente, prova a cercare per user_id.
+        Questo supporta utenti web-only che hanno telegram_id=None.
+        """
         async with AsyncSessionLocal() as session:
+            # Prima prova a cercare per telegram_id
             result = await session.execute(
                 select(User).where(User.telegram_id == telegram_id)
             )
-            return result.scalar_one_or_none()
+            user = result.scalar_one_or_none()
+            
+            # Se non trovato per telegram_id, prova a cercare per user_id
+            # (caso utenti web-only con telegram_id=None)
+            if not user:
+                result = await session.execute(
+                    select(User).where(User.id == telegram_id)
+                )
+                user = result.scalar_one_or_none()
+            
+            return user
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Trova utente per email (normalizza sempre in lowercase)"""
