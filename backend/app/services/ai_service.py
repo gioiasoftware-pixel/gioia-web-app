@@ -2089,15 +2089,39 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                         if "insufficiente" in error_msg.lower() or "disponibili" in error_msg.lower():
                             # Cerca il vino nel database per mostrare card con quantità disponibile
                             try:
-                                # Usa il vino trovato prima (se disponibile) o cerca di nuovo
-                                wine_to_show = wines[0] if wines and len(wines) == 1 else None
+                                wine_to_show = None
+                                
+                                # Prova prima con il vino trovato dal fuzzy matching (se disponibile)
+                                if wines and len(wines) == 1:
+                                    wine_to_show = wines[0]
+                                    logger.info(f"[TOOLS] Usando vino trovato da fuzzy matching per card errore: {wine_to_show.name}")
+                                
+                                # Se non disponibile, cerca di nuovo il vino usando il nome esatto dal risultato
                                 if not wine_to_show:
-                                    # Cerca di nuovo il vino
+                                    wine_name_from_result = result.get('wine_name', wine_name)
+                                    logger.info(f"[TOOLS] Cercando vino per card errore: '{wine_name_from_result}'")
+                                    search_results = await db_manager.search_wines(user_id, wine_name_from_result, limit=1)
+                                    if search_results:
+                                        wine_to_show = search_results[0]
+                                        logger.info(f"[TOOLS] Vino trovato per card errore: {wine_to_show.name}")
+                                
+                                # Se ancora non trovato, prova con il nome originale
+                                if not wine_to_show:
+                                    logger.info(f"[TOOLS] Cercando vino con nome originale: '{wine_name}'")
                                     search_results = await db_manager.search_wines(user_id, wine_name, limit=1)
                                     if search_results:
                                         wine_to_show = search_results[0]
+                                        logger.info(f"[TOOLS] Vino trovato con nome originale: {wine_to_show.name}")
                                 
                                 if wine_to_show:
+                                    # Estrai quantità disponibile dal messaggio di errore se possibile
+                                    available_qty = wine_to_show.quantity or 0
+                                    # Prova a estrarre dal messaggio errore (es: "disponibili 19")
+                                    import re
+                                    disponibili_match = re.search(r'disponibili\s+(\d+)', error_msg.lower())
+                                    if disponibili_match:
+                                        available_qty = int(disponibili_match.group(1))
+                                    
                                     # Mostra wine card con badge errore e quantità disponibile
                                     html_card = self._generate_wine_card_html(
                                         wine_to_show,
@@ -2105,12 +2129,15 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                                         error_info={
                                             "message": error_msg,
                                             "requested_quantity": quantity,
-                                            "available_quantity": wine_to_show.quantity or 0
+                                            "available_quantity": available_qty
                                         }
                                     )
+                                    logger.info(f"[TOOLS] Generata wine card errore per '{wine_to_show.name}': richiesto={quantity}, disponibile={available_qty}")
                                     return {"success": False, "error": html_card, "is_html": True}
+                                else:
+                                    logger.warning(f"[TOOLS] Vino non trovato per card errore: '{wine_name}'")
                             except Exception as e:
-                                logger.warning(f"[TOOLS] Errore recupero vino per card errore: {e}")
+                                logger.error(f"[TOOLS] Errore recupero vino per card errore: {e}", exc_info=True)
                         
                         # Fallback: usa error card standard
                         error_html = self._generate_error_message_html(f"Errore: {error_msg}")
