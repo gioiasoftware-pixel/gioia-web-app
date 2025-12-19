@@ -849,11 +849,18 @@ async function handleSignup(e) {
     const email = document.getElementById('signup-email').value;
     const password = document.getElementById('signup-password').value;
     const businessName = document.getElementById('business-name').value;
-    const telegramId = document.getElementById('telegram-id').value;
+    const codice = document.getElementById('codice').value;
 
     // Validate password
     if (password.length < 8) {
         errorEl.textContent = 'La password deve essere di almeno 8 caratteri';
+        errorEl.classList.remove('hidden');
+        return;
+    }
+
+    // Validate codice
+    if (!codice || codice.trim() === '') {
+        errorEl.textContent = 'Il codice è obbligatorio';
         errorEl.classList.remove('hidden');
         return;
     }
@@ -863,11 +870,8 @@ async function handleSignup(e) {
             email,
             password,
             business_name: businessName,
+            codice: parseInt(codice)
         };
-
-        if (telegramId) {
-            body.telegram_id = parseInt(telegramId);
-        }
 
         const response = await fetch(`${API_BASE_URL}/api/auth/signup`, {
             method: 'POST',

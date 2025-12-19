@@ -26,7 +26,7 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str
     business_name: str  # Nome del tuo locale
-    telegram_id: Optional[int] = None  # Opzionale: per utenti Telegram esistenti
+    codice: int  # Codice utente (user_id) - obbligatorio
 
 
 class LoginRequest(BaseModel):
@@ -57,19 +57,15 @@ class UserInfo(BaseModel):
 @router.post("/signup", response_model=LoginResponse)
 async def signup(signup_request: SignupRequest):
     """
-    Registrazione nuovo utente.
+    Registrazione utente con codice (user_id).
     
-    Se telegram_id fornito e utente esiste già con onboarding completato:
-    - Aggiorna solo email e password nella riga esistente
-    
-    Altrimenti:
-    - Crea nuovo utente
-    - Se telegram_id fornito, lo associa all'utente
+    Il codice (user_id) è obbligatorio e deve corrispondere a un utente esistente.
+    Aggiorna email, password e business_name (se non presente) per l'utente esistente.
     """
     email = signup_request.email.lower().strip()
     password = signup_request.password
     business_name = signup_request.business_name.strip()
-    telegram_id = signup_request.telegram_id
+    codice = signup_request.codice  # user_id
     
     # Validazione password
     if len(password) < 8:
@@ -78,9 +74,9 @@ async def signup(signup_request: SignupRequest):
             detail="La password deve essere di almeno 8 caratteri"
         )
     
-    # Verifica se email già esistente
+    # Verifica se email già esistente (e non appartiene all'utente corrente)
     existing_user_by_email = await db_manager.get_user_by_email(email)
-    if existing_user_by_email:
+    if existing_user_by_email and existing_user_by_email.id != codice:
         raise HTTPException(
             status_code=400,
             detail="Email già registrata"
@@ -94,93 +90,32 @@ async def signup(signup_request: SignupRequest):
     else:
         logger.info(f"[AUTH] Password hashata durante signup: hash_length={len(password_hash)}, hash_prefix={password_hash[:10]}...")
     
-    # Caso speciale: telegram_id fornito e utente Telegram esiste già con onboarding completato
-    if telegram_id:
-        existing_user_by_telegram = await db_manager.get_user_by_telegram_id(telegram_id)
+    # Trova utente esistente per codice (user_id)
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(User).where(User.id == codice)
+        )
+        user_to_update = result.scalar_one_or_none()
         
-        if existing_user_by_telegram:
-            if existing_user_by_telegram.onboarding_completed:
-                # Utente Telegram esistente con onboarding completato
-                # Aggiorna solo email e password
-                success = await db_manager.update_user_email_password(
-                    telegram_id=telegram_id,
-                    email=email,
-                    password_hash=password_hash
-                )
-                
-                if not success:
-                    raise HTTPException(
-                        status_code=500,
-                        detail="Errore aggiornamento utente esistente"
-                    )
-                
-                user = await db_manager.get_user_by_telegram_id(telegram_id)
-                logger.info(f"[AUTH] Email/password aggiunte a utente Telegram esistente: telegram_id={telegram_id}, email={email}, user_id={user.id}")
-                
-                # Genera token
-                token = create_access_token(
-                    user_id=user.id,
-                    telegram_id=user.telegram_id,
-                    business_name=user.business_name or business_name,
-                    remember_me=False
-                )
-                
-                return LoginResponse(
-                    access_token=token,
-                    token_type="bearer",
-                    user_id=user.id,
-                    telegram_id=user.telegram_id,
-                    business_name=user.business_name,
-                    onboarding_completed=user.onboarding_completed
-                )
-            else:
-                # Utente Telegram esiste ma onboarding non completato
-                # Aggiorna email/password e business_name se non presente
-                async with AsyncSessionLocal() as session:
-                    result = await session.execute(
-                        select(User).where(User.telegram_id == telegram_id)
-                    )
-                    user_to_update = result.scalar_one_or_none()
-                    if user_to_update:
-                        if not user_to_update.business_name:
-                            user_to_update.business_name = business_name
-                        user_to_update.email = email.lower().strip()  # Normalizza email
-                        user_to_update.password_hash = password_hash
-                        user_to_update.updated_at = datetime.utcnow()
-                        session.add(user_to_update)
-                        await session.commit()
-                        await session.refresh(user_to_update)
-                        user = user_to_update
-                    else:
-                        raise HTTPException(status_code=500, detail="Errore aggiornamento utente")
-                
-                logger.info(f"[AUTH] Utente Telegram aggiornato con email/password: telegram_id={telegram_id}, user_id={user.id}, business_name={user.business_name}")
-                
-                token = create_access_token(
-                    user_id=user.id,
-                    telegram_id=user.telegram_id,
-                    business_name=user.business_name,
-                    remember_me=False
-                )
-                
-                return LoginResponse(
-                    access_token=token,
-                    token_type="bearer",
-                    user_id=user.id,
-                    telegram_id=user.telegram_id,
-                    business_name=user.business_name,
-                    onboarding_completed=user.onboarding_completed
-                )
+        if not user_to_update:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Codice non valido. Nessun utente trovato con codice {codice}"
+            )
+        
+        # Aggiorna email, password e business_name (se non presente)
+        if not user_to_update.business_name:
+            user_to_update.business_name = business_name
+        
+        user_to_update.email = email.lower().strip()  # Normalizza email
+        user_to_update.password_hash = password_hash
+        user_to_update.updated_at = datetime.utcnow()
+        session.add(user_to_update)
+        await session.commit()
+        await session.refresh(user_to_update)
+        user = user_to_update
     
-    # Caso normale: crea nuovo utente
-    user = await db_manager.create_user(
-        email=email,
-        password_hash=password_hash,
-        business_name=business_name,
-        telegram_id=telegram_id
-    )
-    
-    logger.info(f"[AUTH] Nuovo utente creato: email={email}, user_id={user.id}, telegram_id={telegram_id}, business_name={user.business_name}")
+    logger.info(f"[AUTH] Utente aggiornato con email/password: codice={codice}, user_id={user.id}, email={email}, business_name={user.business_name}")
     
     # Genera token
     token = create_access_token(
