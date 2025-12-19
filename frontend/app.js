@@ -1627,7 +1627,45 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             }
         } else {
             // Testo normale: escape per sicurezza
-            contentDiv.textContent = content;
+            // MA: se il contenuto inizia con <div o contiene class="wine-card", potrebbe essere HTML non riconosciuto
+            // Fallback: controlla se sembra HTML anche se isHtml è false
+            const trimmedContent = content.trim();
+            const looksLikeHtml = trimmedContent.startsWith('<div') || 
+                                 trimmedContent.startsWith('&lt;div') ||
+                                 trimmedContent.includes('class="wine-card"') ||
+                                 trimmedContent.includes('class="wines-list-card"') ||
+                                 trimmedContent.includes('class="movement-card"');
+            
+            if (looksLikeHtml) {
+                // Sembra HTML ma isHtml era false - prova a renderizzarlo comunque
+                console.warn('[CHAT] Contenuto sembra HTML ma isHtml=false, provo rendering comunque');
+                const tempContainer = document.createElement('div');
+                tempContainer.style.display = 'none';
+                document.body.appendChild(tempContainer);
+                
+                try {
+                    // Decodifica se escapato
+                    let htmlContent = content;
+                    if (trimmedContent.startsWith('&lt;')) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = content;
+                        htmlContent = tempDiv.innerHTML;
+                    }
+                    
+                    tempContainer.innerHTML = htmlContent;
+                    while (tempContainer.firstChild) {
+                        contentDiv.appendChild(tempContainer.firstChild);
+                    }
+                    contentDiv.classList.add('has-card');
+                } catch (error) {
+                    console.error('[CHAT] Errore rendering HTML fallback:', error);
+                    contentDiv.textContent = content;
+                } finally {
+                    document.body.removeChild(tempContainer);
+                }
+            } else {
+                contentDiv.textContent = content;
+            }
         }
         
         // Aggiungi pulsanti se presenti
