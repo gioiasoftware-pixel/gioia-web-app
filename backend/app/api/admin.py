@@ -467,19 +467,21 @@ async def create_user(
         )
         
         # Se c'è un file, invialo a Processor per onboarding
+        # Usa admin_insert_inventory (come admin bot) invece di process_inventory
+        # per inserimento diretto senza pipeline che potrebbe modificare i dati
         if file:
             try:
                 file_content = await file.read()
                 file_name = file.filename or f"onboarding_{user.id}.{file_type}"
                 
-                # Chiama Processor per processare il file
-                result = await processor_client.process_inventory(
+                # Chiama Processor con admin_insert_inventory (stesso comportamento admin bot)
+                # mode="replace" per sostituire inventario esistente (se presente)
+                result = await processor_client.admin_insert_inventory(
                     user_id=user.id,
                     business_name=business_name,
-                    file_type=file_type or "csv",
                     file_content=file_content,
                     file_name=file_name,
-                    mode="add"
+                    mode="replace"  # Replace per onboarding: sostituisce inventario esistente
                 )
                 
                 return {

@@ -304,6 +304,48 @@ class ProcessorClient:
             logger.error(f"[PROCESSOR_CLIENT] Errore delete_tables: {e}", exc_info=True)
             return {"status": "error", "error": str(e)}
     
+    async def admin_insert_inventory(
+        self,
+        user_id: int,
+        business_name: str,
+        file_content: bytes,
+        file_name: str,
+        mode: str = "replace"  # "add" o "replace" - default replace per onboarding
+    ) -> Dict[str, Any]:
+        """
+        Inserisce inventario pulito direttamente nel database (come admin bot).
+        NON passa attraverso la pipeline, inserisce direttamente i dati dal CSV.
+        """
+        logger.info(
+            f"[PROCESSOR_CLIENT] admin_insert_inventory: user_id={user_id}, "
+            f"business_name={business_name}, file_name={file_name}, "
+            f"file_size={len(file_content)} bytes, mode={mode}"
+        )
+        
+        try:
+            timeout = aiohttp.ClientTimeout(total=60.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                form_data = aiohttp.FormData()
+                form_data.add_field('file', file_content, filename=file_name)
+                form_data.add_field('user_id', str(user_id))
+                form_data.add_field('business_name', business_name)
+                form_data.add_field('mode', mode)
+                
+                async with session.post(
+                    f"{self.base_url}/admin/insert-inventory",
+                    data=form_data
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
+                    logger.info(f"[PROCESSOR_CLIENT] admin_insert_inventory successo: {result}")
+                    return result
+        except aiohttp.ClientResponseError as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore admin_insert_inventory: HTTP {e.status} - {e.message}")
+            return {"status": "error", "error": f"HTTP {e.status}: {e.message[:200]}"}
+        except Exception as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore admin_insert_inventory: {e}", exc_info=True)
+            return {"status": "error", "error": str(e)}
+    
     async def add_wine(
         self,
         user_id: int,
