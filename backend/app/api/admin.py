@@ -150,28 +150,34 @@ async def get_users(
     """
     try:
         async with AsyncSessionLocal() as session:
-            # Query base
-            query = select(User)
+            # Query base per count
+            count_query = select(func.count(User.id))
             
-            # Filtro ricerca
+            # Query base per dati
+            data_query = select(User)
+            
+            # Filtro ricerca (applicato a entrambe le query)
             if search:
                 search_term = f"%{search.lower()}%"
-                query = query.where(
-                    (func.lower(User.email).like(search_term)) |
-                    (func.lower(User.business_name).like(search_term)) |
-                    (func.lower(User.username).like(search_term))
+                # Gestisci valori None nei campi
+                search_filter = (
+                    (User.email.isnot(None) & func.lower(User.email).like(search_term)) |
+                    (User.business_name.isnot(None) & func.lower(User.business_name).like(search_term)) |
+                    (User.username.isnot(None) & func.lower(User.username).like(search_term))
                 )
+                count_query = count_query.where(search_filter)
+                data_query = data_query.where(search_filter)
             
-            # Count totale
-            count_query = select(func.count()).select_from(query.subquery())
+            # Esegui count
             total_result = await session.execute(count_query)
             total = total_result.scalar() or 0
             
-            # Paginazione
+            # Paginazione per dati
             offset = (page - 1) * limit
-            query = query.order_by(User.created_at.desc()).offset(offset).limit(limit)
+            data_query = data_query.order_by(User.created_at.desc()).offset(offset).limit(limit)
             
-            result = await session.execute(query)
+            # Esegui query dati
+            result = await session.execute(data_query)
             users = result.scalars().all()
             
             return PaginatedUsersResponse(
@@ -184,6 +190,8 @@ async def get_users(
         raise
     except Exception as e:
         logger.error(f"Errore recupero lista utenti: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback completo: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
 
 
