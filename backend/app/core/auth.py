@@ -204,9 +204,14 @@ async def get_current_user(
                 select(User).where(User.id == user_id)
             )
             user = result.scalar_one_or_none()
+            logger.debug(f"[AUTH] get_current_user: cercato user_id={user_id}, trovato={user is not None}")
+            if user:
+                logger.debug(f"[AUTH] get_current_user: user_id={user.id}, email={user.email}, business_name={user.business_name}")
     elif telegram_id:
         user = await db_manager.get_user_by_telegram_id(telegram_id)
+        logger.debug(f"[AUTH] get_current_user: cercato telegram_id={telegram_id}, trovato={user is not None}")
     else:
+        logger.warning("[AUTH] get_current_user: token malformato, manca user_id e telegram_id")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token malformato: manca user_id o telegram_id",
@@ -214,6 +219,7 @@ async def get_current_user(
         )
     
     if not user:
+        logger.warning(f"[AUTH] get_current_user: utente non trovato nel database, user_id={user_id}, telegram_id={telegram_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Utente non trovato"

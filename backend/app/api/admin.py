@@ -6,7 +6,7 @@ import logging
 import os
 from typing import Optional, List, Dict, Any
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query, Body, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, Body, UploadFile, File, Form, status
 from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy import select, text as sql_text, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,27 +28,50 @@ def is_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
     """
     Dependency per verificare che l'utente sia admin.
     Verifica che l'email corrisponda all'admin email configurata.
+    Null-safe e robusto per evitare AttributeError.
     """
+    # Verifica che current_user esista
+    if not current_user:
+        logger.warning("[ADMIN] is_admin_user: current_user è None")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    
+    # Estrai user object
     user: User = current_user.get("user")
-    if not user or not user.email:
-        raise HTTPException(status_code=403, detail="Accesso negato")
+    if not user:
+        logger.warning(f"[ADMIN] is_admin_user: user è None, current_user keys: {current_user.keys()}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found in token")
     
-    if user.email.lower() != ADMIN_EMAIL.lower():
-        raise HTTPException(status_code=403, detail="Accesso negato: solo admin")
+    # Verifica email esistente e non vuota
+    if not user.email or not isinstance(user.email, str) or not user.email.strip():
+        logger.warning(f"[ADMIN] is_admin_user: user_id={user.id} non ha email valida (email={user.email})")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accesso negato: email non valida")
     
+    # Normalizza email per confronto
+    admin_email = (ADMIN_EMAIL or "").strip().lower()
+    user_email = user.email.strip().lower()
+    
+    # Log per debug
+    logger.debug(f"[ADMIN] is_admin_user: user_id={user.id}, user_email={user_email}, admin_email={admin_email}")
+    
+    # Verifica corrispondenza
+    if user_email != admin_email:
+        logger.warning(f"[ADMIN] is_admin_user: accesso negato per user_id={user.id}, email={user_email}")
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accesso negato: solo admin")
+    
+    logger.debug(f"[ADMIN] is_admin_user: accesso consentito per user_id={user.id}, email={user_email}")
     return current_user
 
 
 # Modelli Pydantic
 class UserResponse(BaseModel):
     id: int
-    email: Optional[str]
-    business_name: Optional[str]
-    username: Optional[str]
-    telegram_id: Optional[int]
-    created_at: Optional[str]
-    updated_at: Optional[str]
-    onboarding_completed: bool
+    email: Optional[str] = None
+    business_name: Optional[str] = None
+    username: Optional[str] = None
+    telegram_id: Optional[int] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    onboarding_completed: bool = False
 
     class Config:
         from_attributes = True
@@ -180,8 +203,38 @@ async def get_users(
             result = await session.execute(data_query)
             users = result.scalars().all()
             
+            # Converti a UserResponse con gestione errori robusta
+            user_responses = []
+            for u in users:
+                try:
+                    # Normalizza dati prima della validazione
+                    user_dict = {
+                        "id": u.id,
+                        "email": u.email if u.email else None,
+                        "business_name": u.business_name if u.business_name else None,
+                        "username": u.username if u.username else None,
+                        "telegram_id": u.telegram_id if u.telegram_id else None,
+                        "created_at": u.created_at.isoformat() if u.created_at else None,
+                        "updated_at": u.updated_at.isoformat() if u.updated_at else None,
+                        "onboarding_completed": bool(u.onboarding_completed) if u.onboarding_completed is not None else False
+                    }
+                    user_responses.append(UserResponse.model_validate(user_dict))
+                except Exception as e:
+                    logger.error(f"Errore validazione UserResponse per user_id={u.id}: {e}", exc_info=True)
+                    # Includi comunque l'utente con dati minimi per non perdere dati
+                    user_responses.append(UserResponse(
+                        id=u.id,
+                        email=None,
+                        business_name=None,
+                        username=None,
+                        telegram_id=None,
+                        created_at=None,
+                        updated_at=None,
+                        onboarding_completed=False
+                    ))
+            
             return PaginatedUsersResponse(
-                data=[UserResponse.model_validate(u) for u in users],
+                data=user_responses,
                 total=total,
                 page=page,
                 limit=limit
@@ -359,6 +412,40 @@ async def create_user(
                     "message": "Utente creato ma errore creazione tabelle",
                     "error": str(e)
                 }
+
+
+@router.get("/whoami")
+async def whoami_admin(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Endpoint di debug per verificare autenticazione e stato admin.
+    Non richiede admin, solo autenticazione.
+    """
+    user: User = current_user.get("user")
+    admin_email = (ADMIN_EMAIL or "").strip().lower()
+    
+    if not user:
+        return {
+            "authenticated": False,
+            "error": "User not found in token",
+            "current_user_keys": list(current_user.keys()) if current_user else None
+        }
+    
+    user_email = (user.email or "").strip().lower() if user.email else None
+    is_admin = user_email == admin_email if user_email else False
+    
+    return {
+        "authenticated": True,
+        "user_id": user.id,
+        "email": user.email,
+        "email_normalized": user_email,
+        "business_name": user.business_name,
+        "admin_email": admin_email,
+        "is_admin": is_admin,
+        "token_user_id": current_user.get("user_id"),
+        "token_business_name": current_user.get("business_name")
+    }
 
 
 @router.get("/dashboard/kpi", response_model=DashboardKPIResponse)
