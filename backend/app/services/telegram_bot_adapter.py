@@ -32,15 +32,24 @@ class AsyncDBManagerAdapter:
     """
     
     async def get_user_by_telegram_id(self, telegram_id: int):
-        """Wrapper per get_user_by_telegram_id"""
-        return await web_db_manager.get_user_by_telegram_id(telegram_id)
+        """
+        Wrapper per get_user_by_id.
+        Mantiene nome per retrocompatibilità con bot Telegram.
+        """
+        return await web_db_manager.get_user_by_id(telegram_id)
     
     async def get_user_wines(self, telegram_id: int):
-        """Wrapper per get_user_wines"""
+        """
+        Wrapper per get_user_wines.
+        Mantiene nome per retrocompatibilità con bot Telegram.
+        """
         return await web_db_manager.get_user_wines(telegram_id)
     
     async def search_wines(self, telegram_id: int, search_term: str, limit: int = 10):
-        """Wrapper per search_wines"""
+        """
+        Wrapper per search_wines.
+        Mantiene nome per retrocompatibilità con bot Telegram.
+        """
         return await web_db_manager.search_wines(telegram_id, search_term, limit)
 
 

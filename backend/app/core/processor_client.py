@@ -218,7 +218,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/admin/update-wine-field",
                     data={
-                        "telegram_id": user_id,  # Passa user_id come telegram_id per retrocompatibilità
+                        "user_id": user_id,
                         "business_name": business_name,
                         "wine_id": wine_id,
                         "field": field,
@@ -323,7 +323,7 @@ class ProcessorClient:
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 # Prepara dati form
                 form_data = aiohttp.FormData()
-                form_data.add_field('telegram_id', str(user_id))  # Passa user_id come telegram_id per retrocompatibilità
+                form_data.add_field('user_id', str(user_id))
                 form_data.add_field('business_name', business_name)
                 
                 # Aggiungi tutti i campi del vino
