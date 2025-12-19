@@ -1716,7 +1716,9 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
     scrollWrapper.scrollTop = scrollWrapper.scrollHeight;
 
     // Se è una card vino, aggiungi i segnalibri
-    if (isHtml && role === 'ai') {
+    // Controlla anche se il contenuto sembra HTML anche se isHtml era false
+    const hasWineCard = messageEl.querySelector('.wine-card[data-wine-id]');
+    if ((isHtml || hasWineCard) && role === 'ai') {
         setTimeout(() => {
             setupWineCardBookmarks(messageEl);
         }, 100);

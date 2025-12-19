@@ -2316,13 +2316,15 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                     }
                 else:
                     error_msg = tool_result.get("error", "Errore sconosciuto")
+                    is_html = tool_result.get("is_html", False)  # Importante: anche gli errori possono essere HTML!
                     return {
-                        "message": f"❌ {error_msg}",
+                        "message": error_msg if is_html else f"❌ {error_msg}",
                         "metadata": {
                             "type": "function_call_error",
                             "tool": tool_name
                         },
-                        "buttons": None
+                        "buttons": tool_result.get("buttons"),
+                        "is_html": is_html
                     }
             else:
                 # Nessun tool chiamato: usa contenuto generato dall'AI
