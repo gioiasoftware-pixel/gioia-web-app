@@ -142,8 +142,13 @@ def get_user_table_name(user_id: int, business_name: str, table_type: str) -> st
     """
     Genera nome tabella dinamica utente.
     Formato: "{user_id}/{business_name} {table_type}"
+    Identico a Processor per compatibilità.
     """
-    return f'"{user_id}/{business_name} {table_type}"'
+    if not business_name:
+        business_name = "Upload Manuale"
+    
+    table_name = f'"{user_id}/{business_name} {table_type}"'
+    return table_name
 
 
 async def get_user_table_info(user_id: int) -> tuple[Optional[User], Optional[str]]:
@@ -256,80 +261,144 @@ async def get_user(
     """
     Dettaglio utente con statistiche.
     """
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(User).where(User.id == user_id)
-        )
-        user = result.scalar_one_or_none()
-        
-        if not user:
-            raise HTTPException(status_code=404, detail="Utente non trovato")
-        
-        # Calcola statistiche dalle tabelle dinamiche
-        stats = UserStatsResponse()
-        
-        if user.business_name:
-            try:
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="Utente non trovato")
+            
+            # Calcola statistiche dalle tabelle dinamiche
+            stats = UserStatsResponse()
+            
+            if user.business_name:
+                # Inizializza variabili tabelle per last_activity
+                table_inventario = None
+                table_log = None
+                table_consumi = None
+                table_storico = None
+                
                 # Tabella INVENTARIO
-                table_inventario = get_user_table_name(user.id, user.business_name, "INVENTARIO")
-                count_query = sql_text(f"""
-                    SELECT COUNT(*) FROM {table_inventario}
-                    WHERE user_id = :user_id
-                """)
-                result = await session.execute(count_query, {"user_id": user.id})
-                stats.total_wines = result.scalar() or 0
+                try:
+                    table_inventario = get_user_table_name(user.id, user.business_name, "INVENTARIO")
+                    count_query = sql_text(f"""
+                        SELECT COUNT(*) FROM {table_inventario}
+                        WHERE user_id = :user_id
+                    """)
+                    result = await session.execute(count_query, {"user_id": user.id})
+                    stats.total_wines = result.scalar() or 0
+                except Exception as e:
+                    logger.debug(f"Tabella INVENTARIO non trovata o errore per user_id={user_id}: {e}")
+                    stats.total_wines = 0
                 
                 # Tabella LOG interazione
-                table_log = get_user_table_name(user.id, user.business_name, "LOG interazione")
-                count_query = sql_text(f"""
-                    SELECT COUNT(*) FROM {table_log}
-                    WHERE user_id = :user_id
-                """)
-                result = await session.execute(count_query, {"user_id": user.id})
-                stats.total_logs = result.scalar() or 0
+                try:
+                    table_log = get_user_table_name(user.id, user.business_name, "LOG interazione")
+                    count_query = sql_text(f"""
+                        SELECT COUNT(*) FROM {table_log}
+                        WHERE user_id = :user_id
+                    """)
+                    result = await session.execute(count_query, {"user_id": user.id})
+                    stats.total_logs = result.scalar() or 0
+                except Exception as e:
+                    logger.debug(f"Tabella LOG interazione non trovata o errore per user_id={user_id}: {e}")
+                    stats.total_logs = 0
                 
                 # Tabella Consumi e rifornimenti
-                table_consumi = get_user_table_name(user.id, user.business_name, "Consumi e rifornimenti")
-                count_query = sql_text(f"""
-                    SELECT COUNT(*) FROM {table_consumi}
-                    WHERE user_id = :user_id
-                """)
-                result = await session.execute(count_query, {"user_id": user.id})
-                stats.total_consumi = result.scalar() or 0
+                try:
+                    table_consumi = get_user_table_name(user.id, user.business_name, "Consumi e rifornimenti")
+                    count_query = sql_text(f"""
+                        SELECT COUNT(*) FROM {table_consumi}
+                        WHERE user_id = :user_id
+                    """)
+                    result = await session.execute(count_query, {"user_id": user.id})
+                    stats.total_consumi = result.scalar() or 0
+                except Exception as e:
+                    logger.debug(f"Tabella Consumi e rifornimenti non trovata o errore per user_id={user_id}: {e}")
+                    stats.total_consumi = 0
                 
                 # Tabella Storico vino
-                table_storico = get_user_table_name(user.id, user.business_name, "Storico vino")
-                count_query = sql_text(f"""
-                    SELECT COUNT(*) FROM {table_storico}
-                    WHERE user_id = :user_id
-                """)
-                result = await session.execute(count_query, {"user_id": user.id})
-                stats.total_storico = result.scalar() or 0
+                try:
+                    table_storico = get_user_table_name(user.id, user.business_name, "Storico vino")
+                    count_query = sql_text(f"""
+                        SELECT COUNT(*) FROM {table_storico}
+                        WHERE user_id = :user_id
+                    """)
+                    result = await session.execute(count_query, {"user_id": user.id})
+                    stats.total_storico = result.scalar() or 0
+                except Exception as e:
+                    logger.debug(f"Tabella Storico vino non trovata o errore per user_id={user_id}: {e}")
+                    stats.total_storico = 0
                 
                 # Ultima attività (max updated_at da tutte le tabelle)
-                last_activity_query = sql_text(f"""
-                    SELECT MAX(updated_at) FROM (
-                        SELECT updated_at FROM {table_inventario} WHERE user_id = :user_id
-                        UNION ALL
-                        SELECT created_at FROM {table_log} WHERE user_id = :user_id
-                        UNION ALL
-                        SELECT created_at FROM {table_consumi} WHERE user_id = :user_id
-                        UNION ALL
-                        SELECT created_at FROM {table_storico} WHERE user_id = :user_id
-                    ) AS all_activities
-                """)
-                result = await session.execute(last_activity_query, {"user_id": user.id})
-                last_activity = result.scalar()
-                if last_activity:
-                    stats.last_activity = last_activity.isoformat()
-                    
-            except Exception as e:
-                logger.warning(f"Errore calcolo statistiche per user_id={user_id}: {e}")
+                # Solo se almeno una tabella esiste
+                if table_inventario or table_log or table_consumi or table_storico:
+                    try:
+                        # Costruisci query dinamica solo per tabelle esistenti
+                        union_parts = []
+                        if table_inventario:
+                            union_parts.append(f"SELECT updated_at FROM {table_inventario} WHERE user_id = :user_id")
+                        if table_log:
+                            union_parts.append(f"SELECT created_at FROM {table_log} WHERE user_id = :user_id")
+                        if table_consumi:
+                            union_parts.append(f"SELECT created_at FROM {table_consumi} WHERE user_id = :user_id")
+                        if table_storico:
+                            union_parts.append(f"SELECT created_at FROM {table_storico} WHERE user_id = :user_id")
+                        
+                        if union_parts:
+                            last_activity_query = sql_text(f"""
+                                SELECT MAX(updated_at) FROM (
+                                    {' UNION ALL '.join(union_parts)}
+                                ) AS all_activities
+                            """)
+                            result = await session.execute(last_activity_query, {"user_id": user.id})
+                            last_activity = result.scalar()
+                            if last_activity:
+                                stats.last_activity = last_activity.isoformat()
+                    except Exception as e:
+                        logger.debug(f"Errore calcolo last_activity per user_id={user_id}: {e}")
+        
+        # Converti user a UserResponse con gestione errori robusta
+        try:
+            user_dict = {
+                "id": user.id,
+                "email": user.email if user.email else None,
+                "business_name": user.business_name if user.business_name else None,
+                "username": user.username if user.username else None,
+                "telegram_id": user.telegram_id if user.telegram_id else None,
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+                "onboarding_completed": bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+            }
+            user_response = UserResponse.model_validate(user_dict)
+        except Exception as e:
+            logger.error(f"Errore validazione UserResponse per user_id={user_id}: {e}", exc_info=True)
+            # Fallback con dati minimi
+            user_response = UserResponse(
+                id=user.id,
+                email=user.email if user.email else None,
+                business_name=user.business_name if user.business_name else None,
+                username=user.username if user.username else None,
+                telegram_id=user.telegram_id if user.telegram_id else None,
+                created_at=user.created_at.isoformat() if user.created_at else None,
+                updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                onboarding_completed=bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+            )
         
         return UserWithStatsResponse(
-            user=UserResponse.model_validate(user),
+            user=user_response,
             stats=stats
         )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore recupero dettaglio utente user_id={user_id}: {e}", exc_info=True)
+        import traceback
+        logger.error(f"Traceback completo: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
 
 
 @router.post("/users")
