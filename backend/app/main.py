@@ -90,42 +90,14 @@ app.include_router(viewer.router)
 app.include_router(wines.router)
 app.include_router(debug.router)
 
-# Esegui migrazioni all'avvio
-@app.on_event("startup")
-async def startup_migrations():
-    """
-    Esegue migrazioni database automaticamente all'avvio.
-    Verifica se le tabelle/colonne esistono prima di crearle/modificarle.
-    """
-    import logging
-    import sys
-    
-    # Usa logger configurato dal sistema di logging
-    logger = logging.getLogger("web-app")
-    
-    # Log anche su stderr per essere sicuri che venga visto
-    print("[STARTUP] ⚙️ Avvio esecuzione migrazioni database...", file=sys.stderr)
-    logger.info("[STARTUP] ⚙️ Avvio esecuzione migrazioni database...")
-    
-    try:
-        print("[STARTUP] Importazione modulo migrations...", file=sys.stderr)
-        from app.core.migrations import run_migrations
-        
-        print("[STARTUP] Esecuzione run_migrations()...", file=sys.stderr)
-        logger.info("[STARTUP] Esecuzione run_migrations()...")
-        
-        await run_migrations()
-        
-        print("[STARTUP] ✅ Migrazioni completate con successo", file=sys.stderr)
-        logger.info("[STARTUP] ✅ Migrazioni completate con successo")
-    except Exception as e:
-        error_msg = f"[STARTUP] ❌ Errore durante migrazioni all'avvio: {e}"
-        print(error_msg, file=sys.stderr)
-        logger.error(error_msg, exc_info=True)
-        # Non bloccare l'avvio se le migrazioni falliscono (potrebbe essere un problema temporaneo)
-        warning_msg = "[STARTUP] ⚠️ Continuo l'avvio dell'applicazione nonostante errori migrazioni..."
-        print(warning_msg, file=sys.stderr)
-        logger.warning(warning_msg)
+# Migrazioni rimosse - già eseguite manualmente
+# @app.on_event("startup")
+# async def startup_migrations():
+#     """
+#     Esegue migrazioni database automaticamente all'avvio.
+#     Verifica se le tabelle/colonne esistono prima di crearle/modificarle.
+#     """
+#     ... (rimosso - migrazioni già eseguite)
 
 if __name__ == "__main__":
     import uvicorn
