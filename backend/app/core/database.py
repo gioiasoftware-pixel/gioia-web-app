@@ -750,7 +750,7 @@ class DatabaseManager:
                 
                 # Ritorna in ordine cronologico (dal più vecchio al più recente)
                 history.reverse()
-                logger.debug(f"[DB] Recuperati {len(history)} messaggi chat per telegram_id={telegram_id}, conversation_id={conversation_id}")
+                logger.debug(f"[DB] Recuperati {len(history)} messaggi chat per user_id={user_id}, conversation_id={conversation_id}")
                 return history
             except Exception as e:
                 logger.error(f"[DB] Errore leggendo chat history da {table_name}: {e}", exc_info=True)

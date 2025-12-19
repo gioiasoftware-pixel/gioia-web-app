@@ -225,13 +225,13 @@ async def create_wine(
     """
     try:
         user = current_user["user"]
-        telegram_id = user.telegram_id
+        user_id = current_user["user_id"]
         business_name = user.business_name
         
-        if not telegram_id or not business_name:
+        if not business_name:
             raise HTTPException(
                 status_code=400,
-                detail="Utente non ha telegram_id o business_name"
+                detail="Utente non ha business_name"
             )
         
         # Valida che il nome sia presente
@@ -247,7 +247,7 @@ async def create_wine(
         # Chiama processor per aggiungere vino
         from app.core.processor_client import processor_client
         result = await processor_client.add_wine(
-            telegram_id=telegram_id,
+            user_id=user_id,
             business_name=business_name,
             wine_data=wine_dict
         )
@@ -279,11 +279,11 @@ async def create_wine(
         import asyncio
         await asyncio.sleep(0.1)
         
-        wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+        wine = await db_manager.get_wine_by_id(user_id, wine_id)
         if not wine:
             # Retry dopo un altro breve delay
             await asyncio.sleep(0.2)
-            wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+            wine = await db_manager.get_wine_by_id(user_id, wine_id)
             if not wine:
                 raise HTTPException(
                     status_code=500,
