@@ -225,8 +225,10 @@ async def update_conversation_title(
     """
     Aggiorna il titolo di una conversazione.
     """
+    user_id = current_user["user_id"]
+    
     try:
-        success = await db_manager.update_conversation_title(conversation_id, title)
+        success = await db_manager.update_conversation_title(conversation_id, title, user_id)
         if not success:
             raise HTTPException(status_code=404, detail="Conversazione non trovata")
         return {"success": True, "title": title}

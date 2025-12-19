@@ -857,24 +857,35 @@ class DatabaseManager:
                 await session.rollback()
                 return False
     
-    async def update_conversation_last_message(self, conversation_id: int) -> bool:
+    async def update_conversation_last_message(self, conversation_id: int, user_id: int) -> bool:
         """
         Aggiorna il timestamp dell'ultimo messaggio di una conversazione.
         
         Args:
             conversation_id: ID conversazione
+            user_id: ID utente (per sicurezza, verifica che la conversazione appartenga all'utente)
         
         Returns:
             True se aggiornato con successo
         """
         async with AsyncSessionLocal() as session:
             try:
+                # Verifica che la conversazione appartenga all'utente
+                check_query = sql_text("""
+                    SELECT id FROM conversations
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                result = await session.execute(check_query, {"conversation_id": conversation_id, "user_id": user_id})
+                if not result.fetchone():
+                    logger.warning(f"[DB] Conversazione {conversation_id} non trovata o non appartiene a user_id={user_id}")
+                    return False
+                
                 update_query = sql_text("""
                     UPDATE conversations
                     SET last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP
-                    WHERE id = :conversation_id
+                    WHERE id = :conversation_id AND user_id = :user_id
                 """)
-                await session.execute(update_query, {"conversation_id": conversation_id})
+                await session.execute(update_query, {"conversation_id": conversation_id, "user_id": user_id})
                 await session.commit()
                 return True
             except Exception as e:
