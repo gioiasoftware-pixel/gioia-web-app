@@ -49,9 +49,9 @@ class ProcessorClient:
         """Verifica stato del processor."""
         return await self._make_request("GET", "/health")
     
-    async def create_tables(self, telegram_id: int, business_name: str) -> Dict[str, Any]:
+    async def create_tables(self, user_id: int, business_name: str) -> Dict[str, Any]:
         """Crea tabelle utente nel processor."""
-        logger.info(f"[PROCESSOR_CLIENT] Chiamata create_tables: telegram_id={telegram_id}, business_name={business_name}")
+        logger.info(f"[PROCESSOR_CLIENT] Chiamata create_tables: user_id={user_id}, business_name={business_name}")
         
         try:
             timeout = aiohttp.ClientTimeout(total=30.0)
@@ -59,7 +59,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/create-tables",
                     data={
-                        "telegram_id": telegram_id,
+                        "user_id": user_id,  # Passa user_id come user_id per retrocompatibilità
                         "business_name": business_name
                     }
                 ) as response:
@@ -81,7 +81,7 @@ class ProcessorClient:
     
     async def process_inventory(
         self,
-        telegram_id: int,
+        user_id: int,
         business_name: str,
         file_type: str,
         file_content: bytes,
@@ -92,13 +92,13 @@ class ProcessorClient:
     ) -> Dict[str, Any]:
         """Invia file inventario al processor per elaborazione."""
         logger.info(
-            f"[PROCESSOR_CLIENT] process_inventory: telegram_id={telegram_id}, "
+            f"[PROCESSOR_CLIENT] process_inventory: user_id={user_id}, "
             f"business_name={business_name}, file_type={file_type}, file_name={file_name}, "
             f"file_size={len(file_content)} bytes"
         )
         
         data = {
-            "telegram_id": telegram_id,
+            "user_id": user_id,  # Passa user_id come user_id per retrocompatibilità
             "business_name": business_name,
             "file_type": file_type,
             "mode": mode
@@ -163,7 +163,7 @@ class ProcessorClient:
     
     async def process_movement(
         self,
-        telegram_id: int,
+        user_id: int,
         business_name: str,
         wine_name: str,
         movement_type: str,
@@ -171,7 +171,7 @@ class ProcessorClient:
     ) -> Dict[str, Any]:
         """Processa un movimento inventario (consumo o rifornimento)."""
         logger.info(
-            f"[PROCESSOR_CLIENT] process_movement: telegram_id={telegram_id}, "
+            f"[PROCESSOR_CLIENT] process_movement: user_id={user_id}, "
             f"business_name={business_name}, wine_name={wine_name}, "
             f"movement_type={movement_type}, quantity={quantity}"
         )
@@ -182,7 +182,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/process-movement",
                     data={
-                        "telegram_id": telegram_id,
+                        "user_id": user_id,
                         "business_name": business_name,
                         "wine_name": wine_name,
                         "movement_type": movement_type,
@@ -200,7 +200,7 @@ class ProcessorClient:
     
     async def update_wine_field(
         self,
-        telegram_id: int,
+        user_id: int,
         business_name: str,
         wine_id: int,
         field: str,
@@ -208,7 +208,7 @@ class ProcessorClient:
     ) -> Dict[str, Any]:
         """Aggiorna un campo di un vino."""
         logger.info(
-            f"[PROCESSOR_CLIENT] update_wine_field: telegram_id={telegram_id}, "
+            f"[PROCESSOR_CLIENT] update_wine_field: user_id={user_id}, "
             f"wine_id={wine_id}, field={field}"
         )
         
@@ -218,7 +218,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/admin/update-wine-field",
                     data={
-                        "telegram_id": telegram_id,
+                        "user_id": user_id,
                         "business_name": business_name,
                         "wine_id": wine_id,
                         "field": field,
@@ -236,7 +236,7 @@ class ProcessorClient:
     
     async def update_wine_field_with_movement(
         self,
-        telegram_id: int,
+        user_id: int,
         business_name: str,
         wine_id: int,
         new_quantity: int
@@ -246,7 +246,7 @@ class ProcessorClient:
         Mantiene il flusso di tracciabilità come se fosse fatto in chat.
         """
         logger.info(
-            f"[PROCESSOR_CLIENT] update_wine_field_with_movement: telegram_id={telegram_id}, "
+            f"[PROCESSOR_CLIENT] update_wine_field_with_movement: user_id={user_id}, "
             f"wine_id={wine_id}, new_quantity={new_quantity}"
         )
         
@@ -256,7 +256,7 @@ class ProcessorClient:
                 async with session.post(
                     f"{self.base_url}/admin/update-wine-field-with-movement",
                     data={
-                        "telegram_id": telegram_id,
+                        "user_id": user_id,
                         "business_name": business_name,
                         "wine_id": wine_id,
                         "field": "quantity",
@@ -284,15 +284,15 @@ class ProcessorClient:
             )
             return {"status": "error", "error": str(e)}
     
-    async def delete_tables(self, telegram_id: int, business_name: str) -> Dict[str, Any]:
+    async def delete_tables(self, user_id: int, business_name: str) -> Dict[str, Any]:
         """Elimina tabelle utente."""
-        logger.info(f"[PROCESSOR_CLIENT] delete_tables: telegram_id={telegram_id}, business_name={business_name}")
+        logger.info(f"[PROCESSOR_CLIENT] delete_tables: user_id={user_id}, business_name={business_name}")
         
         try:
             timeout = aiohttp.ClientTimeout(total=30.0)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.delete(
-                    f"{self.base_url}/tables/{telegram_id}",
+                    f"{self.base_url}/tables/{user_id}",
                     params={"business_name": business_name}
                 ) as response:
                     response.raise_for_status()
@@ -306,7 +306,7 @@ class ProcessorClient:
     
     async def add_wine(
         self,
-        telegram_id: int,
+        user_id: int,
         business_name: str,
         wine_data: Dict[str, Any]
     ) -> Dict[str, Any]:
@@ -314,7 +314,7 @@ class ProcessorClient:
         Aggiunge un nuovo vino all'inventario.
         """
         logger.info(
-            f"[PROCESSOR_CLIENT] add_wine: telegram_id={telegram_id}, "
+            f"[PROCESSOR_CLIENT] add_wine: user_id={user_id}, "
             f"business_name={business_name}, wine_name={wine_data.get('name')}"
         )
         
@@ -323,7 +323,7 @@ class ProcessorClient:
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 # Prepara dati form
                 form_data = aiohttp.FormData()
-                form_data.add_field('telegram_id', str(telegram_id))
+                form_data.add_field('user_id', str(user_id))
                 form_data.add_field('business_name', business_name)
                 
                 # Aggiungi tutti i campi del vino

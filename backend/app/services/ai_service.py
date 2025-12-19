@@ -55,7 +55,7 @@ class AIService:
     async def process_message(
         self,
         user_message: str,
-        telegram_id: int,
+        user_id: int,
         conversation_history: Optional[list] = None
     ) -> Dict[str, Any]:
         """
@@ -63,7 +63,7 @@ class AIService:
         
         Args:
             user_message: Messaggio utente
-            telegram_id: ID Telegram utente
+            user_id: ID Telegram utente
             conversation_history: Storia conversazione (opzionale)
         
         Returns:
@@ -100,7 +100,7 @@ class AIService:
                 logger.info(f"[AI_SERVICE] Rilevato movimento con conferma: type={movement_type}, wine_id={wine_id}, quantity={quantity}")
                 
                 # Recupera vino per ID
-                wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+                wine = await db_manager.get_wine_by_id(user_id, wine_id)
                 if not wine:
                     error_html = self._generate_error_message_html(f"Vino con ID {wine_id} non trovato.")
                     return {
@@ -112,7 +112,7 @@ class AIService:
                 
                 # Processa movimento direttamente
                 try:
-                    user = await db_manager.get_user_by_telegram_id(telegram_id)
+                    user = await db_manager.get_user_by_id(user_id)
                     if not user or not user.business_name:
                         error_html = self._generate_error_message_html("Nome locale non trovato. Completa prima l'onboarding.")
                         return {
@@ -123,7 +123,7 @@ class AIService:
                         }
                     
                     result = await processor_client.process_movement(
-                        telegram_id=telegram_id,
+                        user_id=user_id,
                         business_name=user.business_name,
                         wine_name=wine.name,
                         movement_type=movement_type,
@@ -176,7 +176,7 @@ class AIService:
                 wine_id = int(wine_id_match.group(1))
                 logger.info(f"[AI_SERVICE] Rilevato wine_id={wine_id} nel messaggio, recupero diretto")
                 
-                wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+                wine = await db_manager.get_wine_by_id(user_id, wine_id)
                 if wine:
                     # Genera HTML card per il vino trovato
                     html_card = self._generate_wine_card_html(wine)
@@ -200,14 +200,14 @@ class AIService:
             # 1. Prepara contesto utente per function calling
             user_context = ""
             try:
-                user = await db_manager.get_user_by_telegram_id(telegram_id)
+                user = await db_manager.get_user_by_id(user_id)
                 if user:
                     user_context = f"""
 INFORMAZIONI UTENTE:
 - Nome attività: {user.business_name or 'Non specificato'}
 - Onboarding completato: {'Sì' if user.onboarding_completed else 'No'}
 """
-                    wines = await db_manager.get_user_wines(telegram_id)
+                    wines = await db_manager.get_user_wines(user_id)
                     if wines:
                         user_context += f"\nINVENTARIO ATTUALE:\n"
                         user_context += f"- Totale vini: {len(wines)}\n"
@@ -223,7 +223,7 @@ INFORMAZIONI UTENTE:
             # 2a. Richieste esplicite di elenco inventario
             if self._is_inventory_list_request(user_message):
                 logger.info(f"[AI_SERVICE] Richiesta lista inventario rilevata, bypass AI")
-                inventory_response = await self._build_inventory_list_response(telegram_id, limit=50)
+                inventory_response = await self._build_inventory_list_response(user_id, limit=50)
                 # _build_inventory_list_response ora restituisce sempre HTML
                 return {
                     "message": inventory_response,
@@ -258,7 +258,7 @@ INFORMAZIONI UTENTE:
             query_type, field = self._is_informational_query(user_message)
             if query_type and field:
                 logger.info(f"[AI_SERVICE] Query informativa rilevata: {query_type} {field}")
-                informational_response = await self._handle_informational_query(telegram_id, query_type, field)
+                informational_response = await self._handle_informational_query(user_id, query_type, field)
                 if informational_response:
                     return {
                         "message": informational_response,
@@ -271,10 +271,10 @@ INFORMAZIONI UTENTE:
                     }
             
             # 3. Prova Function Calling OpenAI (nuovo sistema)
-            logger.info(f"[AI_SERVICE] Tentativo function calling per telegram_id={telegram_id}")
+            logger.info(f"[AI_SERVICE] Tentativo function calling per user_id={user_id}")
             function_call_result = await self._call_openai_with_tools(
                 user_message=user_message,
-                telegram_id=telegram_id,
+                user_id=user_id,
                 conversation_history=conversation_history,
                 user_context=user_context
             )
@@ -296,11 +296,11 @@ INFORMAZIONI UTENTE:
                     logger.info("[AI_SERVICE] Config telegram bot aggiornata con chiavi web app")
                 
                 from ai import get_ai_response
-                logger.info(f"[AI_SERVICE] get_ai_response importato con successo, telegram_id={telegram_id}")
+                logger.info(f"[AI_SERVICE] get_ai_response importato con successo, user_id={user_id}")
                 
                 response_text = await get_ai_response(
                     prompt=user_message,
-                    telegram_id=telegram_id,
+                    user_id=user_id,
                     correlation_id=None
                 )
                 
@@ -316,11 +316,11 @@ INFORMAZIONI UTENTE:
             except ImportError as e:
                 logger.error(f"[AI_SERVICE] Impossibile importare get_ai_response dal bot: {e}", exc_info=True)
                 # Fallback finale: chiamata OpenAI diretta semplificata
-                return await self._simple_ai_response(user_message, telegram_id)
+                return await self._simple_ai_response(user_message, user_id)
             except Exception as e:
                 logger.error(f"[AI_SERVICE] Errore chiamata get_ai_response: {e}", exc_info=True)
                 # Fallback finale: chiamata OpenAI diretta semplificata
-                return await self._simple_ai_response(user_message, telegram_id)
+                return await self._simple_ai_response(user_message, user_id)
         
         except OpenAIError as e:
             logger.error(f"Errore OpenAI: {e}")
@@ -1054,13 +1054,13 @@ INFORMAZIONI UTENTE:
         
         return (None, None)
     
-    async def _handle_informational_query(self, telegram_id: int, query_type: str, field: str) -> Optional[str]:
+    async def _handle_informational_query(self, user_id: int, query_type: str, field: str) -> Optional[str]:
         """
         Gestisce una domanda informativa generica e ritorna la risposta formattata.
         Copia logica da telegram-ai-bot/src/ai.py:_handle_informational_query
         
         Args:
-            telegram_id: ID Telegram utente
+            user_id: ID Telegram utente
             query_type: 'min' o 'max'
             field: Campo da interrogare ('quantity', 'selling_price', 'cost_price', 'vintage')
         
@@ -1068,11 +1068,11 @@ INFORMAZIONI UTENTE:
             Risposta formattata o None se errore
         """
         try:
-            user = await db_manager.get_user_by_telegram_id(telegram_id)
+            user = await db_manager.get_user_by_user_id(user_id)
             if not user or not user.business_name:
                 return None
             
-            # Usa user.id invece di telegram_id per nome tabella
+            # Usa user.id invece di user_id per nome tabella
             table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             # Determina ORDER BY e NULLS LAST/FIRST
@@ -1176,13 +1176,13 @@ INFORMAZIONI UTENTE:
             logger.error(f"[INFORMATIONAL_QUERY] Errore gestione query informativa: {e}", exc_info=True)
             return None
     
-    async def _build_inventory_list_response(self, telegram_id: int, limit: int = 50) -> str:
+    async def _build_inventory_list_response(self, user_id: int, limit: int = 50) -> str:
         """
         Costruisce risposta formattata per lista inventario.
         Restituisce HTML invece di testo markdown.
         """
         try:
-            wines = await db_manager.get_user_wines(telegram_id)
+            wines = await db_manager.get_user_wines(user_id)
             if not wines:
                 return self._generate_empty_state_html("Il tuo inventario è vuoto.")
             
@@ -1253,7 +1253,7 @@ INFORMAZIONI UTENTE:
     
     async def _retry_level_2_fallback_less_specific(
         self,
-        telegram_id: int,
+        user_id: int,
         original_filters: Dict[str, Any],
         original_query: Optional[str] = None
     ) -> Optional[List]:
@@ -1283,7 +1283,7 @@ INFORMAZIONI UTENTE:
                     continue
                 
                 logger.info(f"[RETRY_L2] Provo ricerca meno specifica con: '{fallback_query}'")
-                wines = await db_manager.search_wines(telegram_id, fallback_query.strip(), limit=50)
+                wines = await db_manager.search_wines(user_id, fallback_query.strip(), limit=50)
                 if wines:
                     logger.info(f"[RETRY_L2] ✅ Trovati {len(wines)} vini con ricerca meno specifica")
                     return wines
@@ -1359,7 +1359,7 @@ Esempio di risposta: vermentino
     
     async def _cascading_retry_search(
         self,
-        telegram_id: int,
+        user_id: int,
         original_query: str,
         search_func,
         search_func_args: Dict[str, Any],
@@ -1410,7 +1410,7 @@ Esempio di risposta: vermentino
         if original_filters:
             logger.info(f"[RETRY_L2] Avvio fallback ricerca meno specifica per query filtrata: '{original_query}'")
             wines = await self._retry_level_2_fallback_less_specific(
-                telegram_id, original_filters, original_query
+                user_id, original_filters, original_query
             )
             if wines:
                 logger.info(f"[RETRY_L2] ✅ Fallback riuscito: trovati {len(wines)} vini")
@@ -1430,7 +1430,7 @@ Esempio di risposta: vermentino
                 # Per ricerca semplice, prova con search_func modificato
                 if original_filters:
                     # Ricerca filtrata: usa search_wines generico
-                    wines = await db_manager.search_wines(telegram_id, retry_query, limit=50)
+                    wines = await db_manager.search_wines(user_id, retry_query, limit=50)
                     if wines:
                         logger.info(f"[RETRY_L3] ✅ Trovati {len(wines)} vini con query AI (ricerca generica): '{retry_query}'")
                         return wines, retry_query, "level3"
@@ -1677,7 +1677,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
         self,
         tool_name: str,
         tool_args: Dict[str, Any],
-        telegram_id: int,
+        user_id: int,
         user_message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -1690,7 +1690,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
             # get_inventory_list
             if tool_name == "get_inventory_list":
                 limit = int(tool_args.get("limit", 50))
-                wines = await db_manager.get_user_wines(telegram_id)
+                wines = await db_manager.get_user_wines(user_id)
                 if wines:
                     wine_list = []
                     for wine in wines[:limit]:
@@ -1718,10 +1718,10 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
-                    telegram_id=telegram_id,
+                    user_id=user_id,
                     original_query=query,
                     search_func=db_manager.search_wines,
-                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 10},
+                    search_func_args={"user_id": user_id, "search_term": query, "limit": 10},
                     original_filters=None
                 )
                 
@@ -1747,10 +1747,10 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
-                    telegram_id=telegram_id,
+                    user_id=user_id,
                     original_query=query,
                     search_func=db_manager.search_wines,
-                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 50},
+                    search_func_args={"user_id": user_id, "search_term": query, "limit": 50},
                     original_filters=None
                 )
                 
@@ -1777,10 +1777,10 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     return {"success": False, "error": error_html, "is_html": True}
                 
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
-                    telegram_id=telegram_id,
+                    user_id=user_id,
                     original_query=query,
                     search_func=db_manager.search_wines,
-                    search_func_args={"telegram_id": telegram_id, "search_term": query, "limit": 50},
+                    search_func_args={"user_id": user_id, "search_term": query, "limit": 50},
                     original_filters=None
                 )
                 
@@ -1807,7 +1807,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     return {"success": False, "error": "Richiesta incompleta: specifica query_type (min/max) e field."}
                 
                 logger.info(f"[TOOLS] get_wine_by_criteria: {query_type} {field}")
-                informational_response = await self._handle_informational_query(telegram_id, query_type, field)
+                informational_response = await self._handle_informational_query(user_id, query_type, field)
                 if informational_response:
                     # Controlla se è HTML (inizia con <div class="wine-card">)
                     is_html = informational_response.strip().startswith('<div class="wine-card">')
@@ -1851,15 +1851,15 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                     search_query = " ".join(search_terms)
                     logger.info(f"[TOOLS] Ricerca combinata: '{search_query}'")
                     wines, retry_query_used, level_used = await self._cascading_retry_search(
-                        telegram_id=telegram_id,
+                        user_id=user_id,
                         original_query=search_query,
                         search_func=db_manager.search_wines,
-                        search_func_args={"telegram_id": telegram_id, "search_term": search_query, "limit": limit * 2},
+                        search_func_args={"user_id": user_id, "search_term": search_query, "limit": limit * 2},
                         original_filters=filters
                     )
                 else:
                     # Solo filtri numerici: recupera tutti i vini e filtra
-                    wines = await db_manager.get_user_wines(telegram_id)
+                    wines = await db_manager.get_user_wines(user_id)
                     wines = wines[:limit * 2]
                 
                 # Applica filtri numerici e di tipo esatto
@@ -1953,7 +1953,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
             
             # get_inventory_stats
             if tool_name == "get_inventory_stats":
-                wines = await db_manager.get_user_wines(telegram_id)
+                wines = await db_manager.get_user_wines(user_id)
                 if wines:
                     total_bottles = sum(w.quantity for w in wines if w.quantity) or 0
                     prices = [w.selling_price for w in wines if w.selling_price]
@@ -1991,10 +1991,10 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 # Usa cascading retry search per trovare il nome esatto del vino
                 logger.info(f"[TOOLS] {tool_name}: Ricerca fuzzy matching per '{wine_name}'")
                 wines, retry_query_used, level_used = await self._cascading_retry_search(
-                    telegram_id=telegram_id,
+                    user_id=user_id,
                     original_query=wine_name,
                     search_func=db_manager.search_wines,
-                    search_func_args={"telegram_id": telegram_id, "search_term": wine_name, "limit": 10},
+                    search_func_args={"user_id": user_id, "search_term": wine_name, "limit": 10},
                     original_filters=None
                 )
                 
@@ -2040,12 +2040,12 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
                 
                 # Processa movimento via Processor
                 try:
-                    user = await db_manager.get_user_by_telegram_id(telegram_id)
+                    user = await db_manager.get_user_by_id(user_id)
                     if not user or not user.business_name:
                         return {"success": False, "error": "Nome locale non trovato. Completa prima l'onboarding."}
                     
                     result = await processor_client.process_movement(
-                        telegram_id=telegram_id,
+                        user_id=user_id,
                         business_name=user.business_name,
                         wine_name=wine_name,  # Usa nome esatto trovato (o originale se non trovato)
                         movement_type=movement_type,
@@ -2088,7 +2088,7 @@ Formato filters: {"region": "Toscana", "country": "Italia", "wine_type": "rosso"
     async def _call_openai_with_tools(
         self,
         user_message: str,
-        telegram_id: int,
+        user_id: int,
         conversation_history: Optional[List[Dict[str, str]]] = None,
         user_context: str = ""
     ) -> Dict[str, Any]:
@@ -2179,7 +2179,7 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                             continue
                         
                         logger.info(f"[FUNCTION_CALLING] Tool chiamato: {tool_name} con args: {tool_args}")
-                        tool_result = await self._execute_tool(tool_name, tool_args, telegram_id)
+                        tool_result = await self._execute_tool(tool_name, tool_args, user_id)
                         
                         if tool_result.get("success"):
                             # Se il risultato è HTML, aggiungilo alla lista
@@ -2223,7 +2223,7 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
                 logger.info(f"[FUNCTION_CALLING] Tool chiamato: {tool_name} con args: {tool_args}")
                 
                 # Esegui tool
-                tool_result = await self._execute_tool(tool_name, tool_args, telegram_id, user_message=user_message)
+                tool_result = await self._execute_tool(tool_name, tool_args, user_id, user_message=user_message)
                 
                 if tool_result.get("success"):
                     message_text = tool_result.get("message", "✅ Operazione completata")
@@ -2274,7 +2274,7 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
     async def _simple_ai_response(
         self,
         user_message: str,
-        telegram_id: int
+        user_id: int
     ) -> Dict[str, Any]:
         """
         Fallback: risposta AI con ricerca vini integrata (logica essenziale del bot).
@@ -2287,7 +2287,7 @@ REGOLA D'ORO: Prima di rispondere a qualsiasi domanda informativa, consulta SEMP
         found_wines = []
         
         try:
-            user = await db_manager.get_user_by_telegram_id(telegram_id)
+            user = await db_manager.get_user_by_user_id(user_id)
             if user:
                 user_context = f"""
 INFORMAZIONI UTENTE:
@@ -2325,10 +2325,10 @@ INFORMAZIONI UTENTE:
                     try:
                         # Usa cascading retry per migliorare successo ricerca
                         found_wines, retry_query_used, level_used = await self._cascading_retry_search(
-                            telegram_id=telegram_id,
+                            user_id=user_id,
                             original_query=wine_search_term,
                             search_func=db_manager.search_wines,
-                            search_func_args={"telegram_id": telegram_id, "search_term": wine_search_term, "limit": 50},
+                            search_func_args={"user_id": user_id, "search_term": wine_search_term, "limit": 50},
                             original_filters=None
                         )
                         if found_wines:
@@ -2346,7 +2346,7 @@ INFORMAZIONI UTENTE:
                 # Statistiche inventario (solo se non abbiamo già trovato vini specifici)
                 if not specific_wine_info:
                     try:
-                        wines = await db_manager.get_user_wines(telegram_id)
+                        wines = await db_manager.get_user_wines(user_id)
                         if wines:
                             user_context += f"\nINVENTARIO ATTUALE:\n"
                             user_context += f"- Totale vini: {len(wines)}\n"
@@ -2382,7 +2382,7 @@ INFORMAZIONI UTENTE:
     async def _simple_ai_response_complete(
         self,
         user_message: str,
-        telegram_id: int,
+        user_id: int,
         specific_wine_info: str = "",
         found_wines: list = None,
         user_context: str = ""

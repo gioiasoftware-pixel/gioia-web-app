@@ -111,28 +111,22 @@ async def get_db() -> AsyncSession:
 class DatabaseManager:
     """Gestore database async per web app"""
     
-    async def get_user_by_telegram_id(self, telegram_id: int) -> Optional[User]:
+    async def get_user_by_id(self, user_id: int) -> Optional[User]:
         """
-        Trova utente per Telegram ID o User ID.
-        Se telegram_id non corrisponde a nessun utente, prova a cercare per user_id.
-        Questo supporta utenti web-only che hanno telegram_id=None.
+        Trova utente per User ID.
         """
         async with AsyncSessionLocal() as session:
-            # Prima prova a cercare per telegram_id
             result = await session.execute(
-                select(User).where(User.telegram_id == telegram_id)
+                select(User).where(User.id == user_id)
             )
-            user = result.scalar_one_or_none()
-            
-            # Se non trovato per telegram_id, prova a cercare per user_id
-            # (caso utenti web-only con telegram_id=None)
-            if not user:
-                result = await session.execute(
-                    select(User).where(User.id == telegram_id)
-                )
-                user = result.scalar_one_or_none()
-            
-            return user
+            return result.scalar_one_or_none()
+    
+    async def get_user_by_telegram_id(self, telegram_id: int) -> Optional[User]:
+        """
+        DEPRECATO: Usa get_user_by_id invece.
+        Mantenuto solo per retrocompatibilità.
+        """
+        return await self.get_user_by_id(telegram_id)
     
     async def get_user_by_email(self, email: str) -> Optional[User]:
         """Trova utente per email (normalizza sempre in lowercase)"""
@@ -148,15 +142,15 @@ class DatabaseManager:
                 logger.debug(f"[DB] Nessun utente trovato per email: {email_normalized}")
             return user
     
-    async def get_user_wines(self, telegram_id: int) -> List[Wine]:
+    async def get_user_wines(self, user_id: int) -> List[Wine]:
         """Ottiene vini utente da tabelle dinamiche"""
         async with AsyncSessionLocal() as session:
-            user = await self.get_user_by_telegram_id(telegram_id)
+            user = await self.get_user_by_id(user_id)
             if not user or not user.business_name:
-                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
+                logger.warning(f"[DB] User user_id={user_id} non trovato o business_name mancante")
                 return []
             
-            # Usa user.id invece di telegram_id per nome tabella
+            # Usa user.id per nome tabella
             table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
             
             try:
@@ -199,7 +193,7 @@ class DatabaseManager:
                         setattr(wine, key, value)
                     wines.append(wine)
                 
-                logger.info(f"[DB] Recuperati {len(wines)} vini da tabella dinamica per telegram_id={telegram_id}, business_name={user.business_name}")
+                logger.info(f"[DB] Recuperati {len(wines)} vini da tabella dinamica per user_id={user_id}, business_name={user.business_name}")
                 return wines
                 
             except Exception as e:
@@ -274,15 +268,15 @@ class DatabaseManager:
                 logger.error(f"[DB] Errore recuperando vino id={wine_id} da tabella dinamica {table_name}: {e}", exc_info=True)
                 return None
     
-    async def search_wines(self, telegram_id: int, search_term: str, limit: int = 10) -> List[Wine]:
+    async def search_wines(self, user_id: int, search_term: str, limit: int = 10) -> List[Wine]:
         """
         Cerca vini con ricerca fuzzy avanzata (async).
         Reuse completo da telegram-ai-bot
         """
         async with AsyncSessionLocal() as session:
-            user = await self.get_user_by_telegram_id(telegram_id)
+            user = await self.get_user_by_id(user_id)
             if not user or not user.business_name:
-                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante")
+                logger.warning(f"[DB] User user_id={user_id} non trovato o business_name mancante")
                 return []
             
             table_name = f'"{user.id}/{user.business_name} INVENTARIO"'
@@ -497,7 +491,7 @@ class DatabaseManager:
                     wines.append(wine)
                 
                 wines = wines[:limit]
-                logger.info(f"[DB] Trovati {len(wines)} vini per ricerca '{search_term}' per telegram_id={telegram_id}, business_name={user.business_name}")
+                logger.info(f"[DB] Trovati {len(wines)} vini per ricerca '{search_term}' per user_id={user_id}, business_name={user.business_name}")
                 return wines
                 
             except Exception as e:
@@ -552,17 +546,16 @@ class DatabaseManager:
     
     async def update_user_email_password(
         self,
-        telegram_id: int,
+        user_id: int,
         email: str,
         password_hash: str
     ) -> bool:
         """
-        Aggiorna email e password per utente Telegram esistente.
-        Usato quando utente Telegram fa signup web.
+        Aggiorna email e password per utente esistente.
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(User).where(User.telegram_id == telegram_id)
+                select(User).where(User.id == user_id)
             )
             user = result.scalar_one_or_none()
             if not user:
@@ -573,7 +566,7 @@ class DatabaseManager:
             user.updated_at = datetime.utcnow()
             session.add(user)
             await session.commit()
-            logger.info(f"Email e password aggiornate per telegram_id={telegram_id}")
+            logger.info(f"Email e password aggiornate per user_id={user_id}")
             return True
     
     async def check_user_has_dynamic_tables(self, telegram_id: int) -> tuple[bool, Optional[str]]:
@@ -614,13 +607,12 @@ class DatabaseManager:
                 logger.error(f"Errore verifica tabelle dinamiche: {e}", exc_info=True)
                 return False, None
     
-    async def log_chat_message(self, telegram_id: int, role: str, content: str, conversation_id: Optional[int] = None) -> bool:
+    async def log_chat_message(self, user_id: int, role: str, content: str, conversation_id: Optional[int] = None) -> bool:
         """
         Registra un messaggio di chat nella tabella dinamica LOG interazione.
-        Compatibile con sistema Telegram bot.
         
         Args:
-            telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
+            user_id: ID utente
             role: 'user' o 'assistant'
             content: Contenuto del messaggio
             conversation_id: ID conversazione (opzionale, per chat multiple)
@@ -629,9 +621,9 @@ class DatabaseManager:
             True se salvato con successo, False altrimenti
         """
         async with AsyncSessionLocal() as session:
-            user = await self.get_user_by_telegram_id(telegram_id)
+            user = await self.get_user_by_id(user_id)
             if not user or not user.business_name:
-                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per log_chat_message")
+                logger.warning(f"[DB] User user_id={user_id} non trovato o business_name mancante per log_chat_message")
                 return False
             
             table_name = f'"{user.id}/{user.business_name} LOG interazione"'
@@ -680,20 +672,19 @@ class DatabaseManager:
                     })
                 
                 await session.commit()
-                logger.debug(f"[DB] Messaggio chat salvato: role={role}, telegram_id={telegram_id}, conversation_id={conversation_id}, content_len={len(content) if content else 0}")
+                logger.debug(f"[DB] Messaggio chat salvato: role={role}, user_id={user_id}, conversation_id={conversation_id}, content_len={len(content) if content else 0}")
                 return True
             except Exception as e:
                 logger.error(f"[DB] Errore salvando chat log in {table_name}: {e}", exc_info=True)
                 await session.rollback()
                 return False
     
-    async def get_recent_chat_messages(self, telegram_id: int, limit: int = 10, conversation_id: Optional[int] = None) -> List[Dict[str, Any]]:
+    async def get_recent_chat_messages(self, user_id: int, limit: int = 10, conversation_id: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Recupera ultimi messaggi chat (utente/assistant) dalla tabella LOG interazione.
-        Compatibile con sistema Telegram bot.
         
         Args:
-            telegram_id: ID Telegram utente (o ID fittizio per utenti web-only)
+            user_id: ID utente
             limit: Numero massimo di messaggi da recuperare
             conversation_id: ID conversazione (opzionale, filtra per conversazione specifica)
         
@@ -702,9 +693,9 @@ class DatabaseManager:
             Ordinati dal più vecchio al più recente (cronologico)
         """
         async with AsyncSessionLocal() as session:
-            user = await self.get_user_by_telegram_id(telegram_id)
+            user = await self.get_user_by_id(user_id)
             if not user or not user.business_name:
-                logger.warning(f"[DB] User telegram_id={telegram_id} non trovato o business_name mancante per get_recent_chat_messages")
+                logger.warning(f"[DB] User user_id={user_id} non trovato o business_name mancante per get_recent_chat_messages")
                 return []
             
             table_name = f'"{user.id}/{user.business_name} LOG interazione"'
@@ -771,7 +762,7 @@ class DatabaseManager:
         
         Args:
             user_id: ID utente
-            telegram_id: ID Telegram (opzionale, per compatibilità)
+            telegram_id: ID Telegram (opzionale, deprecato - mantenuto solo per retrocompatibilità)
             title: Titolo conversazione (opzionale, default: "Nuova chat")
         
         Returns:
@@ -786,7 +777,7 @@ class DatabaseManager:
                 """)
                 result = await session.execute(insert_query, {
                     "user_id": user_id,
-                    "telegram_id": telegram_id,
+                    "telegram_id": telegram_id,  # Mantenuto per retrocompatibilità con schema DB
                     "title": title or "Nuova chat"
                 })
                 conversation_id = result.scalar()
@@ -804,7 +795,7 @@ class DatabaseManager:
         
         Args:
             user_id: ID utente
-            telegram_id: ID Telegram (opzionale, per filtraggio)
+            telegram_id: ID Telegram (opzionale, deprecato - mantenuto solo per retrocompatibilità)
             limit: Numero massimo di conversazioni
         
         Returns:
@@ -812,24 +803,15 @@ class DatabaseManager:
         """
         async with AsyncSessionLocal() as session:
             try:
-                if telegram_id:
-                    query = sql_text("""
-                        SELECT id, title, created_at, updated_at, last_message_at
-                        FROM conversations
-                        WHERE user_id = :user_id AND (telegram_id = :telegram_id OR telegram_id IS NULL)
-                        ORDER BY last_message_at DESC
-                        LIMIT :limit
-                    """)
-                    result = await session.execute(query, {"user_id": user_id, "telegram_id": telegram_id, "limit": limit})
-                else:
-                    query = sql_text("""
-                        SELECT id, title, created_at, updated_at, last_message_at
-                        FROM conversations
-                        WHERE user_id = :user_id
-                        ORDER BY last_message_at DESC
-                        LIMIT :limit
-                    """)
-                    result = await session.execute(query, {"user_id": user_id, "limit": limit})
+                # Usa sempre user_id per filtrare conversazioni
+                query = sql_text("""
+                    SELECT id, title, created_at, updated_at, last_message_at
+                    FROM conversations
+                    WHERE user_id = :user_id
+                    ORDER BY last_message_at DESC
+                    LIMIT :limit
+                """)
+                result = await session.execute(query, {"user_id": user_id, "limit": limit})
                 
                 rows = result.fetchall()
                 conversations = []

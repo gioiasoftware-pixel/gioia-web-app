@@ -60,12 +60,9 @@ async def get_wine(
     """
     try:
         user = current_user["user"]
-        telegram_id = user.telegram_id
+        user_id = current_user["user_id"]
         
-        if not telegram_id:
-            raise HTTPException(status_code=400, detail="Utente non ha telegram_id")
-        
-        wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+        wine = await db_manager.get_wine_by_id(user_id, wine_id)
         
         if not wine:
             raise HTTPException(status_code=404, detail="Vino non trovato")
@@ -111,13 +108,10 @@ async def update_wine(
     """
     try:
         user = current_user["user"]
-        telegram_id = user.telegram_id
-        
-        if not telegram_id:
-            raise HTTPException(status_code=400, detail="Utente non ha telegram_id")
+        user_id = current_user["user_id"]
         
         # Verifica che il vino esista
-        wine = await db_manager.get_wine_by_id(telegram_id, wine_id)
+        wine = await db_manager.get_wine_by_id(user_id, wine_id)
         if not wine:
             raise HTTPException(status_code=404, detail="Vino non trovato")
         
@@ -153,7 +147,7 @@ async def update_wine(
                         continue
                     
                     result = await processor_client.update_wine_field_with_movement(
-                        telegram_id=telegram_id,
+                        user_id=user_id,
                         business_name=business_name,
                         wine_id=wine_id,
                         new_quantity=quantity_int
@@ -182,7 +176,7 @@ async def update_wine(
                     value_str = str(value) if value is not None else ""
                     
                     result = await processor_client.update_wine_field(
-                        telegram_id=telegram_id,
+                        user_id=user_id,
                         business_name=business_name,
                         wine_id=wine_id,
                         field=field,
@@ -303,7 +297,7 @@ async def create_wine(
         
         logger.info(
             f"[WINES] Vino creato: wine_id={wine_id}, name={wine_data.name}, "
-            f"telegram_id={telegram_id}, business_name={business_name}"
+            f"user_id={user_id}, business_name={business_name}"
         )
         
         return {

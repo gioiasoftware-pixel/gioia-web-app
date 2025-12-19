@@ -53,14 +53,9 @@ async def send_message(
     Richiede autenticazione JWT.
     """
     user_id = current_user["user_id"]
-    telegram_id = current_user.get("telegram_id")
     user = current_user["user"]
     
-    # Per AI service, usa telegram_id se disponibile, altrimenti user_id come fallback
-    # L'AI service si aspetta telegram_id per compatibilità con bot esistente
-    ai_telegram_id = telegram_id if telegram_id else user_id
-    
-    logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}, telegram_id={telegram_id}: {chat_message.message[:50]}...")
+    logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}: {chat_message.message[:50]}...")
     
     try:
         # Gestione conversation_id: crea nuova conversazione se non specificata
@@ -69,7 +64,7 @@ async def send_message(
             # Crea nuova conversazione
             conversation_id = await db_manager.create_conversation(
                 user_id=user_id,
-                telegram_id=telegram_id,
+                telegram_id=None,  # Non più necessario per web app
                 title=chat_message.message[:50] + "..." if len(chat_message.message) > 50 else chat_message.message
             )
             if not conversation_id:
@@ -81,7 +76,7 @@ async def send_message(
         conversation_history = None
         try:
             conversation_history = await db_manager.get_recent_chat_messages(
-                ai_telegram_id, 
+                user_id, 
                 limit=10, 
                 conversation_id=conversation_id
             )
@@ -98,14 +93,14 @@ async def send_message(
         
         # Salva messaggio utente PRIMA di processare
         try:
-            await db_manager.log_chat_message(ai_telegram_id, "user", chat_message.message, conversation_id=conversation_id)
+            await db_manager.log_chat_message(user_id, "user", chat_message.message, conversation_id=conversation_id)
         except Exception as e:
             logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
         
         # Processa messaggio con AI service
         result = await ai_service.process_message(
             user_message=chat_message.message,
-            telegram_id=ai_telegram_id,
+            user_id=user_id,
             conversation_history=conversation_history
         )
         
@@ -122,7 +117,7 @@ async def send_message(
         try:
             ai_response_message = result.get("message", "")
             if ai_response_message:
-                await db_manager.log_chat_message(ai_telegram_id, "assistant", ai_response_message, conversation_id=conversation_id)
+                await db_manager.log_chat_message(user_id, "assistant", ai_response_message, conversation_id=conversation_id)
                 # Aggiorna timestamp ultimo messaggio conversazione
                 if conversation_id:
                     await db_manager.update_conversation_last_message(conversation_id)
@@ -153,12 +148,11 @@ async def get_conversations(
     Ordinate per ultimo messaggio (più recenti prima).
     """
     user_id = current_user["user_id"]
-    telegram_id = current_user.get("telegram_id")
     
     try:
         conversations = await db_manager.get_user_conversations(
             user_id=user_id,
-            telegram_id=telegram_id,
+            telegram_id=None,  # Non più necessario per web app
             limit=50
         )
         return conversations
@@ -209,12 +203,10 @@ async def get_conversation_messages(
     Recupera messaggi di una conversazione specifica.
     """
     user_id = current_user["user_id"]
-    telegram_id = current_user.get("telegram_id")
-    ai_telegram_id = telegram_id if telegram_id else user_id
     
     try:
         messages = await db_manager.get_recent_chat_messages(
-            telegram_id=ai_telegram_id,
+            user_id=user_id,
             limit=limit,
             conversation_id=conversation_id
         )

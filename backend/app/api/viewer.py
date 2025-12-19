@@ -65,7 +65,7 @@ async def get_viewer_snapshot(current_user: dict = Depends(get_current_user)):
             table_exists = result.scalar()
 
             if not table_exists:
-                logger.info(f"[VIEWER] Tabella {table_name} non esiste per telegram_id={telegram_id}, business_name={business_name}")
+                logger.info(f"[VIEWER] Tabella {table_name} non esiste per user_id={user_id}, business_name={business_name}")
                 # Restituisci risposta vuota ma valida - l'utente non ha ancora inventario
                 return {
                     "rows": [],
@@ -193,11 +193,10 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
     """
     try:
         user = current_user["user"]
-        telegram_id = user.telegram_id
-        user_id = user.id
+        user_id = current_user["user_id"]
         business_name = user.business_name
 
-        if not business_name or not telegram_id:
+        if not business_name:
             raise HTTPException(
                 status_code=404,
                 detail="Inventario non disponibile"
@@ -277,7 +276,7 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
 
             logger.info(
                 f"[VIEWER] CSV export completato: rows={len(wines_rows)}, "
-                f"user_id={user_id}, telegram_id={telegram_id}, business_name={business_name}"
+                f"user_id={user_id}, business_name={business_name}"
             )
 
             return Response(
@@ -309,11 +308,10 @@ async def get_wine_movements(
     """
     try:
         user = current_user["user"]
-        telegram_id = user.telegram_id
-        user_id = user.id
+        user_id = current_user["user_id"]
         business_name = user.business_name
 
-        if not business_name or not telegram_id:
+        if not business_name:
             raise HTTPException(
                 status_code=404,
                 detail="Inventario non disponibile"
