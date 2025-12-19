@@ -120,7 +120,7 @@ async def send_message(
                 await db_manager.log_chat_message(user_id, "assistant", ai_response_message, conversation_id=conversation_id)
                 # Aggiorna timestamp ultimo messaggio conversazione
                 if conversation_id:
-                    await db_manager.update_conversation_last_message(conversation_id)
+                    await db_manager.update_conversation_last_message(conversation_id, user_id)
         except Exception as e:
             logger.warning(f"[CHAT] Errore salvataggio risposta AI: {e}")
         
