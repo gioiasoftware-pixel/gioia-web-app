@@ -471,10 +471,18 @@ async def create_user(
         # per inserimento diretto senza pipeline che potrebbe modificare i dati
         if file:
             try:
+                # PRIMA crea le tabelle per assicurarsi che esistano
+                # Questo garantisce che l'utente sia visibile nel database di Processor
+                # e che le tabelle siano create prima dell'inserimento
+                await processor_client.create_tables(
+                    user_id=user.id,
+                    business_name=business_name
+                )
+                
                 file_content = await file.read()
                 file_name = file.filename or f"onboarding_{user.id}.{file_type}"
                 
-                # Chiama Processor con admin_insert_inventory (stesso comportamento admin bot)
+                # POI inserisci l'inventario usando admin_insert_inventory (stesso comportamento admin bot)
                 # mode="replace" per sostituire inventario esistente (se presente)
                 result = await processor_client.admin_insert_inventory(
                     user_id=user.id,
