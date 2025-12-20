@@ -639,7 +639,23 @@ async def create_spectator_mode_token(
             )
             
             # Ottieni URL web app da configurazione
-            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            # In produzione, usa l'URL del backend stesso (la web app è servita dallo stesso dominio)
+            # In sviluppo, usa FRONTEND_URL se configurato, altrimenti localhost
+            frontend_url = os.getenv("FRONTEND_URL")
+            if not frontend_url:
+                # Se non configurato, prova a dedurre dall'URL del backend
+                # In produzione su Railway, la web app è servita dallo stesso dominio del backend
+                # Controlla se siamo in produzione (Railway fornisce RAILWAY_ENVIRONMENT)
+                if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PUBLIC_DOMAIN"):
+                    # In produzione, usa lo stesso dominio del backend
+                    # Il backend serve anche il frontend static
+                    frontend_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+                    if not frontend_url:
+                        # Fallback: usa l'URL del backend se disponibile
+                        frontend_url = os.getenv("WEB_APP_URL", "https://gioia-web-app-production.up.railway.app")
+                else:
+                    # Sviluppo locale
+                    frontend_url = "http://localhost:5173"
             
             return {
                 "spectator_token": spectator_token,
