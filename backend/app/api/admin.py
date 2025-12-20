@@ -552,18 +552,6 @@ async def get_user(
                         logger.debug(f"Errore calcolo tempo in app per user_id={user_id} (non critico): {e}")
         
         # Converti user a UserResponse con gestione errori robusta
-        try:
-            user_dict = {
-                "id": user.id,
-                "email": user.email if user.email else None,
-                "business_name": user.business_name if user.business_name else None,
-                "username": user.username if user.username else None,
-                "telegram_id": user.telegram_id if user.telegram_id else None,
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "updated_at": user.updated_at.isoformat() if user.updated_at else None,
-                "onboarding_completed": bool(user.onboarding_completed) if user.onboarding_completed is not None else False
-            }
-            user_response = UserResponse.model_validate(user_dict)
         # Debug: log user object attributes
         logger.info(f"[GET_USER] User object attributes: id={user.id}, email={user.email}, business_name={user.business_name}")
         logger.info(f"[GET_USER] User first_name={getattr(user, 'first_name', 'NOT_FOUND')}, last_name={getattr(user, 'last_name', 'NOT_FOUND')}")
@@ -571,6 +559,26 @@ async def get_user(
         
         # Converti user a UserResponse con gestione errori robusta
         try:
+            user_dict = {
+                "id": user.id,
+                "email": user.email if user.email else None,
+                "business_name": user.business_name if user.business_name else None,
+                "username": user.username if user.username else None,
+                "telegram_id": user.telegram_id if user.telegram_id else None,
+                "first_name": getattr(user, 'first_name', None),
+                "last_name": getattr(user, 'last_name', None),
+                "business_type": getattr(user, 'business_type', None),
+                "location": getattr(user, 'location', None),
+                "phone": getattr(user, 'phone', None),
+                "created_at": user.created_at.isoformat() if user.created_at else None,
+                "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+                "onboarding_completed": bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+            }
+            user_response = UserResponse.model_validate(user_dict)
+            logger.info(f"[GET_USER] UserResponse created: {user_response.model_dump_json()}")
+        except Exception as e:
+            logger.error(f"Errore validazione UserResponse per user_id={user_id}: {e}", exc_info=True)
+            # Fallback con dati minimi
             user_response = UserResponse(
                 id=user.id,
                 email=user.email if user.email else None,
@@ -585,25 +593,6 @@ async def get_user(
                 created_at=user.created_at.isoformat() if user.created_at else None,
                 updated_at=user.updated_at.isoformat() if user.updated_at else None,
                 onboarding_completed=bool(user.onboarding_completed) if user.onboarding_completed is not None else False
-            )
-            logger.info(f"[GET_USER] UserResponse created: {user_response.model_dump_json()}")
-        except Exception as e:
-            logger.error(f"Errore validazione UserResponse per user_id={user_id}: {e}", exc_info=True)
-            # Fallback con dati minimi
-            user_response = UserResponse(
-                id=user.id,
-                email=None,
-                business_name=None,
-                username=None,
-                telegram_id=None,
-                first_name=None,
-                last_name=None,
-                business_type=None,
-                location=None,
-                phone=None,
-                created_at=None,
-                updated_at=None,
-                onboarding_completed=False
             )
         
         result = UserWithStatsResponse(
