@@ -347,34 +347,46 @@ async def get_user(
                     stats.total_storico = 0
                 
                 # Ultima attività (max updated_at da tutte le tabelle)
-                # Solo se almeno una tabella esiste
+                # Solo se almeno una tabella esiste E ha dati
+                # Skip se le tabelle sono appena state create (potrebbero non avere ancora colonne/dati)
                 if table_inventario or table_log or table_consumi or table_storico:
                     try:
-                        # Costruisci query dinamica solo per tabelle esistenti
-                        # Unifica tutte le colonne con alias comune per evitare errori SQL
-                        union_parts = []
+                        # Verifica che le tabelle abbiano almeno una riga prima di calcolare last_activity
+                        # Questo evita errori SQL quando le tabelle sono appena state create
+                        has_data = False
                         if table_inventario:
-                            union_parts.append(f"SELECT updated_at AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
-                        if table_log:
-                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_log} WHERE user_id = :user_id")
-                        if table_consumi:
-                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
-                        if table_storico:
-                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_storico} WHERE user_id = :user_id")
+                            count_check = sql_text(f"SELECT COUNT(*) FROM {table_inventario} WHERE user_id = :user_id")
+                            result = await session.execute(count_check, {"user_id": user.id})
+                            if result.scalar() > 0:
+                                has_data = True
                         
-                        if union_parts:
-                            # Costruisci query con CTE per evitare problemi con alias in subquery
-                            union_query = ' UNION ALL '.join(union_parts)
-                            last_activity_query = sql_text(f"""
-                                WITH all_activities AS (
-                                    {union_query}
-                                )
-                                SELECT MAX(activity_date) FROM all_activities
-                            """)
-                            result = await session.execute(last_activity_query, {"user_id": user.id})
-                            last_activity = result.scalar()
-                            if last_activity:
-                                stats.last_activity = last_activity.isoformat()
+                        # Solo se c'è almeno un dato, calcola last_activity
+                        if has_data:
+                            # Costruisci query dinamica solo per tabelle esistenti
+                            # Unifica tutte le colonne con alias comune per evitare errori SQL
+                            union_parts = []
+                            if table_inventario:
+                                union_parts.append(f"SELECT updated_at AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
+                            if table_log:
+                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_log} WHERE user_id = :user_id")
+                            if table_consumi:
+                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
+                            if table_storico:
+                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_storico} WHERE user_id = :user_id")
+                            
+                            if union_parts:
+                                # Costruisci query con CTE per evitare problemi con alias in subquery
+                                union_query = ' UNION ALL '.join(union_parts)
+                                last_activity_query = sql_text(f"""
+                                    WITH all_activities AS (
+                                        {union_query}
+                                    )
+                                    SELECT MAX(activity_date) FROM all_activities
+                                """)
+                                result = await session.execute(last_activity_query, {"user_id": user.id})
+                                last_activity = result.scalar()
+                                if last_activity:
+                                    stats.last_activity = last_activity.isoformat()
                     except Exception as e:
                         # last_activity è opzionale, non blocchiamo la risposta se fallisce
                         # Le tabelle potrebbero non esistere ancora o non avere dati
