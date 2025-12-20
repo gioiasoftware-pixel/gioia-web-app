@@ -14,7 +14,7 @@ from sqlalchemy import select, text as sql_text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal, User, db_manager
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, create_spectator_token
 from app.core.processor_client import processor_client
 from app.core.config import get_settings
 
@@ -607,6 +607,50 @@ async def get_user(
         logger.error(f"Errore recupero dettaglio utente user_id={user_id}: {e}", exc_info=True)
         import traceback
         logger.error(f"Traceback completo: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
+
+
+@router.post("/users/{user_id}/spectator-token")
+async def create_spectator_mode_token(
+    user_id: int,
+    admin_user: dict = Depends(is_admin_user)
+):
+    """
+    Genera token JWT per spectator mode (admin impersona utente).
+    Il token permette di accedere alla web app come se fossi l'utente.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                select(User).where(User.id == user_id)
+            )
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(status_code=404, detail="Utente non trovato")
+            
+            # Genera token spectator mode (valido 2 ore)
+            spectator_token = create_spectator_token(
+                user_id=user.id,
+                telegram_id=user.telegram_id,
+                business_name=user.business_name or "Unknown",
+                admin_user_id=admin_user["user_id"],
+                expires_in_hours=2
+            )
+            
+            # Ottieni URL web app da configurazione
+            frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+            
+            return {
+                "spectator_token": spectator_token,
+                "web_app_url": frontend_url,
+                "redirect_url": f"{frontend_url}?spectator_token={spectator_token}",
+                "expires_in_hours": 2
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Errore generazione spectator token per user_id={user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Errore interno: {str(e)}")
 
 

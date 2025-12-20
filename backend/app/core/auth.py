@@ -144,6 +144,43 @@ def create_viewer_token(telegram_id: int, business_name: str, expires_in_hours: 
     )
 
 
+def create_spectator_token(
+    user_id: int,
+    telegram_id: Optional[int],
+    business_name: str,
+    admin_user_id: int,
+    expires_in_hours: int = 2
+) -> str:
+    """
+    Crea JWT token temporaneo per spectator mode (admin impersona utente).
+    
+    Args:
+        user_id: ID utente da impersonare
+        telegram_id: ID Telegram utente (opzionale)
+        business_name: Nome business utente
+        admin_user_id: ID admin che sta impersonando
+        expires_in_hours: Durata token (default 2 ore)
+    """
+    settings = get_settings()
+    expire = datetime.utcnow() + timedelta(hours=expires_in_hours)
+    
+    payload = {
+        "user_id": user_id,
+        "telegram_id": telegram_id,
+        "business_name": business_name,
+        "exp": expire,
+        "type": "spectator_access",
+        "admin_user_id": admin_user_id,  # ID admin per tornare al control panel
+        "is_spectator": True
+    }
+    
+    return jwt.encode(
+        payload,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM
+    )
+
+
 def validate_token(token: str) -> Optional[Dict]:
     """Valida JWT token e restituisce payload."""
     settings = get_settings()
@@ -229,7 +266,9 @@ async def get_current_user(
         "user_id": user.id,
         "telegram_id": user.telegram_id,
         "business_name": user.business_name or business_name,
-        "user": user
+        "user": user,
+        "is_spectator": payload.get("is_spectator", False),
+        "admin_user_id": payload.get("admin_user_id") if payload.get("is_spectator") else None
     }
 
 

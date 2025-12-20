@@ -470,9 +470,28 @@ document.addEventListener('DOMContentLoaded', () => {
         console.warn('[SECURITY] Rimossi parametri sensibili dall\'URL');
     }
     
-    // Check if user is already logged in
-    authToken = localStorage.getItem('auth_token');
-    window.authToken = authToken; // Esponi su window
+    // Check for spectator token in URL (from Control Panel)
+    const urlParams = new URLSearchParams(window.location.search);
+    const spectatorToken = urlParams.get('spectator_token');
+    
+    if (spectatorToken) {
+        // Salva token spectator e rimuovi parametro dall'URL
+        localStorage.setItem('auth_token', spectatorToken);
+        localStorage.setItem('is_spectator_mode', 'true');
+        authToken = spectatorToken;
+        window.authToken = spectatorToken;
+        
+        // Pulisci URL
+        urlParams.delete('spectator_token');
+        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+        window.history.replaceState({}, '', newUrl);
+        
+        console.log('[SPECTATOR] Token spectator ricevuto, modalità spectator attivata');
+    } else {
+        // Check if user is already logged in
+        authToken = localStorage.getItem('auth_token');
+        window.authToken = authToken; // Esponi su window
+    }
     
     // Inizializza tema (giorno/notte)
     const savedTheme = localStorage.getItem('gioia_theme');
@@ -484,12 +503,71 @@ document.addEventListener('DOMContentLoaded', () => {
     if (authToken) {
         showChatPage();
         loadUserInfo();
+        // Mostra banner spectator se in modalità spectator
+        if (localStorage.getItem('is_spectator_mode') === 'true') {
+            showSpectatorBanner();
+        }
     } else {
         showAuthPage();
     }
 
     setupEventListeners();
+    
+    // Setup spectator mode banner
+    setupSpectatorMode();
 });
+
+// ============================================
+// SPECTATOR MODE
+// ============================================
+
+function showSpectatorBanner() {
+    const bannerDesktop = document.getElementById('spectator-banner');
+    const bannerMobile = document.getElementById('spectator-banner-mobile');
+    
+    if (bannerDesktop) {
+        bannerDesktop.style.display = 'block';
+    }
+    if (bannerMobile) {
+        bannerMobile.style.display = 'block';
+    }
+}
+
+function hideSpectatorBanner() {
+    const bannerDesktop = document.getElementById('spectator-banner');
+    const bannerMobile = document.getElementById('spectator-banner-mobile');
+    
+    if (bannerDesktop) {
+        bannerDesktop.style.display = 'none';
+    }
+    if (bannerMobile) {
+        bannerMobile.style.display = 'none';
+    }
+}
+
+function setupSpectatorMode() {
+    // Bottone torna al control panel (desktop)
+    const backBtnDesktop = document.getElementById('spectator-back-btn');
+    if (backBtnDesktop) {
+        backBtnDesktop.addEventListener('click', () => {
+            const controlPanelUrl = localStorage.getItem('control_panel_url') || 'https://controlpaneladmingioia-production.up.railway.app/admin/dashboard';
+            // Pulisci spectator mode
+            localStorage.removeItem('is_spectator_mode');
+            window.location.href = controlPanelUrl;
+        });
+    }
+    
+    // Bottone torna al control panel (mobile)
+    const backBtnMobile = document.getElementById('spectator-back-btn-mobile');
+    if (backBtnMobile) {
+        backBtnMobile.addEventListener('click', () => {
+            const controlPanelUrl = localStorage.getItem('control_panel_url') || 'https://controlpaneladmingioia-production.up.railway.app/admin/dashboard';
+            // Pulisci spectator mode
+            localStorage.removeItem('is_spectator_mode');
+            window.location.href = controlPanelUrl;
+        });
+    }
+}
 
 // ============================================
 // THEME TOGGLE (DAY/NIGHT)

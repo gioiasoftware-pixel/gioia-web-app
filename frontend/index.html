@@ -91,12 +91,19 @@
         </div>
     </div>
 
-    <!-- Chat Page (hidden initially) -->
-    <div id="chat-page" class="chat-page hidden">
-        <!-- MOBILE LAYOUT: Wrapper .mApp per architettura mobile pulita -->
-        <div id="mobile-layout" class="mApp layout-container" data-layout-root="mobile" style="display: none;">
-            <!-- Header Mobile - Solo logo e hamburger -->
-            <header class="mHeader">
+        <!-- Chat Page (hidden initially) -->
+        <div id="chat-page" class="chat-page hidden">
+            <!-- Spectator Mode Banner Mobile -->
+            <div id="spectator-banner-mobile" class="spectator-banner-mobile" style="display: none;">
+                <div class="spectator-banner-content">
+                    <span class="spectator-banner-text">🔍 Spectator Mode</span>
+                    <button id="spectator-back-btn-mobile" class="spectator-back-btn">Torna</button>
+                </div>
+            </div>
+            <!-- MOBILE LAYOUT: Wrapper .mApp per architettura mobile pulita -->
+            <div id="mobile-layout" class="mApp layout-container" data-layout-root="mobile" style="display: none;">
+                <!-- Header Mobile - Solo logo e hamburger -->
+                <header class="mHeader">
                 <button type="button" id="sidebar-toggle" class="sidebar-toggle-btn">
                     <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                         <path d="M3 5H17M3 10H17M3 15H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -231,6 +238,13 @@
         
             <!-- Main Content -->
             <div class="chat-main-content">
+                <!-- Spectator Mode Banner -->
+                <div id="spectator-banner" class="spectator-banner" style="display: none;">
+                    <div class="spectator-banner-content">
+                        <span class="spectator-banner-text">🔍 Modalità Spectator Attiva - Stai visualizzando come utente</span>
+                        <button id="spectator-back-btn" class="spectator-back-btn">Torna al Control Panel</button>
+                    </div>
+                </div>
                 <!-- Header -->
                 <header class="chat-header">
                     <div class="chat-header-left">
