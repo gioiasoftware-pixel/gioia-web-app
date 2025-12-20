@@ -376,7 +376,10 @@ async def get_user(
                             if last_activity:
                                 stats.last_activity = last_activity.isoformat()
                     except Exception as e:
-                        logger.debug(f"Errore calcolo last_activity per user_id={user_id}: {e}")
+                        # last_activity è opzionale, non blocchiamo la risposta se fallisce
+                        # Le tabelle potrebbero non esistere ancora o non avere dati
+                        logger.debug(f"Errore calcolo last_activity per user_id={user_id} (non critico): {e}")
+                        stats.last_activity = None
         
         # Converti user a UserResponse con gestione errori robusta
         try:
