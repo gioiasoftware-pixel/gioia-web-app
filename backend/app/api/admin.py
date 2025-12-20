@@ -550,57 +550,57 @@ async def get_user(
                                     stats.time_today_seconds = int(time_diff_today) if time_diff_today > 0 else 0
                     except Exception as e:
                         logger.debug(f"Errore calcolo tempo in app per user_id={user_id} (non critico): {e}")
-        
-        # Converti user a UserResponse con gestione errori robusta
-        # Debug: log user object attributes
-        logger.info(f"[GET_USER] User object attributes: id={user.id}, email={user.email}, business_name={user.business_name}")
-        logger.info(f"[GET_USER] User first_name={getattr(user, 'first_name', 'NOT_FOUND')}, last_name={getattr(user, 'last_name', 'NOT_FOUND')}")
-        logger.info(f"[GET_USER] User business_type={getattr(user, 'business_type', 'NOT_FOUND')}, location={getattr(user, 'location', 'NOT_FOUND')}, phone={getattr(user, 'phone', 'NOT_FOUND')}")
-        
-        # Converti user a UserResponse con gestione errori robusta
-        try:
-            user_dict = {
-                "id": user.id,
-                "email": user.email if user.email else None,
-                "business_name": user.business_name if user.business_name else None,
-                "username": user.username if user.username else None,
-                "telegram_id": user.telegram_id if user.telegram_id else None,
-                "first_name": getattr(user, 'first_name', None),
-                "last_name": getattr(user, 'last_name', None),
-                "business_type": getattr(user, 'business_type', None),
-                "location": getattr(user, 'location', None),
-                "phone": getattr(user, 'phone', None),
-                "created_at": user.created_at.isoformat() if user.created_at else None,
-                "updated_at": user.updated_at.isoformat() if user.updated_at else None,
-                "onboarding_completed": bool(user.onboarding_completed) if user.onboarding_completed is not None else False
-            }
-            user_response = UserResponse.model_validate(user_dict)
-            logger.info(f"[GET_USER] UserResponse created: {user_response.model_dump_json()}")
-        except Exception as e:
-            logger.error(f"Errore validazione UserResponse per user_id={user_id}: {e}", exc_info=True)
-            # Fallback con dati minimi
-            user_response = UserResponse(
-                id=user.id,
-                email=user.email if user.email else None,
-                business_name=user.business_name if user.business_name else None,
-                username=user.username if user.username else None,
-                telegram_id=user.telegram_id if user.telegram_id else None,
-                first_name=getattr(user, 'first_name', None),
-                last_name=getattr(user, 'last_name', None),
-                business_type=getattr(user, 'business_type', None),
-                location=getattr(user, 'location', None),
-                phone=getattr(user, 'phone', None),
-                created_at=user.created_at.isoformat() if user.created_at else None,
-                updated_at=user.updated_at.isoformat() if user.updated_at else None,
-                onboarding_completed=bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+            
+            # Converti user a UserResponse con gestione errori robusta
+            # Debug: log user object attributes
+            logger.info(f"[GET_USER] User object attributes: id={user.id}, email={user.email}, business_name={user.business_name}")
+            logger.info(f"[GET_USER] User first_name={getattr(user, 'first_name', 'NOT_FOUND')}, last_name={getattr(user, 'last_name', 'NOT_FOUND')}")
+            logger.info(f"[GET_USER] User business_type={getattr(user, 'business_type', 'NOT_FOUND')}, location={getattr(user, 'location', 'NOT_FOUND')}, phone={getattr(user, 'phone', 'NOT_FOUND')}")
+            
+            # Converti user a UserResponse con gestione errori robusta
+            try:
+                user_dict = {
+                    "id": user.id,
+                    "email": user.email if user.email else None,
+                    "business_name": user.business_name if user.business_name else None,
+                    "username": user.username if user.username else None,
+                    "telegram_id": user.telegram_id if user.telegram_id else None,
+                    "first_name": getattr(user, 'first_name', None),
+                    "last_name": getattr(user, 'last_name', None),
+                    "business_type": getattr(user, 'business_type', None),
+                    "location": getattr(user, 'location', None),
+                    "phone": getattr(user, 'phone', None),
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
+                    "updated_at": user.updated_at.isoformat() if user.updated_at else None,
+                    "onboarding_completed": bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+                }
+                user_response = UserResponse.model_validate(user_dict)
+                logger.info(f"[GET_USER] UserResponse created: {user_response.model_dump_json()}")
+            except Exception as e:
+                logger.error(f"Errore validazione UserResponse per user_id={user_id}: {e}", exc_info=True)
+                # Fallback con dati minimi
+                user_response = UserResponse(
+                    id=user.id,
+                    email=user.email if user.email else None,
+                    business_name=user.business_name if user.business_name else None,
+                    username=user.username if user.username else None,
+                    telegram_id=user.telegram_id if user.telegram_id else None,
+                    first_name=getattr(user, 'first_name', None),
+                    last_name=getattr(user, 'last_name', None),
+                    business_type=getattr(user, 'business_type', None),
+                    location=getattr(user, 'location', None),
+                    phone=getattr(user, 'phone', None),
+                    created_at=user.created_at.isoformat() if user.created_at else None,
+                    updated_at=user.updated_at.isoformat() if user.updated_at else None,
+                    onboarding_completed=bool(user.onboarding_completed) if user.onboarding_completed is not None else False
+                )
+            
+            result = UserWithStatsResponse(
+                user=user_response,
+                stats=stats
             )
-        
-        result = UserWithStatsResponse(
-            user=user_response,
-            stats=stats
-        )
-        logger.info(f"[GET_USER] Returning UserWithStatsResponse: {result.model_dump_json()}")
-        return result
+            logger.info(f"[GET_USER] Returning UserWithStatsResponse: {result.model_dump_json()}")
+            return result
     except HTTPException:
         raise
     except Exception as e:
