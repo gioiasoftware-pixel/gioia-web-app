@@ -265,29 +265,31 @@ body.dark-theme {
     min-width: 0; /* Permette al flex item di ridursi sotto la sua dimensione minima del contenuto */
 }
 
-/* Spectator Mode Banner */
+/* Spectator Mode Banner - Ridotto per non coprire contenuto */
 .spectator-banner {
     background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
     color: white;
-    padding: 12px 20px;
+    padding: 6px 12px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     z-index: 1000;
     position: relative;
+    min-height: 32px;
 }
 
 .spectator-banner-mobile {
     background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
     color: white;
-    padding: 10px 16px;
+    padding: 5px 10px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
     z-index: 1000;
     position: relative;
+    min-height: 28px;
 }
 
 .spectator-banner-content {
@@ -295,26 +297,28 @@ body.dark-theme {
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    gap: 16px;
+    gap: 12px;
 }
 
 .spectator-banner-text {
-    font-size: 14px;
+    font-size: 12px;
     font-weight: 500;
     flex: 1;
+    line-height: 1.2;
 }
 
 .spectator-back-btn {
     background: rgba(255, 255, 255, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.3);
     color: white;
-    padding: 6px 16px;
-    border-radius: 6px;
-    font-size: 13px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 11px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.2s;
     white-space: nowrap;
+    line-height: 1.2;
 }
 
 .spectator-back-btn:hover {
