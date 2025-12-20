@@ -7,7 +7,7 @@ import os
 import secrets
 import re
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, date
 from fastapi import APIRouter, HTTPException, Depends, Query, Body, UploadFile, File, Form, status
 from pydantic import BaseModel, EmailStr, ConfigDict
 from sqlalchemy import select, text as sql_text, func
@@ -103,6 +103,9 @@ class UserStatsResponse(BaseModel):
     # Ultimo errore
     last_error: Optional[str] = None  # messaggio errore
     last_error_date: Optional[str] = None  # data errore
+    # Tempo passato in app
+    time_today_seconds: Optional[int] = None  # secondi passati in app oggi
+    time_total_seconds: Optional[int] = None  # secondi totali passati in app
 
 
 class UserWithStatsResponse(BaseModel):
@@ -352,58 +355,47 @@ async def get_user(
                     logger.debug(f"Tabella Storico vino non trovata o errore per user_id={user_id}: {e}")
                     stats.total_storico = 0
                 
-                # Ultima attività (max updated_at da tutte le tabelle)
-                # Solo se almeno una tabella esiste E ha dati
-                # Skip se le tabelle sono appena state create (potrebbero non avere ancora colonne/dati)
+                # Ultima attività (max updated_at/created_at da tutte le tabelle)
+                # Include anche i log per avere una visione completa delle interazioni
                 if table_inventario or table_log or table_consumi or table_storico:
                     try:
-                        # Verifica che le tabelle abbiano almeno una riga prima di calcolare last_activity
-                        # Questo evita errori SQL quando le tabelle sono appena state create
-                        has_data = False
-                        # Controlla tutte le tabelle, non solo inventario
-                        for table in [table_inventario, table_log, table_consumi, table_storico]:
-                            if table:
-                                try:
-                                    count_check = sql_text(f"SELECT COUNT(*) FROM {table} WHERE user_id = :user_id")
-                                    result = await session.execute(count_check, {"user_id": user.id})
-                                    if result.scalar() > 0:
-                                        has_data = True
-                                        break
-                                except:
-                                    pass
+                        # Calcola last_activity da tutte le tabelle disponibili
+                        # Include anche i log per avere una visione completa
+                        union_parts = []
+                        if table_inventario:
+                            union_parts.append(f"SELECT updated_at AS activity_date FROM {table_inventario} WHERE user_id = :user_id AND updated_at IS NOT NULL")
+                        if table_log:
+                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_log} WHERE user_id = :user_id AND created_at IS NOT NULL")
+                        if table_consumi:
+                            union_parts.append(f"SELECT movement_date AS activity_date FROM {table_consumi} WHERE user_id = :user_id AND movement_date IS NOT NULL")
+                        if table_storico:
+                            union_parts.append(f"SELECT GREATEST(COALESCE(created_at, '1970-01-01'::timestamp), COALESCE(updated_at, '1970-01-01'::timestamp)) AS activity_date FROM {table_storico} WHERE user_id = :user_id AND (created_at IS NOT NULL OR updated_at IS NOT NULL)")
                         
-                        # Solo se c'è almeno un dato, calcola last_activity
-                        if has_data:
-                            # Costruisci query dinamica solo per tabelle esistenti
-                            # Unifica tutte le colonne con alias comune per evitare errori SQL
-                            union_parts = []
-                            if table_inventario:
-                                union_parts.append(f"SELECT updated_at AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
-                            if table_log:
-                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_log} WHERE user_id = :user_id")
-                            if table_consumi:
-                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
-                            if table_storico:
-                                union_parts.append(f"SELECT created_at AS activity_date FROM {table_storico} WHERE user_id = :user_id")
-                            
-                            if union_parts:
-                                # Costruisci query con CTE per evitare problemi con alias in subquery
-                                union_query = ' UNION ALL '.join(union_parts)
-                                last_activity_query = sql_text(f"""
-                                    WITH all_activities AS (
-                                        {union_query}
-                                    )
-                                    SELECT MAX(activity_date) FROM all_activities
-                                """)
-                                result = await session.execute(last_activity_query, {"user_id": user.id})
-                                last_activity = result.scalar()
-                                if last_activity:
-                                    stats.last_activity = last_activity.isoformat()
+                        if union_parts:
+                            # Costruisci query con CTE per evitare problemi con alias in subquery
+                            union_query = ' UNION ALL '.join(union_parts)
+                            last_activity_query = sql_text(f"""
+                                WITH all_activities AS (
+                                    {union_query}
+                                )
+                                SELECT MAX(activity_date) FROM all_activities
+                            """)
+                            result = await session.execute(last_activity_query, {"user_id": user.id})
+                            last_activity = result.scalar()
+                            if last_activity:
+                                stats.last_activity = last_activity.isoformat()
+                            else:
+                                # Se non c'è attività nelle tabelle dinamiche, usa created_at dell'utente come fallback
+                                stats.last_activity = user.created_at.isoformat() if user.created_at else None
+                        else:
+                            # Nessuna tabella disponibile, usa created_at dell'utente
+                            stats.last_activity = user.created_at.isoformat() if user.created_at else None
                     except Exception as e:
                         # last_activity è opzionale, non blocchiamo la risposta se fallisce
                         # Le tabelle potrebbero non esistere ancora o non avere dati
                         logger.debug(f"Errore calcolo last_activity per user_id={user_id} (non critico): {e}")
-                        stats.last_activity = None
+                        # Fallback a created_at dell'utente
+                        stats.last_activity = user.created_at.isoformat() if user.created_at else None
                 
                 # Recupera ultimo job processing
                 # processing_jobs usa telegram_id, quindi usiamo user.telegram_id o user.id come fallback
@@ -455,6 +447,109 @@ async def get_user(
                             stats.last_error_date = last_error[1].isoformat() if last_error[1] else None
                     except Exception as e:
                         logger.debug(f"Errore recupero ultimo errore per user_id={user_id} (non critico): {e}")
+                
+                # Calcola tempo passato in app
+                # Tempo totale: differenza tra prima e ultima attività
+                # Tempo oggi: differenza tra prima e ultima attività di oggi
+                if table_inventario or table_log or table_consumi or table_storico:
+                    try:
+                        # Costruisci query per prima e ultima attività
+                        union_parts_min = []
+                        union_parts_max = []
+                        if table_inventario:
+                            union_parts_min.append(f"SELECT MIN(updated_at) AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
+                            union_parts_max.append(f"SELECT MAX(updated_at) AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
+                        if table_log:
+                            union_parts_min.append(f"SELECT MIN(created_at) AS activity_date FROM {table_log} WHERE user_id = :user_id")
+                            union_parts_max.append(f"SELECT MAX(created_at) AS activity_date FROM {table_log} WHERE user_id = :user_id")
+                        if table_consumi:
+                            union_parts_min.append(f"SELECT MIN(movement_date) AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
+                            union_parts_max.append(f"SELECT MAX(movement_date) AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
+                        if table_storico:
+                            union_parts_min.append(f"SELECT MIN(created_at) AS activity_date FROM {table_storico} WHERE user_id = :user_id")
+                            union_parts_max.append(f"SELECT MAX(updated_at) AS activity_date FROM {table_storico} WHERE user_id = :user_id")
+                        
+                        if union_parts_min and union_parts_max:
+                            # Prima attività (minimo tra tutte le tabelle)
+                            min_query = ' UNION ALL '.join(union_parts_min)
+                            min_activity_query = sql_text(f"""
+                                WITH all_min_activities AS (
+                                    {min_query}
+                                )
+                                SELECT MIN(activity_date) FROM all_min_activities
+                            """)
+                            result = await session.execute(min_activity_query, {"user_id": user.id})
+                            first_activity = result.scalar()
+                            
+                            # Ultima attività (massimo tra tutte le tabelle)
+                            max_query = ' UNION ALL '.join(union_parts_max)
+                            max_activity_query = sql_text(f"""
+                                WITH all_max_activities AS (
+                                    {max_query}
+                                )
+                                SELECT MAX(activity_date) FROM all_max_activities
+                            """)
+                            result = await session.execute(max_activity_query, {"user_id": user.id})
+                            last_activity_for_time = result.scalar()
+                            
+                            # Calcola tempo totale (differenza in secondi)
+                            if first_activity and last_activity_for_time:
+                                time_diff = (last_activity_for_time - first_activity).total_seconds()
+                                stats.time_total_seconds = int(time_diff) if time_diff > 0 else 0
+                            
+                            # Calcola tempo oggi (prima e ultima attività di oggi)
+                            today_start = datetime.combine(date.today(), datetime.min.time())
+                            today_end = datetime.combine(date.today(), datetime.max.time())
+                            
+                            # Query per attività di oggi
+                            union_parts_today_min = []
+                            union_parts_today_max = []
+                            if table_inventario:
+                                union_parts_today_min.append(f"SELECT MIN(updated_at) AS activity_date FROM {table_inventario} WHERE user_id = :user_id AND updated_at >= :today_start AND updated_at <= :today_end")
+                                union_parts_today_max.append(f"SELECT MAX(updated_at) AS activity_date FROM {table_inventario} WHERE user_id = :user_id AND updated_at >= :today_start AND updated_at <= :today_end")
+                            if table_log:
+                                union_parts_today_min.append(f"SELECT MIN(created_at) AS activity_date FROM {table_log} WHERE user_id = :user_id AND created_at >= :today_start AND created_at <= :today_end")
+                                union_parts_today_max.append(f"SELECT MAX(created_at) AS activity_date FROM {table_log} WHERE user_id = :user_id AND created_at >= :today_start AND created_at <= :today_end")
+                            if table_consumi:
+                                union_parts_today_min.append(f"SELECT MIN(movement_date) AS activity_date FROM {table_consumi} WHERE user_id = :user_id AND movement_date >= :today_start AND movement_date <= :today_end")
+                                union_parts_today_max.append(f"SELECT MAX(movement_date) AS activity_date FROM {table_consumi} WHERE user_id = :user_id AND movement_date >= :today_start AND movement_date <= :today_end")
+                            if table_storico:
+                                union_parts_today_min.append(f"SELECT MIN(created_at) AS activity_date FROM {table_storico} WHERE user_id = :user_id AND created_at >= :today_start AND created_at <= :today_end")
+                                union_parts_today_max.append(f"SELECT MAX(updated_at) AS activity_date FROM {table_storico} WHERE user_id = :user_id AND updated_at >= :today_start AND updated_at <= :today_end")
+                            
+                            if union_parts_today_min and union_parts_today_max:
+                                min_today_query = ' UNION ALL '.join(union_parts_today_min)
+                                min_today_activity_query = sql_text(f"""
+                                    WITH all_min_today_activities AS (
+                                        {min_today_query}
+                                    )
+                                    SELECT MIN(activity_date) FROM all_min_today_activities
+                                """)
+                                result = await session.execute(
+                                    min_today_activity_query, 
+                                    {"user_id": user.id, "today_start": today_start, "today_end": today_end}
+                                )
+                                first_activity_today = result.scalar()
+                                
+                                max_today_query = ' UNION ALL '.join(union_parts_today_max)
+                                max_today_activity_query = sql_text(f"""
+                                    WITH all_max_today_activities AS (
+                                        {max_today_query}
+                                    )
+                                    SELECT MAX(activity_date) FROM all_max_today_activities
+                                """)
+                                result = await session.execute(
+                                    max_today_activity_query,
+                                    {"user_id": user.id, "today_start": today_start, "today_end": today_end}
+                                )
+                                last_activity_today = result.scalar()
+                                
+                                # Calcola tempo oggi (differenza in secondi)
+                                if first_activity_today and last_activity_today:
+                                    time_diff_today = (last_activity_today - first_activity_today).total_seconds()
+                                    stats.time_today_seconds = int(time_diff_today) if time_diff_today > 0 else 0
+                    except Exception as e:
+                        logger.debug(f"Errore calcolo tempo in app per user_id={user_id} (non critico): {e}")
         
         # Converti user a UserResponse con gestione errori robusta
         try:
