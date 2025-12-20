@@ -987,9 +987,23 @@ async function loadUserInfo() {
             },
         });
 
-        // Se il token è scaduto o invalido, fai logout
+        // Se il token è scaduto o invalido
         if (response.status === 401 || response.status === 403) {
-            console.warn('[AUTH] Token scaduto o invalido, logout automatico');
+            const isSpectator = localStorage.getItem('is_spectator_mode') === 'true';
+            console.warn('[AUTH] Token scaduto o invalido', isSpectator ? '(spectator mode)' : '');
+            
+            // Se siamo in spectator mode, non mostrare errore di sessione scaduta
+            // ma torna al control panel
+            if (isSpectator) {
+                const controlPanelUrl = localStorage.getItem('control_panel_url') || 'https://controlpaneladmingioia-production.up.railway.app/admin/dashboard';
+                console.warn('[SPECTATOR] Token spectator non valido, ritorno al control panel');
+                localStorage.removeItem('is_spectator_mode');
+                localStorage.removeItem('control_panel_url');
+                window.location.href = controlPanelUrl;
+                return;
+            }
+            
+            // Comportamento normale: logout e mostra errore
             handleLogout();
             // Mostra messaggio all'utente
             const errorEl = document.getElementById('login-error');
@@ -1024,9 +1038,23 @@ function handleLogout() {
     currentUser = null;
     currentConversationId = null;
     conversations = [];
+    
+    // Se siamo in spectator mode, torna al control panel invece di mostrare login
+    const isSpectator = localStorage.getItem('is_spectator_mode') === 'true';
+    const controlPanelUrl = localStorage.getItem('control_panel_url') || 'https://controlpaneladmingioia-production.up.railway.app/admin/dashboard';
+    
     localStorage.removeItem('auth_token');
     localStorage.removeItem('current_conversation_id');
-    showAuthPage();
+    localStorage.removeItem('is_spectator_mode');
+    localStorage.removeItem('control_panel_url');
+    
+    if (isSpectator) {
+        // Torna al control panel
+        window.location.href = controlPanelUrl;
+    } else {
+        // Comportamento normale: mostra pagina login
+        showAuthPage();
+    }
 }
 
 function showAuthPage() {
