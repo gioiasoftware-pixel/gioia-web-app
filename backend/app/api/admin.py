@@ -97,6 +97,12 @@ class UserStatsResponse(BaseModel):
     total_consumi: int = 0
     total_storico: int = 0
     last_activity: Optional[str] = None
+    # Ultimo job processing
+    last_job_message: Optional[str] = None  # file_name o messaggio del job
+    last_job_date: Optional[str] = None  # data creazione job
+    # Ultimo errore
+    last_error: Optional[str] = None  # messaggio errore
+    last_error_date: Optional[str] = None  # data errore
 
 
 class UserWithStatsResponse(BaseModel):
@@ -354,11 +360,17 @@ async def get_user(
                         # Verifica che le tabelle abbiano almeno una riga prima di calcolare last_activity
                         # Questo evita errori SQL quando le tabelle sono appena state create
                         has_data = False
-                        if table_inventario:
-                            count_check = sql_text(f"SELECT COUNT(*) FROM {table_inventario} WHERE user_id = :user_id")
-                            result = await session.execute(count_check, {"user_id": user.id})
-                            if result.scalar() > 0:
-                                has_data = True
+                        # Controlla tutte le tabelle, non solo inventario
+                        for table in [table_inventario, table_log, table_consumi, table_storico]:
+                            if table:
+                                try:
+                                    count_check = sql_text(f"SELECT COUNT(*) FROM {table} WHERE user_id = :user_id")
+                                    result = await session.execute(count_check, {"user_id": user.id})
+                                    if result.scalar() > 0:
+                                        has_data = True
+                                        break
+                                except:
+                                    pass
                         
                         # Solo se c'è almeno un dato, calcola last_activity
                         if has_data:
@@ -392,6 +404,57 @@ async def get_user(
                         # Le tabelle potrebbero non esistere ancora o non avere dati
                         logger.debug(f"Errore calcolo last_activity per user_id={user_id} (non critico): {e}")
                         stats.last_activity = None
+                
+                # Recupera ultimo job processing
+                # processing_jobs usa telegram_id, quindi usiamo user.telegram_id o user.id come fallback
+                try:
+                    telegram_id_for_job = user.telegram_id if user.telegram_id else user.id
+                    last_job_query = sql_text("""
+                        SELECT file_name, created_at, status, error_message
+                        FROM processing_jobs
+                        WHERE telegram_id = :telegram_id
+                        ORDER BY created_at DESC
+                        LIMIT 1
+                    """)
+                    result = await session.execute(
+                        last_job_query, 
+                        {"telegram_id": telegram_id_for_job}
+                    )
+                    last_job = result.fetchone()
+                    if last_job:
+                        stats.last_job_message = last_job[0] or "Nessun file"
+                        stats.last_job_date = last_job[1].isoformat() if last_job[1] else None
+                        
+                        # Se l'ultimo job ha un errore, usa quello come ultimo errore
+                        if last_job[2] == 'error' and last_job[3]:
+                            stats.last_error = last_job[3]
+                            stats.last_error_date = last_job[1].isoformat() if last_job[1] else None
+                except Exception as e:
+                    logger.debug(f"Errore recupero ultimo job per user_id={user_id} (non critico): {e}")
+                
+                # Se non abbiamo ancora un errore, cerca l'ultimo job con errore
+                if not stats.last_error:
+                    try:
+                        telegram_id_for_job = user.telegram_id if user.telegram_id else user.id
+                        last_error_query = sql_text("""
+                            SELECT error_message, created_at
+                            FROM processing_jobs
+                            WHERE telegram_id = :telegram_id
+                            AND status = 'error'
+                            AND error_message IS NOT NULL
+                            ORDER BY created_at DESC
+                            LIMIT 1
+                        """)
+                        result = await session.execute(
+                            last_error_query,
+                            {"telegram_id": telegram_id_for_job}
+                        )
+                        last_error = result.fetchone()
+                        if last_error:
+                            stats.last_error = last_error[0]
+                            stats.last_error_date = last_error[1].isoformat() if last_error[1] else None
+                    except Exception as e:
+                        logger.debug(f"Errore recupero ultimo errore per user_id={user_id} (non critico): {e}")
         
         # Converti user a UserResponse con gestione errori robusta
         try:
