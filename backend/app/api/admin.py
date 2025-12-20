@@ -573,6 +573,11 @@ async def get_user(
                 business_name=user.business_name if user.business_name else None,
                 username=user.username if user.username else None,
                 telegram_id=user.telegram_id if user.telegram_id else None,
+                first_name=user.first_name if hasattr(user, 'first_name') and user.first_name else None,
+                last_name=user.last_name if hasattr(user, 'last_name') and user.last_name else None,
+                business_type=user.business_type if hasattr(user, 'business_type') and user.business_type else None,
+                location=user.location if hasattr(user, 'location') and user.location else None,
+                phone=user.phone if hasattr(user, 'phone') and user.phone else None,
                 created_at=user.created_at.isoformat() if user.created_at else None,
                 updated_at=user.updated_at.isoformat() if user.updated_at else None,
                 onboarding_completed=bool(user.onboarding_completed) if user.onboarding_completed is not None else False
