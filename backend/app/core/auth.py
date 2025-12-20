@@ -174,11 +174,14 @@ def create_spectator_token(
         "is_spectator": True
     }
     
-    return jwt.encode(
+    token = jwt.encode(
         payload,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM
     )
+    
+    logger.info(f"[AUTH] Token spectator creato: user_id={user_id}, admin_user_id={admin_user_id}, expires_in_hours={expires_in_hours}")
+    return token
 
 
 def validate_token(token: str) -> Optional[Dict]:
