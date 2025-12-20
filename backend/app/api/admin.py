@@ -649,18 +649,32 @@ async def create_spectator_mode_token(
                 if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RAILWAY_PUBLIC_DOMAIN"):
                     # In produzione, usa lo stesso dominio del backend
                     # Il backend serve anche il frontend static
-                    frontend_url = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
-                    if not frontend_url:
+                    railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "")
+                    if railway_domain:
+                        # Assicurati che abbia il protocollo https://
+                        if not railway_domain.startswith("http://") and not railway_domain.startswith("https://"):
+                            frontend_url = f"https://{railway_domain}"
+                        else:
+                            frontend_url = railway_domain
+                    else:
                         # Fallback: usa l'URL del backend se disponibile
                         frontend_url = os.getenv("WEB_APP_URL", "https://gioia-web-app-production.up.railway.app")
                 else:
                     # Sviluppo locale
                     frontend_url = "http://localhost:5173"
+            else:
+                # Se FRONTEND_URL è configurato, assicurati che abbia il protocollo
+                if not frontend_url.startswith("http://") and not frontend_url.startswith("https://"):
+                    # Se non ha protocollo, aggiungi https:// (assumiamo produzione)
+                    frontend_url = f"https://{frontend_url}"
+            
+            # Costruisci redirect_url completo
+            redirect_url = f"{frontend_url}?spectator_token={spectator_token}"
             
             return {
                 "spectator_token": spectator_token,
                 "web_app_url": frontend_url,
-                "redirect_url": f"{frontend_url}?spectator_token={spectator_token}",
+                "redirect_url": redirect_url,
                 "expires_in_hours": 2
             }
     except HTTPException:
