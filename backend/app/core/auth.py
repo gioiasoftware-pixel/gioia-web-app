@@ -216,10 +216,13 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    if payload.get("type") != "user_access":
+    token_type = payload.get("type")
+    logger.info(f"[AUTH] get_current_user: token_type={token_type}, user_id={payload.get('user_id')}, is_spectator={payload.get('is_spectator', False)}")
+    if token_type not in ["user_access", "spectator_access"]:
+        logger.warning(f"[AUTH] Tipo token non valido: {token_type}, payload={payload}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Tipo token non valido",
+            detail=f"Tipo token non valido: {token_type}",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
