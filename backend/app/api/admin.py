@@ -206,6 +206,13 @@ async def get_users(
             # Query base per dati
             data_query = select(User)
             
+            # Escludi utente admin dalla lista
+            admin_email_normalized = ADMIN_EMAIL.strip().lower() if ADMIN_EMAIL else None
+            if admin_email_normalized:
+                admin_filter = func.lower(User.email) != admin_email_normalized
+                count_query = count_query.where(admin_filter)
+                data_query = data_query.where(admin_filter)
+            
             # Filtro ricerca (applicato a entrambe le query)
             if search:
                 search_term = f"%{search.lower()}%"
