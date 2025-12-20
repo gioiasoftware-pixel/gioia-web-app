@@ -351,19 +351,20 @@ async def get_user(
                 if table_inventario or table_log or table_consumi or table_storico:
                     try:
                         # Costruisci query dinamica solo per tabelle esistenti
+                        # Unifica tutte le colonne con alias comune per evitare errori SQL
                         union_parts = []
                         if table_inventario:
-                            union_parts.append(f"SELECT updated_at FROM {table_inventario} WHERE user_id = :user_id")
+                            union_parts.append(f"SELECT updated_at AS activity_date FROM {table_inventario} WHERE user_id = :user_id")
                         if table_log:
-                            union_parts.append(f"SELECT created_at FROM {table_log} WHERE user_id = :user_id")
+                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_log} WHERE user_id = :user_id")
                         if table_consumi:
-                            union_parts.append(f"SELECT created_at FROM {table_consumi} WHERE user_id = :user_id")
+                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_consumi} WHERE user_id = :user_id")
                         if table_storico:
-                            union_parts.append(f"SELECT created_at FROM {table_storico} WHERE user_id = :user_id")
+                            union_parts.append(f"SELECT created_at AS activity_date FROM {table_storico} WHERE user_id = :user_id")
                         
                         if union_parts:
                             last_activity_query = sql_text(f"""
-                                SELECT MAX(updated_at) FROM (
+                                SELECT MAX(activity_date) FROM (
                                     {' UNION ALL '.join(union_parts)}
                                 ) AS all_activities
                             """)
