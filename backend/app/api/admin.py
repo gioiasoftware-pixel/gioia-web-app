@@ -363,10 +363,13 @@ async def get_user(
                             union_parts.append(f"SELECT created_at AS activity_date FROM {table_storico} WHERE user_id = :user_id")
                         
                         if union_parts:
+                            # Costruisci query con CTE per evitare problemi con alias in subquery
+                            union_query = ' UNION ALL '.join(union_parts)
                             last_activity_query = sql_text(f"""
-                                SELECT MAX(activity_date) FROM (
-                                    {' UNION ALL '.join(union_parts)}
-                                ) AS all_activities
+                                WITH all_activities AS (
+                                    {union_query}
+                                )
+                                SELECT MAX(activity_date) FROM all_activities
                             """)
                             result = await session.execute(last_activity_query, {"user_id": user.id})
                             last_activity = result.scalar()
