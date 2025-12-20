@@ -1038,6 +1038,11 @@ function showChatPage() {
     document.getElementById('auth-page').classList.add('hidden');
     document.getElementById('chat-page').classList.remove('hidden');
     
+    // Mostra banner spectator se in modalità spectator
+    if (localStorage.getItem('is_spectator_mode') === 'true') {
+        showSpectatorBanner();
+    }
+    
     // CRITICO: Aggiorna il layout quando la pagina chat viene mostrata
     refreshLayoutOnShow();
     
