@@ -44,12 +44,12 @@ class BaseAgent:
     def _create_assistant(self):
         """Crea assistant su OpenAI Assistants API"""
         try:
+            # Nota: temperature non è supportato in assistants.create() - viene gestito a livello di thread/run
             assistant = self.client.beta.assistants.create(
                 name=self.name,
                 instructions=self.instructions,
                 model=self.model,
-                tools=self.tools,
-                temperature=0.7,
+                tools=self.tools
             )
             self.assistant_id = assistant.id
             logger.info(f"✅ Created assistant '{self.name}' with ID: {self.assistant_id}")
