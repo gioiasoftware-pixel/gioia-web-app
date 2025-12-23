@@ -743,12 +743,20 @@ function setupEventListeners() {
     // Settings button - Mobile
     const settingsBtnMobile = document.getElementById('settings-btn-mobile');
     if (settingsBtnMobile) {
+        console.log('[App] ✅ Trovato settings button mobile, aggiungo listener');
         addUniversalEventListener(settingsBtnMobile, (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            console.log('[App] 📍 Click su settings button mobile');
             if (typeof window.openSettingsPage === 'function') {
+                console.log('[App] ✅ Chiamata openSettingsPage()');
                 window.openSettingsPage();
+            } else {
+                console.error('[App] ❌ openSettingsPage non è una funzione');
             }
         });
+    } else {
+        console.warn('[App] ⚠️ Settings button mobile non trovato');
     }
     
     // Bottone aggiungi vino (desktop)
