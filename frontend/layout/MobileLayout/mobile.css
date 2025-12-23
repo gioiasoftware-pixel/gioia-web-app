@@ -835,6 +835,11 @@
     padding: 12px;
     border-radius: 8px;
     font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.mobileRoot .mViewer .inventory-movement-card-mobile:last-child {
+    margin-bottom: 0;
 }
 
 .mobileRoot .mViewer .inventory-movement-card-mobile.consumed {
@@ -848,15 +853,38 @@
     border: 1px solid var(--color-border);
 }
 
+.mobileRoot .mViewer .inventory-movement-header-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
 .mobileRoot .mViewer .inventory-movement-label-mobile {
     font-weight: 600;
-    margin-bottom: 4px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .mobileRoot .mViewer .inventory-movement-quantity-mobile {
     font-size: 16px;
     font-weight: 700;
-    margin-bottom: 4px;
+}
+
+.mobileRoot .mViewer .inventory-movement-details-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mobileRoot .mViewer .inventory-movement-stock-mobile {
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+.mobileRoot .mViewer .inventory-movement-card-mobile.refilled .inventory-movement-stock-mobile {
+    color: var(--color-text-secondary);
 }
 
 .mobileRoot .mViewer .inventory-movement-date-mobile {

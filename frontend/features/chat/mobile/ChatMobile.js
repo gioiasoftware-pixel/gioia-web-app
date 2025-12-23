@@ -1601,18 +1601,31 @@ async function loadInventoryDataMobile() {
 function populateInventoryFilters(data) {
     if (!data || !data.facets) return;
     
+    // Mappatura filtri HTML -> facets API
+    // I facets API restituiscono: 'type', 'vintage', 'winery' (ma i dati rows usano 'type' e 'winery')
+    const facetMapping = {
+        'type': 'type',           // facet 'type' -> campo row 'type'
+        'vintage': 'vintage',     // OK
+        'winery': 'winery',       // facet 'winery' -> campo row 'winery'
+        'supplier': 'supplier'    // OK (se presente nei facets)
+    };
+    
     ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
         const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
         if (!select) return;
         
         // Mantieni opzione "Tutte"
         const allOption = select.querySelector('option[value=""]');
-        select.innerHTML = allOption ? allOption.outerHTML : `<option value="">${filterType === 'supplier' ? 'Tutti' : 'Tutte'}</option>`;
+        const defaultLabel = filterType === 'supplier' || filterType === 'winery' ? 'Tutti' : 'Tutte';
+        select.innerHTML = allOption ? allOption.outerHTML : `<option value="">${defaultLabel}</option>`;
         
-        const facets = data.facets[filterType] || {};
+        // Usa il nome facet corretto
+        const facetKey = facetMapping[filterType] || filterType;
+        const facets = data.facets[facetKey] || {};
         const sortedItems = Object.entries(facets).sort((a, b) => b[1] - a[1]);
         
         sortedItems.forEach(([value, count]) => {
+            if (!value || value === '') return; // Skip valori vuoti
             const option = document.createElement('option');
             option.value = value;
             option.textContent = `${value} (${count})`;
@@ -1807,11 +1820,48 @@ async function loadWineMovements(wine) {
     
     logContainer.innerHTML = '<div class="inventory-loading">Caricamento movimenti...</div>';
     
-    // TODO: Implementare caricamento movimenti da API
-    // Per ora placeholder
-    setTimeout(() => {
-        renderWineMovements([]);
-    }, 500);
+    try {
+        const wineName = wine.name || wine.Nome || '';
+        if (!wineName) {
+            console.warn('[INVENTORY] Nome vino non disponibile per caricamento movimenti');
+            renderWineMovements([]);
+            return;
+        }
+        
+        const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+        const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
+        
+        if (!token || !apiBase) {
+            console.error('[INVENTORY] Token o API base non disponibili');
+            logContainer.innerHTML = '<div class="inventory-loading">Errore configurazione</div>';
+            return;
+        }
+        
+        // Fetch movimenti da API
+        console.log('[INVENTORY] Caricamento movimenti per:', wineName);
+        const response = await fetch(`${apiBase}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('[INVENTORY] Dati movimenti ricevuti:', data);
+        
+        // Estrai movimenti dalla risposta
+        const movements = data.movements || [];
+        
+        // Renderizza movimenti
+        renderWineMovements(movements);
+        
+    } catch (error) {
+        console.error('[INVENTORY] Errore caricamento movimenti:', error);
+        logContainer.innerHTML = `<div class="inventory-loading">Errore: ${error.message}</div>`;
+    }
 }
 
 /**
@@ -1826,19 +1876,64 @@ function renderWineMovements(movements) {
         return;
     }
     
-    logContainer.innerHTML = movements.map((mov, index) => {
-        const isConsumed = mov.type === 'consumption' || mov.type === 'consumed';
-        const type = isConsumed ? 'consumed' : 'refilled';
-        const label = isConsumed ? 'CONSUMATO' : 'Rifornito';
-        const qty = mov.quantity || 0;
-        const date = mov.date || mov.created_at || 'N/A';
-        const time = mov.time || '';
+    // Ordina movimenti per data (più recenti prima)
+    const sortedMovements = [...movements].sort((a, b) => {
+        const dateA = new Date(a.at || a.date || 0);
+        const dateB = new Date(b.at || b.date || 0);
+        return dateB - dateA; // Ordine decrescente (più recente prima)
+    });
+    
+    logContainer.innerHTML = sortedMovements.map((mov, index) => {
+        // Determina tipo movimento
+        const movementType = mov.type || '';
+        const isConsumo = movementType.toLowerCase() === 'consumo' || movementType.toLowerCase() === 'consumption';
+        const type = isConsumo ? 'consumed' : 'refilled';
+        const label = isConsumo ? 'CONSUMATO' : 'RIFORNITO';
+        
+        // Quantità
+        const qtyChange = Math.abs(mov.quantity_change || mov.quantity || 0);
+        const qtyBefore = mov.quantity_before || 0;
+        const qtyAfter = mov.quantity_after || 0;
+        
+        // Data e ora
+        const dateStr = mov.at || mov.date || mov.created_at || '';
+        let formattedDate = 'N/A';
+        let formattedTime = '';
+        
+        if (dateStr) {
+            try {
+                const date = new Date(dateStr);
+                if (!isNaN(date.getTime())) {
+                    formattedDate = date.toLocaleDateString('it-IT', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric'
+                    });
+                    formattedTime = date.toLocaleTimeString('it-IT', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    });
+                }
+            } catch (e) {
+                console.warn('[INVENTORY] Errore formattazione data movimento:', e);
+                formattedDate = dateStr;
+            }
+        }
         
         return `
             <div class="inventory-movement-card-mobile ${type}">
-                <div class="inventory-movement-label-mobile">${label}</div>
-                <div class="inventory-movement-quantity-mobile">X${qty}</div>
-                <div class="inventory-movement-date-mobile">${date} ${time}</div>
+                <div class="inventory-movement-header-mobile">
+                    <div class="inventory-movement-label-mobile">${label}</div>
+                    <div class="inventory-movement-quantity-mobile">${qtyChange} bottiglie</div>
+                </div>
+                <div class="inventory-movement-details-mobile">
+                    <div class="inventory-movement-stock-mobile">
+                        Da ${qtyBefore} → ${qtyAfter} bottiglie
+                    </div>
+                    <div class="inventory-movement-date-mobile">
+                        ${formattedDate} ${formattedTime ? 'alle ' + formattedTime : ''}
+                    </div>
+                </div>
             </div>
         `;
     }).join('');
@@ -2035,23 +2130,39 @@ function filterInventoryList() {
     
     let filtered = [...inventoryDataMobile.rows];
     
-    // Ricerca
+    // Ricerca testuale (nome, produttore, annata, tipo)
     const searchInput = document.getElementById('inventory-search-input-mobile');
     if (searchInput && searchInput.value.trim()) {
         const query = searchInput.value.toLowerCase().trim();
         filtered = filtered.filter(wine => {
+            // Supporta sia nomi nuovi (da API snapshot) che vecchi (retrocompatibilità)
             const name = (wine.name || wine.Nome || '').toLowerCase();
-            const vintage = (wine.vintage || wine.Annata || '').toLowerCase();
-            return name.includes(query) || vintage.includes(query);
+            const vintage = String(wine.vintage || wine.Annata || '').toLowerCase();
+            const producer = (wine.producer || wine.winery || '').toLowerCase();
+            const wineType = (wine.type || wine.wine_type || '').toLowerCase();
+            const supplier = (wine.supplier || '').toLowerCase();
+            
+            // Cerca in nome, annata, produttore, tipo, fornitore
+            return name.includes(query) || 
+                   vintage.includes(query) || 
+                   producer.includes(query) ||
+                   wineType.includes(query) ||
+                   supplier.includes(query);
         });
     }
     
-    // Filtri
+    // Filtri - i dati rows usano: 'type', 'winery', 'vintage', 'supplier'
+    // (l'API snapshot mappa wine_type -> type, producer -> winery)
     ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
         const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
         if (select && select.value) {
             filtered = filtered.filter(wine => {
-                const wineValue = wine[filterType] || '';
+                // I dati rows dall'API snapshot usano direttamente 'type', 'winery', 'vintage'
+                // Supporta anche nomi alternativi per retrocompatibilità
+                const wineValue = wine[filterType] || 
+                                  (filterType === 'type' ? (wine.wine_type || wine.type) : null) ||
+                                  (filterType === 'winery' ? (wine.producer || wine.winery) : null) ||
+                                  '';
                 return String(wineValue) === String(select.value);
             });
         }
