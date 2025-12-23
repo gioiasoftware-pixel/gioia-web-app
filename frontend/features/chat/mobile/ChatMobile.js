@@ -1943,10 +1943,18 @@ function renderWineMovements(movements) {
  * Mostra grafico fullscreen (schermata 3)
  */
 function showWineChart(wine) {
+    if (!wine) {
+        console.error('[INVENTORY] showWineChart: wine è null o undefined');
+        return;
+    }
+    
+    // IMPORTANTE: aggiorna inventoryCurrentWine PRIMA di renderizzare il grafico
     inventoryCurrentWine = wine;
     
-    // Aggiorna banner
     const wineName = wine.name || wine.Nome || 'Vino sconosciuto';
+    console.log('[INVENTORY] showWineChart chiamato per vino:', wineName);
+    
+    // Aggiorna banner
     const vintage = wine.vintage || wine.Annata || '';
     const displayName = vintage ? `${wineName} ${vintage}` : wineName;
     
@@ -1955,7 +1963,7 @@ function showWineChart(wine) {
         banner.textContent = displayName;
     }
     
-    // Renderizza grafico
+    // Renderizza grafico (usa inventoryCurrentWine appena aggiornato)
     renderWineChartFullscreen(wine);
     
     // Mostra schermata grafico
@@ -1964,6 +1972,8 @@ function showWineChart(wine) {
 
 // Variabile globale per gestire istanza grafico fullscreen
 let currentMobileChartInstance = null;
+// Variabile per tracciare quale vino è attualmente visualizzato nel grafico
+let currentChartWineName = null;
 
 /**
  * Renderizza grafico fullscreen
@@ -1982,7 +1992,10 @@ function renderWineChartFullscreen(wine, period = 'week') {
             return;
         }
         
-        // Setup filtri periodo
+        // Salva il nome del vino attualmente visualizzato
+        currentChartWineName = wineName;
+        
+        // Setup filtri periodo (usa sempre inventoryCurrentWine aggiornato)
         setupPeriodFilters();
         
         // Carica e renderizza grafico reale (stesso sistema desktop)
@@ -2255,9 +2268,13 @@ function setupPeriodFilters() {
             newBtn.classList.add('active');
             
             // Renderizza grafico con periodo selezionato
+            // IMPORTANTE: usa sempre inventoryCurrentWine (che viene aggiornato in showWineChart)
             const period = newBtn.dataset.period;
             if (inventoryCurrentWine) {
+                console.log('[INVENTORY] Cambio periodo grafico:', period, 'per vino:', inventoryCurrentWine.name || inventoryCurrentWine.Nome);
                 renderWineChartFullscreen(inventoryCurrentWine, period);
+            } else {
+                console.warn('[INVENTORY] inventoryCurrentWine non disponibile per cambio periodo');
             }
         });
     });
