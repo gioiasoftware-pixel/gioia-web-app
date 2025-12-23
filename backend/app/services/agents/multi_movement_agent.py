@@ -11,6 +11,8 @@ from app.core.processor_client import processor_client
 from typing import Dict, Any, Optional, List
 import logging
 import json
+import html
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -363,10 +365,6 @@ Rispondi SOLO con un JSON valido nel formato:
         """
         if not error_msg:
             return "Errore sconosciuto"
-        
-        # Rimuovi HTML tags
-        import re
-        import html
         
         # Decodifica entità HTML come &#x27; -> '
         error_msg = html.unescape(error_msg)
