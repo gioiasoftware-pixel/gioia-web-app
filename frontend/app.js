@@ -1890,16 +1890,17 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                     const form = document.getElementById(formId);
                     
                     if (input && form) {
-                        if (wineId) {
-                            input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
+                        console.log('[CHAT] 📝 Inserimento query vino in input');
+                        if (clickWineId) {
+                            input.value = `dimmi tutto su ${clickWineText} [wine_id:${clickWineId}]`;
                         } else {
                             // Fallback: solo testo
-                            input.value = `dimmi tutto su ${wineText}`;
+                            input.value = `dimmi tutto su ${clickWineText}`;
                         }
                         input.dispatchEvent(new Event('input')); // Trigger resize
                         form.dispatchEvent(new Event('submit'));
                     } else {
-                        console.error('[CHAT] Input o form non trovati:', { inputId, formId });
+                        console.error('[CHAT] ❌ Input o form non trovati:', { inputId, formId });
                     }
                 });
             });
