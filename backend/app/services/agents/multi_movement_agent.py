@@ -141,22 +141,30 @@ class MultiMovementAgent(BaseAgent):
                             "status": "success"
                         })
                     else:
-                        error_msg = movement_result.get("error", "Errore sconosciuto")
+                        # Estrai messaggio di errore (potrebbe essere in 'error' o 'message')
+                        error_msg = movement_result.get("error") or movement_result.get("message", "Errore sconosciuto")
+                        
+                        # Pulisci il messaggio di errore se contiene HTML
+                        error_msg_clean = self._clean_error_message(str(error_msg))
+                        
                         errors.append({
                             "movement": movement,
-                            "error": error_msg,
-                            "status": "error"
+                            "error": error_msg_clean,
+                            "status": "error",
+                            "raw_error": error_msg  # Mantieni errore originale per logging
                         })
-                        logger.warning(f"[MULTI_MOVEMENT] ❌ Movimento {idx} fallito: {error_msg}")
+                        logger.warning(f"[MULTI_MOVEMENT] ❌ Movimento {idx} fallito: {error_msg_clean} (raw: {error_msg})")
                 
                 except Exception as e:
                     error_msg = str(e)
+                    error_msg_clean = self._clean_error_message(error_msg)
                     errors.append({
                         "movement": movement,
-                        "error": error_msg,
-                        "status": "error"
+                        "error": error_msg_clean,
+                        "status": "error",
+                        "raw_error": error_msg  # Mantieni errore originale per logging
                     })
-                    logger.error(f"[MULTI_MOVEMENT] ❌ Errore processamento movimento {idx}: {e}", exc_info=True)
+                    logger.error(f"[MULTI_MOVEMENT] ❌ Errore processamento movimento {idx}: {error_msg_clean} (raw: {error_msg})", exc_info=True)
             
             # Step 3: Combina risultati
             combined_message = self._combine_results(results, errors)
