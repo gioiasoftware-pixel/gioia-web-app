@@ -361,12 +361,14 @@ class NotificationAgent(BaseAgent):
                     # Log dettagliato per debug
                     logger.warning(f"[NOTIFICATION] Nessun storico trovato per vino '{wine_name}' (user_id={user.id}, table={table_storico})")
                     # Prova a vedere quali vini ci sono nella tabella storico
-                    debug_query = sql_text(f"SELECT DISTINCT wine_name FROM {table_storico} WHERE user_id = :user_id LIMIT 10")
-                    debug_result = await session.execute(debug_query, {"user_id": user.id})
-                    debug_wines = [row[0] for row in debug_result.fetchall()]
-                    logger.info(f"[NOTIFICATION] Vini disponibili nello storico (primi 10): {debug_wines}")
-                
-                if not storico_row:
+                    try:
+                        debug_query = sql_text(f"SELECT DISTINCT wine_name FROM {table_storico} WHERE user_id = :user_id LIMIT 10")
+                        debug_result = await session.execute(debug_query, {"user_id": user.id})
+                        debug_wines = [row[0] for row in debug_result.fetchall()]
+                        logger.info(f"[NOTIFICATION] Vini disponibili nello storico (primi 10): {debug_wines}")
+                    except Exception as debug_e:
+                        logger.warning(f"[NOTIFICATION] Errore durante debug query: {debug_e}")
+                    
                     return {
                         "wine_name": wine_name,
                         "current_stock": 0,
