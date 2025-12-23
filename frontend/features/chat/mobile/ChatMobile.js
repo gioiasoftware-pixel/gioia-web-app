@@ -1765,39 +1765,30 @@ function renderWineForm(wine) {
  */
 function renderWineGraphPreview(wine) {
     try {
-        const canvas = document.getElementById('inventory-graph-preview-canvas-mobile');
-        if (!canvas) {
-            console.warn('[INVENTORY] Canvas grafico preview non trovato');
+        const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+        if (!previewContainer) {
+            console.warn('[INVENTORY] Container grafico preview non trovato');
             return;
         }
         
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            console.error('[INVENTORY] Impossibile ottenere contesto canvas');
+        const wineName = wine.name || wine.Nome || '';
+        if (!wineName) {
+            console.warn('[INVENTORY] Nome vino non disponibile per grafico');
             return;
         }
         
-        const width = canvas.width;
-        const height = canvas.height;
-        
-        // Reset canvas
-        ctx.clearRect(0, 0, width, height);
-        
-        // TODO: Implementare disegno grafico reale con dati movimenti
-        // Per ora disegno placeholder
-        ctx.strokeStyle = '#9a182e';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(0, height);
-        ctx.lineTo(width / 3, height / 2);
-        ctx.lineTo(2 * width / 3, height / 3);
-        ctx.lineTo(width, height / 4);
-        ctx.stroke();
+        // Carica e renderizza grafico reale (stesso sistema desktop)
+        loadAndRenderMovementsChartMobile(
+            wineName, 
+            'week', // preset default per preview
+            previewContainer,
+            true // isPreview = true
+        );
         
         // Attacca listener click per aprire grafico fullscreen (solo una volta)
-        const previewContainer = document.getElementById('inventory-graph-preview-mobile');
-        if (previewContainer && !previewContainer.dataset.listenerAttached) {
+        if (!previewContainer.dataset.listenerAttached) {
             previewContainer.dataset.listenerAttached = 'true';
+            previewContainer.style.cursor = 'pointer';
             previewContainer.addEventListener('click', () => {
                 showWineChart(wine);
             });
@@ -1876,39 +1867,164 @@ function showWineChart(wine) {
     showInventoryScreen('chart');
 }
 
+// Variabile globale per gestire istanza grafico fullscreen
+let currentMobileChartInstance = null;
+
 /**
  * Renderizza grafico fullscreen
  */
 function renderWineChartFullscreen(wine, period = 'week') {
-    const canvas = document.getElementById('inventory-chart-canvas-mobile');
-    if (!canvas) return;
-    
-    // Set canvas size
-    const container = canvas.parentElement;
-    if (container) {
-        canvas.width = container.clientWidth;
-        canvas.height = Math.max(400, window.innerHeight * 0.5);
+    try {
+        const container = document.getElementById('inventory-chart-container-mobile');
+        if (!container) {
+            console.error('[INVENTORY] Container grafico fullscreen non trovato');
+            return;
+        }
+        
+        const wineName = wine.name || wine.Nome || '';
+        if (!wineName) {
+            console.error('[INVENTORY] Nome vino non disponibile per grafico');
+            return;
+        }
+        
+        // Setup filtri periodo
+        setupPeriodFilters();
+        
+        // Carica e renderizza grafico reale (stesso sistema desktop)
+        loadAndRenderMovementsChartMobile(
+            wineName,
+            period,
+            container,
+            false // isPreview = false (fullscreen)
+        );
+    } catch (error) {
+        console.error('[INVENTORY] Errore in renderWineChartFullscreen:', error);
     }
-    
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Reset
-    ctx.clearRect(0, 0, width, height);
-    
-    // Setup filtri periodo se non già fatto
-    setupPeriodFilters();
-    
-    // TODO: Implementare disegno grafico completo con Chart.js o simile
-    // Per ora placeholder
-    ctx.fillStyle = '#f0f0f0';
-    ctx.fillRect(0, 0, width, height);
-    
-    ctx.fillStyle = '#666';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Grafico movimenti - ${period} (da implementare)`, width / 2, height / 2);
+}
+
+/**
+ * Carica e renderizza grafico movimenti (usando stesso sistema desktop)
+ */
+async function loadAndRenderMovementsChartMobile(wineName, preset, container, isPreview = false) {
+    try {
+        const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
+        const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
+        
+        if (!token || !apiBase) {
+            console.error('[INVENTORY] Token o API base non disponibili');
+            container.innerHTML = '<div class="inventory-loading">Errore configurazione</div>';
+            return;
+        }
+        
+        // Mostra loading
+        container.innerHTML = '<div class="inventory-loading">Caricamento movimenti...</div>';
+        
+        // Fetch movimenti
+        console.log('[INVENTORY] Caricamento movimenti per:', wineName);
+        const response = await fetch(`${apiBase}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('[INVENTORY] Dati movimenti ricevuti:', data);
+        
+        // Distruggi grafico precedente se esiste (sia preview che fullscreen)
+        if (currentMobileChartInstance) {
+            try {
+                if (typeof currentMobileChartInstance.destroy === 'function') {
+                    currentMobileChartInstance.destroy();
+                }
+            } catch (e) {
+                console.warn('[INVENTORY] Errore distruzione grafico precedente:', e);
+            }
+            currentMobileChartInstance = null;
+        }
+        
+        // Verifica che Chart.js e AnchoredFlowStockChart siano disponibili
+        if (!window.Chart) {
+            console.error('[INVENTORY] Chart.js non disponibile');
+            container.innerHTML = '<div class="inventory-loading">Chart.js non caricato</div>';
+            return;
+        }
+        
+        if (!window.AnchoredFlowStockChart || !window.AnchoredFlowStockChart.create) {
+            console.error('[INVENTORY] AnchoredFlowStockChart non disponibile');
+            container.innerHTML = '<div class="inventory-loading">Componente grafico non disponibile</div>';
+            return;
+        }
+        
+        // Pulisci container e crea canvas
+        container.innerHTML = '<canvas></canvas>';
+        const canvas = container.querySelector('canvas');
+        
+        if (!canvas) {
+            console.error('[INVENTORY] Canvas non creato');
+            return;
+        }
+        
+        // Per preview, usa dimensioni fisse piccole
+        // Per fullscreen, usa dimensioni container
+        if (isPreview) {
+            // Preview: dimensioni fisse compatte
+            const previewWidth = 300;
+            const previewHeight = 150;
+            canvas.width = previewWidth;
+            canvas.height = previewHeight;
+            canvas.style.width = previewWidth + 'px';
+            canvas.style.height = previewHeight + 'px';
+        } else {
+            // Fullscreen: aspetta che container sia visibile e abbia dimensioni
+            const ensureContainerReady = () => {
+                const rect = container.getBoundingClientRect();
+                const hasDimensions = rect.width > 0 && rect.height > 0;
+                return hasDimensions;
+            };
+            
+            // Se container non è pronto, aspetta
+            if (!ensureContainerReady()) {
+                await new Promise(resolve => {
+                    const checkReady = () => {
+                        if (ensureContainerReady()) {
+                            resolve();
+                        } else {
+                            requestAnimationFrame(checkReady);
+                        }
+                    };
+                    checkReady();
+                });
+            }
+            
+            const containerRect = container.getBoundingClientRect();
+            const containerHeight = Math.max(400, window.innerHeight * 0.5);
+            canvas.style.width = '100%';
+            canvas.style.height = containerHeight + 'px';
+            canvas.width = containerRect.width || container.clientWidth || 800;
+            canvas.height = containerHeight;
+        }
+        
+        // Crea grafico usando stesso componente desktop
+        console.log('[INVENTORY] Creazione grafico con preset:', preset);
+        currentMobileChartInstance = window.AnchoredFlowStockChart.create(container, data, {
+            preset: preset,
+            now: new Date(),
+        });
+        
+        if (!currentMobileChartInstance) {
+            throw new Error('Grafico non creato (ritornato null)');
+        }
+        
+        console.log('[INVENTORY] Grafico creato con successo');
+        
+    } catch (error) {
+        console.error('[INVENTORY] Errore caricamento/rendering grafico:', error);
+        container.innerHTML = `<div class="inventory-loading">Errore: ${error.message}</div>`;
+    }
 }
 
 /**
