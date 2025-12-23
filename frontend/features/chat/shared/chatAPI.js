@@ -107,7 +107,15 @@ async function deleteConversationAPI(conversationId) {
  * @returns {Promise<Object>} Risposta dell'API
  */
 async function sendAudioMessage(audioBlob, conversationId = null) {
+    console.log('[ChatAPI] 🎤 sendAudioMessage chiamato:', {
+        blobSize: audioBlob.size,
+        blobSizeKB: (audioBlob.size / 1024).toFixed(2),
+        blobType: audioBlob.type,
+        conversationId: conversationId
+    });
+    
     if (!authToken) {
+        console.error('[ChatAPI] ❌ Token di autenticazione non disponibile');
         throw new Error('Token di autenticazione non disponibile');
     }
     
@@ -117,20 +125,44 @@ async function sendAudioMessage(audioBlob, conversationId = null) {
         formData.append('conversation_id', conversationId.toString());
     }
     
-    const response = await fetch(`${API_BASE_URL}/api/chat/audio`, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${authToken}`
-        },
-        body: formData
-    });
+    console.log('[ChatAPI] Invio richiesta POST a /api/chat/audio...');
+    const startTime = Date.now();
     
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Errore invio audio: ${response.status}`);
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/chat/audio`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: formData
+        });
+        
+        const duration = Date.now() - startTime;
+        console.log(`[ChatAPI] Risposta ricevuta (${duration}ms):`, {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error('[ChatAPI] ❌ Errore risposta server:', errorData);
+            throw new Error(errorData.detail || `Errore invio audio: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        console.log('[ChatAPI] ✅ Risposta audio processata:', {
+            hasMessage: !!result.message,
+            hasMetadata: !!result.metadata,
+            transcribedText: result.metadata?.transcribed_text,
+            messageLength: result.message?.length
+        });
+        
+        return result;
+    } catch (error) {
+        console.error('[ChatAPI] ❌ Errore durante sendAudioMessage:', error);
+        throw error;
     }
-    
-    return await response.json();
 }
 
 // Export per uso globale

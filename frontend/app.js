@@ -690,7 +690,22 @@ function setupEventListeners() {
         });
     }
 
-    // Theme toggle switch mobile rimosso dal layout mobile
+    // Theme toggle switch mobile
+    const themeCheckboxMobile = document.getElementById('themeToggle-mobile');
+    if (themeCheckboxMobile) {
+        themeCheckboxMobile.checked = currentTheme === 'dark';
+        themeCheckboxMobile.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            const nextTheme = isChecked ? 'dark' : 'light';
+            applyTheme(nextTheme, true);
+        });
+    }
+    
+    // Logout button mobile
+    const logoutBtnMobile = document.getElementById('logout-btn-mobile');
+    if (logoutBtnMobile) {
+        addUniversalEventListener(logoutBtnMobile, handleLogout);
+    }
     
     // Bottone aggiungi vino (desktop)
     const addWineBtn = document.getElementById('add-wine-btn');

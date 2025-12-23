@@ -1371,6 +1371,9 @@ async function openInventoryViewerMobile() {
     // Setup viewer close button PRIMA di aprire
     setupViewerClose();
     
+    // Setup funzionalità viewer mobile (ricerca, filtri, download)
+    setupViewerMobileFeatures();
+    
     // Ora apri il viewer (imposta stato e mostra)
     openViewer();
     
@@ -1379,6 +1382,309 @@ async function openInventoryViewerMobile() {
     
     // Carica dati inventario
     await loadViewerDataMobile();
+}
+
+/**
+ * Setup funzionalità viewer mobile (ricerca, filtri, download CSV)
+ */
+function setupViewerMobileFeatures() {
+    // Setup ricerca mobile
+    const searchInputMobile = document.getElementById('viewer-search-mobile');
+    if (searchInputMobile) {
+        // Rimuovi listener esistenti
+        const newInput = searchInputMobile.cloneNode(true);
+        searchInputMobile.parentNode.replaceChild(newInput, searchInputMobile);
+        
+        newInput.addEventListener('input', (e) => {
+            handleViewerSearchMobile(e);
+        });
+    }
+    
+    // Setup download CSV mobile
+    const downloadBtnMobile = document.getElementById('viewer-download-csv-mobile');
+    if (downloadBtnMobile) {
+        // Rimuovi listener esistenti
+        const newBtn = downloadBtnMobile.cloneNode(true);
+        downloadBtnMobile.parentNode.replaceChild(newBtn, downloadBtnMobile);
+        
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handleViewerDownloadCSV();
+        });
+    }
+    
+    // Setup toggle filtri mobile
+    const filtersToggle = document.getElementById('viewer-filters-toggle-mobile');
+    if (filtersToggle) {
+        const newToggle = filtersToggle.cloneNode(true);
+        filtersToggle.parentNode.replaceChild(newToggle, filtersToggle);
+        
+        newToggle.addEventListener('click', () => {
+            const filtersContent = document.getElementById('viewer-filters-content-mobile');
+            if (filtersContent) {
+                filtersContent.classList.toggle('hidden');
+                // Ruota icona
+                const icon = newToggle.querySelector('svg');
+                if (icon) {
+                    icon.style.transform = filtersContent.classList.contains('hidden') 
+                        ? 'rotate(0deg)' 
+                        : 'rotate(180deg)';
+                }
+            }
+        });
+    }
+    
+    // Setup reset filtri mobile
+    const resetFiltersBtn = document.getElementById('reset-filters-btn-mobile');
+    if (resetFiltersBtn) {
+        const newBtn = resetFiltersBtn.cloneNode(true);
+        resetFiltersBtn.parentNode.replaceChild(newBtn, resetFiltersBtn);
+        
+        newBtn.addEventListener('click', () => {
+            resetViewerFiltersMobile();
+        });
+    }
+    
+    // Setup dropdown filtri mobile (usa stessa logica desktop)
+    setupViewerFiltersMobile();
+}
+
+/**
+ * Gestisce ricerca viewer mobile
+ */
+let viewerSearchTimeoutMobile = null;
+function handleViewerSearchMobile(e) {
+    clearTimeout(viewerSearchTimeoutMobile);
+    viewerSearchTimeoutMobile = setTimeout(() => {
+        const searchValue = e.target.value.trim();
+        
+        // Aggiorna viewerSearchQuery globale
+        if (typeof viewerSearchQuery !== 'undefined') {
+            viewerSearchQuery = searchValue;
+        }
+        if (typeof viewerCurrentPage !== 'undefined') {
+            viewerCurrentPage = 1;
+        }
+        
+        // Applica filtri (include ricerca)
+        applyViewerFiltersMobile();
+    }, 300);
+}
+
+/**
+ * Setup filtri dropdown mobile (reutilizza logica desktop con ID mobile)
+ */
+function setupViewerFiltersMobile() {
+    const filterButtons = document.querySelectorAll('.filter-dropdown-btn-mobile');
+    
+    filterButtons.forEach(btn => {
+        const filterType = btn.dataset.filter;
+        if (!filterType) return;
+        
+        // Rimuovi listener esistenti
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        const dropdown = document.getElementById(`filter-dropdown-${filterType}-mobile`);
+        if (!dropdown) return;
+        
+        // Toggle dropdown
+        newBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isHidden = dropdown.classList.contains('hidden');
+            
+            // Chiudi altri dropdown
+            document.querySelectorAll('.filter-dropdown-menu-mobile').forEach(menu => {
+                if (menu !== dropdown) {
+                    menu.classList.add('hidden');
+                }
+            });
+            
+            // Toggle questo dropdown
+            dropdown.classList.toggle('hidden', !isHidden);
+        });
+    });
+    
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-dropdown-wrapper-mobile')) {
+            document.querySelectorAll('.filter-dropdown-menu-mobile').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+    });
+}
+
+/**
+ * Reset filtri mobile
+ */
+function resetViewerFiltersMobile() {
+    // Reset filtri globali
+    if (typeof viewerFilters !== 'undefined') {
+        viewerFilters = {
+            type: null,
+            vintage: null,
+            winery: null,
+            supplier: null
+        };
+    }
+    if (typeof viewerSearchQuery !== 'undefined') {
+        viewerSearchQuery = '';
+    }
+    if (typeof viewerCurrentPage !== 'undefined') {
+        viewerCurrentPage = 1;
+    }
+    
+    // Reset UI mobile
+    document.querySelectorAll('.filter-btn-value-mobile').forEach(el => {
+        const filterType = el.id.replace('filter-value-', '').replace('-mobile', '');
+        el.textContent = filterType === 'supplier' ? 'Tutti' : 'Tutte';
+    });
+    
+    // Reset search input mobile
+    const searchInput = document.getElementById('viewer-search-mobile');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // Rimuovi classe active da tutti gli item mobile
+    document.querySelectorAll('.filter-item-mobile').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Chiudi tutti i dropdown mobile
+    document.querySelectorAll('.filter-dropdown-menu-mobile').forEach(menu => {
+        menu.classList.add('hidden');
+    });
+    document.querySelectorAll('.filter-dropdown-btn-mobile').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Applica filtri (resetta tutto)
+    applyViewerFiltersMobile();
+}
+
+/**
+ * Popola filtri mobile (reutilizza logica desktop con ID mobile)
+ */
+function populateFiltersMobile(facets) {
+    Object.keys(facets).forEach(filterType => {
+        const content = document.getElementById(`filter-${filterType}-mobile`);
+        if (!content) return;
+
+        const items = facets[filterType];
+        content.innerHTML = '';
+
+        // Ordina per frequenza (count desc)
+        const sortedItems = Object.entries(items).sort((a, b) => b[1] - a[1]);
+
+        sortedItems.forEach(([value, count]) => {
+            const item = document.createElement('div');
+            item.className = 'filter-item-mobile';
+            item.dataset.value = value;
+            item.innerHTML = `
+                <span>${escapeHtmlMobile(value)}</span>
+                <span class="filter-count-mobile">${count}</span>
+            `;
+            content.appendChild(item);
+        });
+    });
+    
+    // Setup filter items mobile dopo aver popolato
+    setupFilterItemsMobile();
+}
+
+/**
+ * Setup filter items mobile
+ */
+function setupFilterItemsMobile() {
+    const filterItems = document.querySelectorAll('.filter-item-mobile');
+    
+    filterItems.forEach(item => {
+        // Rimuovi listener esistenti
+        const newItem = item.cloneNode(true);
+        item.parentNode.replaceChild(newItem, item);
+        
+        newItem.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const dropdownContent = newItem.closest('.filter-dropdown-content-mobile');
+            if (!dropdownContent) return;
+            
+            const filterType = dropdownContent.id.replace('filter-', '').replace('-mobile', '');
+            const value = newItem.dataset.value;
+            const dropdown = newItem.closest('.filter-dropdown-menu-mobile');
+            const btn = document.getElementById(`filter-btn-${filterType}-mobile`);
+            const valueDisplay = document.getElementById(`filter-value-${filterType}-mobile`);
+
+            // Imposta filtro globale (condiviso con desktop)
+            if (typeof viewerFilters !== 'undefined') {
+                viewerFilters[filterType] = value;
+            }
+            
+            // Remove active from siblings
+            newItem.parentElement.querySelectorAll('.filter-item-mobile').forEach(i => i.classList.remove('active'));
+            newItem.classList.add('active');
+            
+            // Aggiorna valore visualizzato sul pulsante
+            if (valueDisplay) {
+                valueDisplay.textContent = value;
+            }
+            if (btn) {
+                btn.classList.add('active');
+            }
+            
+            // Chiudi dropdown
+            if (dropdown) {
+                dropdown.classList.add('hidden');
+            }
+
+            // Apply filters and re-render
+            applyViewerFiltersMobile();
+        });
+    });
+}
+
+/**
+ * Applica filtri e ricerca mobile (reutilizza logica desktop)
+ */
+function applyViewerFiltersMobile() {
+    // Usa viewerData globale se disponibile
+    const data = window.viewerData || (typeof viewerData !== 'undefined' ? viewerData : null);
+    if (!data || !data.rows) {
+        return;
+    }
+    
+    // Usa viewerFilters globale
+    const filters = typeof viewerFilters !== 'undefined' ? viewerFilters : {};
+    const searchQuery = typeof viewerSearchQuery !== 'undefined' ? viewerSearchQuery : '';
+    
+    let filtered = [...data.rows];
+    
+    // Applica ricerca
+    if (searchQuery && searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        filtered = filtered.filter(row => {
+            // Cerca in tutti i valori dell'oggetto row
+            return Object.values(row).some(val => {
+                if (val === null || val === undefined) return false;
+                return String(val).toLowerCase().includes(query);
+            });
+        });
+    }
+    
+    // Applica filtri
+    Object.keys(filters).forEach(key => {
+        if (filters[key]) {
+            filtered = filtered.filter(row => {
+                const rowValue = row[key] || row[key.toLowerCase()];
+                return String(rowValue) === String(filters[key]);
+            });
+        }
+    });
+    
+    // Renderizza risultati
+    renderViewerTableMobile(filtered);
 }
 
 /**
@@ -1419,6 +1725,20 @@ async function loadViewerDataMobile() {
         
         const data = await response.json();
         
+        // Salva dati globalmente per filtri/ricerca (se necessario)
+        if (typeof window !== 'undefined') {
+            window.viewerData = data;
+            // Salva anche in viewerData globale se esiste
+            if (typeof viewerData !== 'undefined') {
+                window.viewerData = data;
+            }
+        }
+        
+        // Popola filtri mobile (dopo aver salvato i dati)
+        if (data && data.facets) {
+            populateFiltersMobile(data.facets);
+        }
+        
         // Renderizza tabella se ci sono dati
         if (data && data.rows) {
             renderViewerTableMobile(data.rows);
@@ -1426,9 +1746,13 @@ async function loadViewerDataMobile() {
             tableBody.innerHTML = '<tr><td colspan="4" class="viewer-empty">Nessun dato disponibile</td></tr>';
         }
         
-        // Salva dati globalmente per filtri/ricerca (se necessario)
-        if (typeof window !== 'undefined') {
-            window.viewerData = data;
+        // Se c'è una query di ricerca o filtri attivi, applica filtri
+        const hasSearch = typeof viewerSearchQuery !== 'undefined' && viewerSearchQuery && viewerSearchQuery.trim();
+        const hasFilters = typeof viewerFilters !== 'undefined' && viewerFilters && 
+            (viewerFilters.type || viewerFilters.vintage || viewerFilters.winery || viewerFilters.supplier);
+        
+        if (hasSearch || hasFilters) {
+            applyViewerFiltersMobile();
         }
         
     } catch (error) {
@@ -1512,3 +1836,4 @@ if (typeof window !== 'undefined') {
         openInventoryViewer: openInventoryViewerMobile
     };
 }
+

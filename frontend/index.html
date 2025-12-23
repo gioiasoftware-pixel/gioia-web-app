@@ -116,6 +116,12 @@
                 </div>
                 <h1 class="chat-title">Gio.ia</h1>
                 <div class="header-actions">
+                    <div class="ui-themeToggle-mobile">
+                        <input id="themeToggle-mobile" class="ui-themeToggle__input" type="checkbox" />
+                        <label for="themeToggle-mobile" class="ui-themeToggle__track" aria-label="Toggle dark mode" title="Passa alla modalità notte">
+                            <span class="ui-themeToggle__thumb"></span>
+                        </label>
+                    </div>
                     <button type="button" id="add-wine-btn-mobile" class="btn-add-wine-mobile" title="Aggiungi nuovo vino">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -123,6 +129,11 @@
                     </button>
                     <button type="button" id="inventory-btn-mobile" class="btn-inventory-mobile" title="Apri inventario">
                         Inventario
+                    </button>
+                    <button type="button" id="logout-btn-mobile" class="btn-logout-mobile" title="Esci">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9M16 17L21 12M21 12L16 7M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
                     </button>
                 </div>
             </header>
@@ -206,6 +217,87 @@
                         <!-- Search Container -->
                         <div class="viewer-search-container-mobile">
                             <input type="text" id="viewer-search-mobile" class="viewer-search-input-mobile" placeholder="Cerca nell'inventario...">
+                        </div>
+                        
+                        <!-- Download CSV Button Mobile -->
+                        <div class="viewer-actions-mobile">
+                            <button type="button" id="viewer-download-csv-mobile" class="btn btn-secondary btn-small" title="Download CSV">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15M7 10L12 15M12 15L17 10M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                Download CSV
+                            </button>
+                        </div>
+                        
+                        <!-- Filters Mobile (Collapsible) -->
+                        <div class="viewer-filters-mobile">
+                            <button type="button" class="viewer-filters-toggle" id="viewer-filters-toggle-mobile">
+                                <span>Filtri</span>
+                                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                                    <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </button>
+                            <div class="viewer-filters-content hidden" id="viewer-filters-content-mobile">
+                                <div class="filters-header-row-mobile">
+                                    <h3 class="filters-title-mobile">FILTRI</h3>
+                                    <button type="button" id="reset-filters-btn-mobile" class="reset-filters-btn-mobile" title="Reset tutti i filtri">
+                                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                                            <path d="M7 1V7M7 7L3 3M7 7L11 3M3 7C3 9.76142 5.23858 12 8 12C10.7614 12 13 9.76142 13 7C13 4.23858 10.7614 2 8 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                        Reset
+                                    </button>
+                                </div>
+                                <div class="filters-buttons-row-mobile">
+                                    <div class="filter-dropdown-wrapper-mobile">
+                                        <button type="button" class="filter-dropdown-btn-mobile" data-filter="type" id="filter-btn-type-mobile">
+                                            <span class="filter-btn-label-mobile">Tipologia</span>
+                                            <span class="filter-btn-value-mobile" id="filter-value-type-mobile">Tutte</span>
+                                            <svg class="filter-dropdown-icon-mobile" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        <div class="filter-dropdown-menu-mobile hidden" id="filter-dropdown-type-mobile">
+                                            <div class="filter-dropdown-content-mobile" id="filter-type-mobile"></div>
+                                        </div>
+                                    </div>
+                                    <div class="filter-dropdown-wrapper-mobile">
+                                        <button type="button" class="filter-dropdown-btn-mobile" data-filter="vintage" id="filter-btn-vintage-mobile">
+                                            <span class="filter-btn-label-mobile">Annata</span>
+                                            <span class="filter-btn-value-mobile" id="filter-value-vintage-mobile">Tutte</span>
+                                            <svg class="filter-dropdown-icon-mobile" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        <div class="filter-dropdown-menu-mobile hidden" id="filter-dropdown-vintage-mobile">
+                                            <div class="filter-dropdown-content-mobile" id="filter-vintage-mobile"></div>
+                                        </div>
+                                    </div>
+                                    <div class="filter-dropdown-wrapper-mobile">
+                                        <button type="button" class="filter-dropdown-btn-mobile" data-filter="winery" id="filter-btn-winery-mobile">
+                                            <span class="filter-btn-label-mobile">Cantina</span>
+                                            <span class="filter-btn-value-mobile" id="filter-value-winery-mobile">Tutte</span>
+                                            <svg class="filter-dropdown-icon-mobile" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        <div class="filter-dropdown-menu-mobile hidden" id="filter-dropdown-winery-mobile">
+                                            <div class="filter-dropdown-content-mobile" id="filter-winery-mobile"></div>
+                                        </div>
+                                    </div>
+                                    <div class="filter-dropdown-wrapper-mobile">
+                                        <button type="button" class="filter-dropdown-btn-mobile" data-filter="supplier" id="filter-btn-supplier-mobile">
+                                            <span class="filter-btn-label-mobile">Fornitore</span>
+                                            <span class="filter-btn-value-mobile" id="filter-value-supplier-mobile">Tutti</span>
+                                            <svg class="filter-dropdown-icon-mobile" width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                                <path d="M9 4.5L6 7.5L3 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                            </svg>
+                                        </button>
+                                        <div class="filter-dropdown-menu-mobile hidden" id="filter-dropdown-supplier-mobile">
+                                            <div class="filter-dropdown-content-mobile" id="filter-supplier-mobile"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
                         <!-- Table Container -->

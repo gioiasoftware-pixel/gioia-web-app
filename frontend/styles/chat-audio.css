@@ -162,3 +162,43 @@
     display: none !important;
 }
 
+/* Visualizzatore Spettro Audio */
+.audio-visualizer-container {
+    width: 100%;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+    order: -1; /* Mostra prima del timer */
+}
+
+.audio-visualizer-canvas {
+    width: 100%;
+    max-width: 300px;
+    height: 40px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.05);
+    display: block;
+}
+
+/* Layout flex per chat-audio-recording */
+.chat-audio-recording {
+    flex-direction: column;
+}
+
+.chat-audio-recording > *:not(.audio-visualizer-container) {
+    order: 1;
+}
+
+/* Mobile specific per visualizzatore */
+.mobileRoot .audio-visualizer-container {
+    padding: 6px 10px;
+    margin-bottom: 6px;
+}
+
+.mobileRoot .audio-visualizer-canvas {
+    max-width: 250px;
+    height: 35px;
+}
+

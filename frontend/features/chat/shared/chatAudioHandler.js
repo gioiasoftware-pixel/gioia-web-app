@@ -13,6 +13,8 @@ function initChatAudioHandler() {
 }
 
 function initAudioHandler(layout) {
+    console.log(`[ChatAudioHandler] 🔄 Inizializzazione handler audio per layout: ${layout}`);
+    
     const suffix = layout === 'desktop' ? '' : '-mobile';
     const audioBtn = document.getElementById(`chat-audio-btn${suffix}`);
     const audioRecording = document.getElementById(`chat-audio-recording${suffix}`);
@@ -23,33 +25,62 @@ function initAudioHandler(layout) {
     const chatForm = document.getElementById(`chat-form${suffix}`);
     const chatSendBtn = document.getElementById(`chat-send-btn${suffix}`);
 
+    console.log(`[ChatAudioHandler] Elementi trovati per ${layout}:`, {
+        audioBtn: !!audioBtn,
+        audioRecording: !!audioRecording,
+        audioTimer: !!audioTimer,
+        audioCancelBtn: !!audioCancelBtn,
+        audioSendBtn: !!audioSendBtn
+    });
+
     if (!audioBtn || !audioRecording || !audioTimer || !audioCancelBtn || !audioSendBtn) {
-        console.warn(`[ChatAudioHandler] Elementi audio non trovati per layout ${layout}`);
+        console.warn(`[ChatAudioHandler] ⚠️ Elementi audio non trovati per layout ${layout}`);
         return;
     }
 
     // Verifica supporto browser
     if (!AudioRecorder.isSupported()) {
         audioBtn.style.display = 'none';
-        console.warn(`[ChatAudioHandler] Browser non supporta registrazione audio`);
+        console.warn(`[ChatAudioHandler] ⚠️ Browser non supporta registrazione audio`);
         return;
     }
+    
+    console.log(`[ChatAudioHandler] ✅ Browser supporta registrazione audio`);
 
     const recorder = new AudioRecorder();
+    
+    // Crea elemento visualizzatore spettro
+    const visualizerContainer = createAudioVisualizer(layout);
     
     // Callback per aggiornare timer UI
     recorder.onUpdate = (duration) => {
         audioTimer.textContent = recorder.formatDuration(duration);
     };
+    
+    // Callback per aggiornare visualizzatore spettro
+    recorder.onVisualizerUpdate = (dataArray, average) => {
+        updateAudioVisualizer(visualizerContainer, dataArray, average);
+    };
 
     // Gestione click pulsante audio
     audioBtn.addEventListener('click', async () => {
         try {
-            await recorder.startRecording();
-            showAudioRecording(layout);
-            console.log(`[ChatAudioHandler] Registrazione iniziata (${layout})`);
+            console.log(`[ChatAudioHandler] 📍 Click pulsante audio (${layout})`);
+            console.log(`[ChatAudioHandler] Elementi trovati:`, {
+                audioBtn: !!audioBtn,
+                audioRecording: !!audioRecording,
+                audioTimer: !!audioTimer,
+                visualizerContainer: !!visualizerContainer
+            });
+            
+            const success = await recorder.startRecording();
+            console.log(`[ChatAudioHandler] ✅ startRecording risultato:`, success);
+            
+            showAudioRecording(layout, visualizerContainer);
+            console.log(`[ChatAudioHandler] ✅ Registrazione iniziata (${layout})`);
         } catch (error) {
-            console.error(`[ChatAudioHandler] Errore avvio registrazione:`, error);
+            console.error(`[ChatAudioHandler] ❌ Errore avvio registrazione:`, error);
+            console.error(`[ChatAudioHandler] Stack trace:`, error.stack);
             alert(error.message || 'Errore avvio registrazione audio');
         }
     });
@@ -57,11 +88,20 @@ function initAudioHandler(layout) {
     // Gestione invio audio
     audioSendBtn.addEventListener('click', async () => {
         try {
+            console.log(`[ChatAudioHandler] 📍 Click invio audio (${layout})`);
+            
             const audioBlob = await recorder.stopRecording();
-            hideAudioRecording(layout);
+            console.log(`[ChatAudioHandler] ✅ Audio blob ottenuto:`, {
+                size: audioBlob.size,
+                sizeKB: (audioBlob.size / 1024).toFixed(2),
+                type: audioBlob.type
+            });
+            
+            hideAudioRecording(layout, visualizerContainer);
             
             // Ottieni conversation ID
             const conversationId = window.currentConversationId || null;
+            console.log(`[ChatAudioHandler] Conversation ID:`, conversationId);
             
             // Aggiungi messaggio utente che indica invio audio
             const addMessage = layout === 'desktop' 
@@ -72,15 +112,28 @@ function initAudioHandler(layout) {
                 addMessage('user', '🎤 Invio audio...', false, false);
             }
             
+            console.log(`[ChatAudioHandler] Invio audio al server...`);
+            const startTime = Date.now();
+            
             // Invia audio
             const response = await window.ChatAPI?.sendAudio(audioBlob, conversationId);
+            
+            const duration = Date.now() - startTime;
+            console.log(`[ChatAudioHandler] ✅ Risposta server ricevuta (${duration}ms):`, {
+                hasMessage: !!response?.message,
+                hasMetadata: !!response?.metadata,
+                transcribedText: response?.metadata?.transcribed_text,
+                messageLength: response?.message?.length
+            });
             
             if (response && response.message) {
                 // Aggiorna messaggio utente con testo trascritto se disponibile
                 const transcribedText = response.metadata?.transcribed_text;
                 if (transcribedText) {
+                    console.log(`[ChatAudioHandler] Testo trascritto:`, transcribedText);
                     updateLastUserMessage(layout, `🎤 ${transcribedText}`);
                 } else {
+                    console.log(`[ChatAudioHandler] Nessun testo trascritto disponibile`);
                     updateLastUserMessage(layout, '🎤 Audio inviato');
                 }
                 
@@ -88,11 +141,14 @@ function initAudioHandler(layout) {
                 if (addMessage) {
                     addMessage('ai', response.message, false, false, null, response.is_html);
                 }
+            } else {
+                console.warn(`[ChatAudioHandler] ⚠️ Risposta server senza messaggio`);
             }
             
         } catch (error) {
-            console.error(`[ChatAudioHandler] Errore invio audio:`, error);
-            hideAudioRecording(layout);
+            console.error(`[ChatAudioHandler] ❌ Errore invio audio:`, error);
+            console.error(`[ChatAudioHandler] Stack trace:`, error.stack);
+            hideAudioRecording(layout, visualizerContainer);
             
             const addMessage = layout === 'desktop' 
                 ? window.ChatDesktop?.addMessage 
@@ -106,9 +162,10 @@ function initAudioHandler(layout) {
 
     // Gestione annullamento
     audioCancelBtn.addEventListener('click', () => {
+        console.log(`[ChatAudioHandler] 📍 Click annulla (${layout})`);
         recorder.cancelRecording();
-        hideAudioRecording(layout);
-        console.log(`[ChatAudioHandler] Registrazione annullata (${layout})`);
+        hideAudioRecording(layout, visualizerContainer);
+        console.log(`[ChatAudioHandler] ✅ Registrazione annullata (${layout})`);
     });
 
     // Gestione click fuori per annullare (opzionale)
@@ -121,7 +178,7 @@ function initAudioHandler(layout) {
     });
 }
 
-function showAudioRecording(layout) {
+function showAudioRecording(layout, visualizerContainer) {
     const suffix = layout === 'desktop' ? '' : '-mobile';
     const audioBtn = document.getElementById(`chat-audio-btn${suffix}`);
     const audioRecording = document.getElementById(`chat-audio-recording${suffix}`);
@@ -129,12 +186,18 @@ function showAudioRecording(layout) {
     const chatSendBtn = document.getElementById(`chat-send-btn${suffix}`);
 
     if (audioBtn) audioBtn.style.display = 'none';
-    if (audioRecording) audioRecording.style.display = 'flex';
+    if (audioRecording) {
+        audioRecording.style.display = 'flex';
+        // Aggiungi visualizzatore se non presente
+        if (visualizerContainer && !audioRecording.querySelector('.audio-visualizer-container')) {
+            audioRecording.insertBefore(visualizerContainer, audioRecording.firstChild);
+        }
+    }
     if (chatInput) chatInput.style.display = 'none';
     if (chatSendBtn) chatSendBtn.style.display = 'none';
 }
 
-function hideAudioRecording(layout) {
+function hideAudioRecording(layout, visualizerContainer) {
     const suffix = layout === 'desktop' ? '' : '-mobile';
     const audioBtn = document.getElementById(`chat-audio-btn${suffix}`);
     const audioRecording = document.getElementById(`chat-audio-recording${suffix}`);
@@ -142,7 +205,13 @@ function hideAudioRecording(layout) {
     const chatSendBtn = document.getElementById(`chat-send-btn${suffix}`);
 
     if (audioBtn) audioBtn.style.display = 'flex';
-    if (audioRecording) audioRecording.style.display = 'none';
+    if (audioRecording) {
+        audioRecording.style.display = 'none';
+        // Reset visualizzatore
+        if (visualizerContainer) {
+            resetAudioVisualizer(visualizerContainer);
+        }
+    }
     if (chatInput) chatInput.style.display = 'block';
     if (chatSendBtn) chatSendBtn.style.display = 'flex';
 }
@@ -166,11 +235,94 @@ function updateLastUserMessage(layout, newText) {
     }
 }
 
+/**
+ * Crea elemento visualizzatore spettro audio
+ */
+function createAudioVisualizer(layout) {
+    const container = document.createElement('div');
+    container.className = 'audio-visualizer-container';
+    
+    const canvas = document.createElement('canvas');
+    canvas.className = 'audio-visualizer-canvas';
+    canvas.width = 200;
+    canvas.height = 40;
+    
+    container.appendChild(canvas);
+    
+    // Salva riferimento canvas per aggiornamenti
+    container.canvas = canvas;
+    container.ctx = canvas.getContext('2d');
+    
+    console.log(`[ChatAudioHandler] ✅ Visualizzatore creato (${layout})`);
+    
+    return container;
+}
+
+/**
+ * Aggiorna visualizzatore spettro audio
+ */
+function updateAudioVisualizer(container, dataArray, average) {
+    if (!container || !container.canvas || !container.ctx) {
+        return;
+    }
+
+    const canvas = container.canvas;
+    const ctx = container.ctx;
+    const width = canvas.width;
+    const height = canvas.height;
+
+    // Pulisci canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Colore basato su intensità media
+    const intensity = average / 255;
+    const hue = 200 + (intensity * 160); // Blu → Rosso
+    const color = `hsl(${hue}, 70%, 60%)`;
+
+    // Disegna barre spettro
+    const barWidth = width / dataArray.length;
+    const barGap = 1;
+
+    for (let i = 0; i < dataArray.length; i++) {
+        const barHeight = (dataArray[i] / 255) * height;
+        const x = i * barWidth;
+        const y = height - barHeight;
+
+        // Colore con opacità variabile
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, barWidth - barGap, barHeight);
+    }
+
+    // Mostra livello medio come barra orizzontale
+    const avgHeight = (average / 255) * height;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.fillRect(0, height - avgHeight, width, 2);
+}
+
+/**
+ * Reset visualizzatore
+ */
+function resetAudioVisualizer(container) {
+    if (!container || !container.canvas || !container.ctx) {
+        return;
+    }
+    
+    const ctx = container.ctx;
+    const width = container.canvas.width;
+    const height = container.canvas.height;
+    
+    ctx.clearRect(0, 0, width, height);
+}
+
 // Inizializza quando il DOM è pronto
 if (typeof window !== 'undefined') {
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initChatAudioHandler);
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[ChatAudioHandler] DOM caricato, inizializzazione...');
+            initChatAudioHandler();
+        });
     } else {
+        console.log('[ChatAudioHandler] DOM già pronto, inizializzazione immediata...');
         initChatAudioHandler();
     }
     
