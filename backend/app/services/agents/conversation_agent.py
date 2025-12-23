@@ -185,15 +185,34 @@ Conversazione:
         Processa richiesta conversazionale con contesto.
         """
         try:
-            # Se c'è storia conversazione, usa per chiarire ambiguità
-            if conversation_history:
-                clarification = await self.clarify_ambiguity(message, conversation_history, user_id)
-                if clarification.get("clarified"):
-                    message = clarification["clarified_message"]
+            # Identifica tipo di richiesta per risposte più mirate
+            message_lower = message.lower()
             
-            # Processa con AI
-            context = self._format_conversation_context(conversation_history or [])
-            enhanced_message = f"{message}\n\nContesto conversazione:\n{context}"
+            # Se è una richiesta di riassunto conversazione
+            if any(keyword in message_lower for keyword in ["riassumi", "riassunto", "cosa abbiamo detto", "cosa stavamo"]):
+                if conversation_history and len(conversation_history) >= 5:
+                    return await self.summarize_conversation(conversation_history, user_id)
+                else:
+                    # Conversazione troppo breve, rispondi direttamente
+                    context = self._format_conversation_context(conversation_history or [])
+                    enhanced_message = f"""{message}
+
+Contesto conversazione:
+{context}
+
+Nota: Rispondi in modo conversazionale basandoti solo sul contesto fornito. 
+Non chiamare funzioni esterne. Se il contesto è limitato, informa l'utente che la conversazione è breve."""
+            else:
+                # Processa normalmente con contesto
+                context = self._format_conversation_context(conversation_history or [])
+                enhanced_message = f"""{message}
+
+Contesto conversazione:
+{context}
+
+Nota: Rispondi basandoti solo sul contesto della conversazione fornito. 
+Non chiamare funzioni o tools esterni. Se mancano informazioni nel contesto, 
+informa l'utente che non hai abbastanza informazioni dalla conversazione."""
             
             result = await self.process(
                 message=enhanced_message,
