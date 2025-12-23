@@ -11,23 +11,28 @@ from app.services.ai_service import AIService as AIServiceV1
 from app.core.database import db_manager
 from app.core.auth import get_current_user
 from app.core.config import get_settings
+from app.services.request_complexity_analyzer import RequestComplexityAnalyzer
 
 logger = logging.getLogger(__name__)
 
-# Inizializza servizio AI in base al feature flag
+# Inizializza entrambi i servizi per sistema ibrido
 settings = get_settings()
+ai_service_v1 = AIServiceV1()
+logger.info("✅ AIServiceV1 (tradizionale) inizializzato")
+
+ai_service_v2 = None
 if settings.USE_AGENT_SYSTEM:
     try:
         from app.services.ai_service_v2 import AIServiceV2
-        ai_service = AIServiceV2()
-        logger.info("✅ Usando sistema multi-agent (AIServiceV2)")
+        ai_service_v2 = AIServiceV2()
+        logger.info("✅ AIServiceV2 (multi-agent) inizializzato")
+        logger.info("✅ Sistema ibrido attivo: richieste semplici -> V1, complesse -> V2")
     except Exception as e:
-        logger.error(f"❌ Errore inizializzazione AIServiceV2, fallback a AIService: {e}", exc_info=True)
-        ai_service = AIServiceV1()
-        logger.info("✅ Usando sistema function calling tradizionale (AIService) - fallback")
+        logger.error(f"❌ Errore inizializzazione AIServiceV2: {e}", exc_info=True)
+        logger.warning("⚠️ Sistema ibrido disabilitato, uso solo V1")
+        ai_service_v2 = None
 else:
-    ai_service = AIServiceV1()
-    logger.info("✅ Usando sistema function calling tradizionale (AIService)")
+    logger.info("✅ Sistema ibrido disabilitato (USE_AGENT_SYSTEM=False), uso solo V1")
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -113,12 +118,33 @@ async def send_message(
         except Exception as e:
             logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
         
-        # Processa messaggio con AI service
-        result = await ai_service.process_message(
-            user_message=chat_message.message,
-            user_id=user_id,
-            conversation_history=conversation_history
-        )
+        # Sistema ibrido: analizza complessità e scegli servizio appropriato
+        complexity = RequestComplexityAnalyzer.analyze(chat_message.message)
+        
+        if complexity == "simple" and ai_service_v2 is not None:
+            # Richiesta semplice: usa V1 (più veloce e diretto)
+            logger.info(f"[CHAT] 📊 Richiesta semplice -> AIServiceV1 (tradizionale)")
+            result = await ai_service_v1.process_message(
+                user_message=chat_message.message,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
+        elif ai_service_v2 is not None:
+            # Richiesta complessa: usa V2 (multi-agent)
+            logger.info(f"[CHAT] 📊 Richiesta complessa -> AIServiceV2 (multi-agent)")
+            result = await ai_service_v2.process_message(
+                user_message=chat_message.message,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
+        else:
+            # Fallback: V2 non disponibile, usa sempre V1
+            logger.info(f"[CHAT] 📊 Fallback -> AIServiceV1 (V2 non disponibile)")
+            result = await ai_service_v1.process_message(
+                user_message=chat_message.message,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
         
         # Verifica che result sia valido
         if not result or not isinstance(result, dict):
@@ -421,7 +447,7 @@ async def chat_health():
         "status": "healthy",
         "service": "chat",
         "ai_configured": ai_configured,
-        "ai_system": "multi-agent" if settings.USE_AGENT_SYSTEM else "function-calling",
+        "ai_system": "hybrid" if (ai_service_v2 is not None) else "function-calling",
         "audio_enabled": True
     }
 
