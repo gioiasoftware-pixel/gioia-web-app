@@ -303,13 +303,15 @@ function initAudioHandler(layout) {
         }
     });
 
-    // Gestione annullamento
-    audioCancelBtn.addEventListener('click', () => {
-        console.log(`[ChatAudioHandler] 📍 Click annulla (${layout})`);
-        recorder.cancelRecording();
-        hideAudioRecording(layout, visualizerContainer);
-        console.log(`[ChatAudioHandler] ✅ Registrazione annullata (${layout})`);
-    });
+    // Gestione annullamento (solo desktop, mobile usa touchcancel automatico)
+    if (layout === 'desktop') {
+        audioCancelBtn.addEventListener('click', () => {
+            console.log(`[ChatAudioHandler] 📍 Click annulla (desktop)`);
+            recorder.cancelRecording();
+            hideAudioRecording(layout, visualizerContainer);
+            console.log(`[ChatAudioHandler] ✅ Registrazione annullata (desktop)`);
+        });
+    }
 
     // Gestione click fuori per annullare (opzionale)
     document.addEventListener('click', (e) => {
