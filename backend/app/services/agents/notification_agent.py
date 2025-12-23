@@ -8,6 +8,8 @@ from app.core.database import db_manager
 from typing import Dict, Any, Optional, List
 import logging
 from datetime import datetime, timedelta
+import httpx
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +260,219 @@ class NotificationAgent(BaseAgent):
             logger.error(f"[NOTIFICATION] Errore generazione alert anomalie: {e}", exc_info=True)
             return []
     
+    async def get_wine_movements_data(
+        self,
+        user_id: int,
+        wine_name: str
+    ) -> Dict[str, Any]:
+        """
+        Recupera dati movimenti storici per un vino specifico.
+        Usa la stessa logica dell'endpoint /api/viewer/movements.
+        
+        Args:
+            user_id: ID utente
+            wine_name: Nome del vino
+        
+        Returns:
+            Dict con dati movimenti nel formato dell'API viewer
+        """
+        try:
+            user = await db_manager.get_user_by_id(user_id)
+            if not user or not user.business_name:
+                return {
+                    "wine_name": wine_name,
+                    "current_stock": 0,
+                    "opening_stock": 0,
+                    "movements": []
+                }
+            
+            table_storico = f'"{user_id}/{user.business_name} Storico vino"'
+            
+            async with AsyncSessionLocal() as session:
+                # Verifica che la tabella esista
+                table_name_check = table_storico.strip('"')
+                check_table_query = sql_text("""
+                    SELECT EXISTS (
+                        SELECT FROM information_schema.tables 
+                        WHERE table_schema = 'public' 
+                        AND table_name = :table_name
+                    )
+                """)
+                result = await session.execute(
+                    check_table_query,
+                    {"table_name": table_name_check}
+                )
+                table_exists = result.scalar()
+                
+                if not table_exists:
+                    logger.info(f"[NOTIFICATION] Tabella Storico vino non esiste per user_id={user_id}")
+                    return {
+                        "wine_name": wine_name,
+                        "current_stock": 0,
+                        "opening_stock": 0,
+                        "movements": []
+                    }
+                
+                # Cerca storico vino
+                query_storico = sql_text(f"""
+                    SELECT 
+                        current_stock,
+                        history,
+                        first_movement_date,
+                        last_movement_date,
+                        total_consumi,
+                        total_rifornimenti
+                    FROM {table_storico}
+                    WHERE user_id = :user_id
+                    AND (
+                        LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact))
+                        OR LOWER(wine_name) LIKE LOWER(:wine_name_pattern)
+                    )
+                    ORDER BY 
+                        CASE 
+                            WHEN LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact)) THEN 1
+                            ELSE 2
+                        END
+                    LIMIT 1
+                """)
+                
+                result = await session.execute(
+                    query_storico,
+                    {
+                        "user_id": user_id,
+                        "wine_name_exact": wine_name,
+                        "wine_name_pattern": f"%{wine_name}%"
+                    }
+                )
+                storico_row = result.fetchone()
+                
+                if not storico_row:
+                    return {
+                        "wine_name": wine_name,
+                        "current_stock": 0,
+                        "opening_stock": 0,
+                        "movements": []
+                    }
+                
+                # Estrai history (JSONB)
+                history = storico_row[1] if storico_row[1] else []
+                if isinstance(history, str):
+                    history = json.loads(history)
+                
+                # Converti history in formato per frontend
+                movements = []
+                for entry in history:
+                    movements.append({
+                        "at": entry.get("date"),
+                        "type": entry.get("type"),
+                        "quantity_change": entry.get("quantity") if entry.get("type") == "rifornimento" else -entry.get("quantity", 0),
+                        "quantity_before": entry.get("quantity_before", 0),
+                        "quantity_after": entry.get("quantity_after", 0)
+                    })
+                
+                # Ordina per data
+                movements.sort(key=lambda x: x["at"] if x["at"] else "")
+                
+                current_stock = storico_row[0] or 0
+                opening_stock = movements[0]["quantity_before"] if movements else 0
+                
+                return {
+                    "wine_name": wine_name,
+                    "current_stock": current_stock,
+                    "opening_stock": opening_stock,
+                    "movements": movements,
+                    "total_consumi": storico_row[4] or 0,
+                    "total_rifornimenti": storico_row[5] or 0,
+                    "first_movement_date": storico_row[2].isoformat() if storico_row[2] else None,
+                    "last_movement_date": storico_row[3].isoformat() if storico_row[3] else None
+                }
+        
+        except Exception as e:
+            logger.error(f"[NOTIFICATION] Errore recupero movimenti vino: {e}", exc_info=True)
+            return {
+                "wine_name": wine_name,
+                "current_stock": 0,
+                "opening_stock": 0,
+                "movements": []
+            }
+    
+    async def generate_wine_statistics_with_chart(
+        self,
+        user_id: int,
+        wine_name: str,
+        period: str = "week"
+    ) -> Dict[str, Any]:
+        """
+        Genera statistiche e grafico per un vino specifico.
+        
+        Args:
+            user_id: ID utente
+            wine_name: Nome del vino
+            period: Periodo preset per il grafico ("day", "week", "month", "quarter", "year")
+        
+        Returns:
+            Dict con HTML wine card + grafico e metadati
+        """
+        try:
+            # Cerca vino nell'inventario
+            wines = await db_manager.get_user_wines(user_id)
+            wine = None
+            for w in wines:
+                if wine_name.lower() in w.name.lower() or w.name.lower() in wine_name.lower():
+                    wine = w
+                    break
+            
+            if not wine:
+                return {
+                    "success": False,
+                    "error": f"Vino '{wine_name}' non trovato nell'inventario",
+                    "agent": self.name
+                }
+            
+            # Recupera dati movimenti storici
+            movements_data = await self.get_wine_movements_data(user_id, wine.name)
+            
+            if not movements_data.get("movements"):
+                # Nessun movimento, mostra solo wine card
+                wine_card_html = WineCardHelper.generate_wine_card_html(wine, badge="📊 Statistiche")
+                return {
+                    "success": True,
+                    "message": wine_card_html + "<br><p>ℹ️ Nessun movimento storico registrato per questo vino.</p>",
+                    "agent": self.name,
+                    "is_html": True,
+                    "metadata": {"type": "wine_statistics", "wine_name": wine.name, "has_chart": False}
+                }
+            
+            # Genera wine card con grafico
+            full_html = ChartHelper.generate_wine_card_with_chart(
+                wine=wine,
+                movements_data=movements_data,
+                period=period,
+                badge="📊 Statistiche"
+            )
+            
+            return {
+                "success": True,
+                "message": full_html,
+                "agent": self.name,
+                "is_html": True,
+                "metadata": {
+                    "type": "wine_statistics",
+                    "wine_name": wine.name,
+                    "has_chart": True,
+                    "movements_count": len(movements_data.get("movements", [])),
+                    "period": period
+                }
+            }
+        
+        except Exception as e:
+            logger.error(f"[NOTIFICATION] Errore generazione statistiche vino: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Errore durante la generazione delle statistiche: {str(e)}",
+                "agent": self.name
+            }
+    
     async def process_with_context(
         self,
         message: str,
@@ -268,6 +483,38 @@ class NotificationAgent(BaseAgent):
         Processa richiesta notifica con contesto inventario.
         """
         try:
+            # Controlla se è una richiesta di statistiche per un vino specifico
+            message_lower = message.lower()
+            
+            # Keywords per statistiche vino specifico
+            stats_keywords = ["statistiche", "statistica", "andamento", "grafico", "trend", "storico", "movimenti"]
+            # Cerca nomi vini nel messaggio
+            wines = await db_manager.get_user_wines(user_id)
+            mentioned_wine = None
+            
+            for wine in wines:
+                wine_name_lower = wine.name.lower()
+                if wine_name_lower in message_lower and any(keyword in message_lower for keyword in stats_keywords):
+                    mentioned_wine = wine.name
+                    break
+            
+            # Se è una richiesta di statistiche per un vino specifico
+            if mentioned_wine and any(keyword in message_lower for keyword in stats_keywords):
+                # Determina periodo (default: week)
+                period = "week"
+                if "giorno" in message_lower or "day" in message_lower:
+                    period = "day"
+                elif "settimana" in message_lower or "week" in message_lower:
+                    period = "week"
+                elif "mese" in message_lower or "month" in message_lower:
+                    period = "month"
+                elif "trimestre" in message_lower or "quarter" in message_lower:
+                    period = "quarter"
+                elif "anno" in message_lower or "year" in message_lower:
+                    period = "year"
+                
+                return await self.generate_wine_statistics_with_chart(user_id, mentioned_wine, period)
+            
             # Genera notifiche basate su richiesta
             if "report" in message.lower() or "riepilogo" in message.lower():
                 report = await self.generate_daily_report(user_id)

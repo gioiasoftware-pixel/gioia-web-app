@@ -1943,6 +1943,80 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
     return messageId;
 }
 
+// ============================================
+// WINE CHART INITIALIZATION
+// ============================================
+
+/**
+ * Inizializza i grafici vino presenti nel contenitore.
+ * Cerca elementi con classe wine-chart-container e renderizza i grafici usando AnchoredFlowStockChart.
+ */
+function initializeWineCharts(container) {
+    const chartContainers = container.querySelectorAll('.wine-chart-container');
+    if (chartContainers.length === 0) {
+        return;
+    }
+    
+    console.log(`[CHART] Trovati ${chartContainers.length} container grafico da inizializzare`);
+    
+    chartContainers.forEach((chartContainer, index) => {
+        const canvasWrapper = chartContainer.querySelector('.wine-chart-canvas-wrapper');
+        const dataScript = chartContainer.querySelector('script.wine-chart-data');
+        
+        if (!canvasWrapper || !dataScript) {
+            console.warn(`[CHART] Container ${index + 1} non ha canvas wrapper o dati JSON`);
+            return;
+        }
+        
+        try {
+            // Parse dati JSON dal script tag
+            const chartData = JSON.parse(dataScript.textContent);
+            
+            console.log(`[CHART] Inizializzazione grafico ${index + 1} per vino:`, chartData.wine_name);
+            
+            // Verifica che AnchoredFlowStockChart sia disponibile
+            if (!window.AnchoredFlowStockChart || !window.AnchoredFlowStockChart.create) {
+                console.error('[CHART] AnchoredFlowStockChart non disponibile, grafico non può essere renderizzato');
+                canvasWrapper.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Grafico non disponibile</div>';
+                return;
+            }
+            
+            // Prepara dati per AnchoredFlowStockChart.create
+            // L'API si aspetta i dati movimenti nel formato dell'endpoint /api/viewer/movements
+            const movementsData = {
+                wine_name: chartData.wine_name,
+                current_stock: chartData.current_stock || 0,
+                opening_stock: chartData.opening_stock || 0,
+                movements: chartData.movements || [],
+                total_consumi: chartData.total_consumi || 0,
+                total_rifornimenti: chartData.total_rifornimenti || 0
+            };
+            
+            // Renderizza grafico usando AnchoredFlowStockChart.create
+            // Il create si aspetta un container (div) e popolerà il canvas dentro
+            const preset = chartData.period || 'week';
+            const chartInstance = window.AnchoredFlowStockChart.create(canvasWrapper, movementsData, {
+                preset: preset,
+                now: new Date()
+            });
+            
+            if (chartInstance) {
+                console.log(`[CHART] Grafico ${index + 1} renderizzato con successo`);
+                // Salva riferimento al chart instance se necessario per cleanup futuro
+                canvasWrapper._chartInstance = chartInstance;
+            } else {
+                console.error(`[CHART] Errore creazione grafico ${index + 1}`);
+            }
+            
+        } catch (error) {
+            console.error(`[CHART] Errore inizializzazione grafico ${index + 1}:`, error);
+            if (canvasWrapper) {
+                canvasWrapper.innerHTML = `<div style="padding: 20px; text-align: center; color: #d32f2f;">Errore caricamento grafico: ${error.message}</div>`;
+            }
+        }
+    });
+}
+
 function removeChatMessage(messageId) {
     const messageEl = document.getElementById(messageId);
     if (messageEl) {

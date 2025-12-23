@@ -14,6 +14,8 @@ from .validation_agent import ValidationAgent
 from .notification_agent import NotificationAgent
 from .conversation_agent import ConversationAgent
 from .report_agent import ReportAgent
+from .wine_card_helper import WineCardHelper
+from .chart_helper import ChartHelper
 
 __all__ = [
     "BaseAgent",
@@ -28,5 +30,7 @@ __all__ = [
     "NotificationAgent",
     "ConversationAgent",
     "ReportAgent",
+    "WineCardHelper",
+    "ChartHelper",
 ]
 
