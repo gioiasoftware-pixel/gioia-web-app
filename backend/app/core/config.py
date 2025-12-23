@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     # Admin
     ADMIN_TELEGRAM_IDS: str = ""  # Comma-separated
     
+    # AI Agent System
+    USE_AGENT_SYSTEM: bool = False  # Feature flag per sistema multi-agent
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

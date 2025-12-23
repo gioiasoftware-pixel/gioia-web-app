@@ -7,11 +7,27 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
 
-from app.services.ai_service import ai_service
+from app.services.ai_service import AIService as AIServiceV1
 from app.core.database import db_manager
 from app.core.auth import get_current_user
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Inizializza servizio AI in base al feature flag
+settings = get_settings()
+if settings.USE_AGENT_SYSTEM:
+    try:
+        from app.services.ai_service_v2 import AIServiceV2
+        ai_service = AIServiceV2()
+        logger.info("✅ Usando sistema multi-agent (AIServiceV2)")
+    except Exception as e:
+        logger.error(f"❌ Errore inizializzazione AIServiceV2, fallback a AIService: {e}", exc_info=True)
+        ai_service = AIServiceV1()
+        logger.info("✅ Usando sistema function calling tradizionale (AIService) - fallback")
+else:
+    ai_service = AIServiceV1()
+    logger.info("✅ Usando sistema function calling tradizionale (AIService)")
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
 
@@ -263,9 +279,20 @@ async def delete_conversation(
 @router.get("/health")
 async def chat_health():
     """Health check per servizio chat"""
+    ai_configured = False
+    try:
+        # Check se è AIServiceV1 (ha client) o AIServiceV2 (ha router)
+        if hasattr(ai_service, 'client'):
+            ai_configured = ai_service.client is not None
+        elif hasattr(ai_service, 'router'):
+            ai_configured = ai_service.router is not None
+    except:
+        pass
+    
     return {
         "status": "healthy",
         "service": "chat",
-        "ai_configured": ai_service.client is not None
+        "ai_configured": ai_configured,
+        "ai_system": "multi-agent" if settings.USE_AGENT_SYSTEM else "function-calling"
     }
 
