@@ -7,6 +7,11 @@ from .agents.query_agent import QueryAgent
 from .agents.movement_agent import MovementAgent
 from .agents.multi_movement_agent import MultiMovementAgent
 from .agents.analytics_agent import AnalyticsAgent
+from .agents.wine_management_agent import WineManagementAgent
+from .agents.validation_agent import ValidationAgent
+from .agents.notification_agent import NotificationAgent
+from .agents.conversation_agent import ConversationAgent
+from .agents.report_agent import ReportAgent
 from typing import Dict, Any, Optional
 import logging
 
@@ -26,6 +31,11 @@ class AIServiceV2:
             # MultiMovementAgent usa MovementAgent per ogni movimento singolo
             self.multi_movement = MultiMovementAgent(movement_agent=self.movement)
             self.analytics = AnalyticsAgent()
+            self.wine_management = WineManagementAgent()
+            self.validation = ValidationAgent()
+            self.notification = NotificationAgent()
+            self.conversation = ConversationAgent()
+            self.report = ReportAgent()
             
             logger.info("✅ Sistema multi-agent inizializzato con successo")
         except Exception as e:
@@ -89,6 +99,28 @@ class AIServiceV2:
                 )
             elif agent_name == "analytics":
                 result = await self.analytics.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
+            elif agent_name == "wine_management":
+                result = await self.wine_management.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
+            elif agent_name == "report":
+                result = await self.report.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
+            elif agent_name == "notification":
+                result = await self.notification.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
+            elif agent_name == "conversation":
+                # ConversationAgent può richiedere storia conversazione
+                # Per ora usa solo il messaggio corrente
+                result = await self.conversation.process_with_context(
                     message=user_message,
                     user_id=user_id
                 )

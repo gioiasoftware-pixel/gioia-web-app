@@ -42,16 +42,41 @@ class RouterAgent(BaseAgent):
              * Più quantità specificate per vini diversi
            - Keywords: "e", ",", "più", congiunzioni tra vini/quantità
         
-        5. **analytics**: Per statistiche e report
-           - Statistiche inventario
-           - Report periodici
-           - Analisi trend
-           - Keywords: "statistiche", "report", "riepilogo", "analisi", "trend", "stat"
+        5. **analytics**: Per statistiche inventario semplici
+           - Statistiche base inventario
+           - Analisi trend semplici
+           - Keywords: "statistiche", "analisi", "trend", "stat", "quanti vini"
+        
+        6. **wine_management**: Per gestione completa vini (CRUD)
+           - Creare nuovi vini
+           - Modificare vini esistenti
+           - Eliminare vini
+           - Gestire duplicati
+           - Keywords: "aggiungi vino", "crea vino", "modifica vino", "elimina vino", "aggiorna vino", "nuovo vino"
+        
+        7. **report**: Per report personalizzati e formattati
+           - Report vendite
+           - Report inventario completo
+           - Report comparativi
+           - Keywords: "report", "report vendite", "report inventario", "riepilogo dettagliato"
+        
+        8. **notification**: Per notifiche e alert
+           - Alert scorte basse
+           - Promemoria
+           - Report automatici
+           - Keywords: "notifiche", "alert", "scorte basse", "promemoria", "avvisi"
+        
+        9. **conversation**: Per gestione contesto conversazionale (raro, solo se esplicito)
+           - Chiarimenti ambiguità
+           - Riassunto conversazione
+           - Keywords: "riassumi", "chiarisci", "cosa abbiamo detto"
         
         IMPORTANTE: 
         - Per movimenti, distingui tra SINGOLO (movement) e MULTIPLO (multi_movement)
         - Se il messaggio contiene più di un movimento (più vini/quantità), usa multi_movement
-        - Rispondi SOLO con il nome dell'agent (extraction, query, movement, multi_movement, analytics)
+        - Per report formattati usa "report", per statistiche semplici usa "analytics"
+        - Per gestione vini (creare/modificare/eliminare) usa "wine_management"
+        - Rispondi SOLO con il nome dell'agent (extraction, query, movement, multi_movement, analytics, wine_management, report, notification, conversation)
         - Non aggiungere altro testo, spiegazioni o commenti.
         """
         
@@ -80,7 +105,10 @@ class RouterAgent(BaseAgent):
             agent_name = agent_name.replace(".", "").replace("!", "").strip()
             
             # Validazione
-            valid_agents = ["extraction", "query", "movement", "multi_movement", "analytics"]
+            valid_agents = [
+                "extraction", "query", "movement", "multi_movement", "analytics",
+                "wine_management", "report", "notification", "conversation"
+            ]
             if agent_name in valid_agents:
                 logger.info(f"✅ Router instradato a: {agent_name}")
                 return agent_name
