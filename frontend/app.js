@@ -1939,6 +1939,15 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             setupWineCardBookmarks(messageEl);
         }, 100);
     }
+    
+    // Inizializza grafici vino se presenti (dopo inserimento nel DOM)
+    const hasChart = messageEl.querySelector('.wine-chart-container');
+    if ((isHtml || hasChart) && role === 'ai') {
+        // Usa setTimeout per assicurarsi che il DOM sia completamente renderizzato
+        setTimeout(() => {
+            initializeWineCharts(messageEl);
+        }, 150);
+    }
 
     return messageId;
 }
