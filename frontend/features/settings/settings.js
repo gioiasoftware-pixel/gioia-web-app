@@ -183,37 +183,49 @@ function initSettingsPage() {
  * Apre la pagina settings
  */
 function openSettingsPage() {
+    console.log('[Settings] Apertura pagina settings...');
     const settingsPanel = document.getElementById('settingsPanel');
-    if (settingsPanel) {
-        settingsPanel.hidden = false;
-        initSettingsPage();
-        
-        // Nascondi altri pannelli
-        const viewerPanel = document.getElementById('viewerPanel');
-        if (viewerPanel) {
-            viewerPanel.hidden = true;
-        }
-        
-        // Chiudi sidebar se aperta (mobile)
-        if (typeof window.ChatMobile !== 'undefined' && typeof window.ChatMobile.closeSidebar === 'function') {
-            window.ChatMobile.closeSidebar();
-        }
-        
-        // Chiudi pannello notifiche se aperto
-        if (typeof window.NotificationsManager !== 'undefined') {
-            window.NotificationsManager.closePanel('mobile');
-            window.NotificationsManager.closePanel('desktop');
-        }
+    if (!settingsPanel) {
+        console.error('[Settings] ❌ Settings panel non trovato nel DOM');
+        return;
     }
+    
+    console.log('[Settings] ✅ Settings panel trovato, rimozione hidden attribute');
+    settingsPanel.hidden = false;
+    settingsPanel.style.display = 'flex'; // Assicura che sia visibile
+    
+    initSettingsPage();
+    
+    // Nascondi altri pannelli
+    const viewerPanel = document.getElementById('viewerPanel');
+    if (viewerPanel) {
+        viewerPanel.hidden = true;
+    }
+    
+    // Chiudi sidebar se aperta (mobile)
+    if (typeof window.ChatMobile !== 'undefined' && typeof window.ChatMobile.closeSidebar === 'function') {
+        window.ChatMobile.closeSidebar();
+    }
+    
+    // Chiudi pannello notifiche se aperto
+    if (typeof window.NotificationsManager !== 'undefined') {
+        window.NotificationsManager.closePanel('mobile');
+        window.NotificationsManager.closePanel('desktop');
+    }
+    
+    console.log('[Settings] ✅ Pagina settings aperta');
 }
 
 /**
  * Chiude la pagina settings
  */
 function closeSettingsPage() {
+    console.log('[Settings] Chiusura pagina settings...');
     const settingsPanel = document.getElementById('settingsPanel');
     if (settingsPanel) {
         settingsPanel.hidden = true;
+        settingsPanel.style.display = 'none'; // Assicura che sia nascosto
+        console.log('[Settings] ✅ Pagina settings chiusa');
     }
 }
 
