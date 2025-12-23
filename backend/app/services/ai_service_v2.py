@@ -107,7 +107,7 @@ class AIServiceV2:
             else:
                 logger.warning(f"[AI_SERVICE_V2] ⚠️ {agent_name} completato con errori: {result.get('error', 'unknown')}")
             
-            # Step 3: Formatta risposta
+            # Step 5: Formatta risposta
             if result.get("success"):
                 return {
                     "message": result["message"],
