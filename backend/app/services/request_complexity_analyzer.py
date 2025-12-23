@@ -135,3 +135,4 @@ class RequestComplexityAnalyzer:
         """Helper: True se richiesta semplice, False se complessa"""
         return cls.analyze(message) == "simple"
 
+

@@ -96,7 +96,7 @@ async def health_check():
     return {"status": "healthy", "service": "gioia-web-app-backend"}
 
 # Import routers
-from app.api import auth, chat, processor, viewer, wines, debug, admin
+from app.api import auth, chat, processor, viewer, wines, debug, admin, notifications
 
 # Include routers
 app.include_router(auth.router)
@@ -106,15 +106,30 @@ app.include_router(viewer.router)
 app.include_router(wines.router)
 app.include_router(debug.router)
 app.include_router(admin.router)
+app.include_router(notifications.router)
 
-# Migrazioni rimosse - già eseguite manualmente
-# @app.on_event("startup")
-# async def startup_migrations():
-#     """
-#     Esegue migrazioni database automaticamente all'avvio.
-#     Verifica se le tabelle/colonne esistono prima di crearle/modificarle.
-#     """
-#     ... (rimosso - migrazioni già eseguite)
+# Migrazioni e startup tasks
+@app.on_event("startup")
+async def startup_tasks():
+    """
+    Esegue migrazioni database e avvia scheduler all'avvio.
+    """
+    from app.core.migrations import run_migrations
+    from app.services.daily_report_scheduler import start_scheduler
+    
+    # Esegui migrazioni
+    try:
+        await run_migrations()
+    except Exception as e:
+        logger.error(f"Errore durante migrazioni: {e}", exc_info=True)
+        # Non bloccare l'avvio se le migrazioni falliscono
+    
+    # Avvia scheduler report giornalieri
+    try:
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Errore avvio scheduler: {e}", exc_info=True)
+        # Non bloccare l'avvio se lo scheduler fallisce
 
 if __name__ == "__main__":
     import uvicorn

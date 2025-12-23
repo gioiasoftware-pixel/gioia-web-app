@@ -111,3 +111,4 @@ class ResponseValidator:
         """Alias per chiarezza: True se dovrebbe passare a V2"""
         return not cls.is_response_valid(response)
 
+

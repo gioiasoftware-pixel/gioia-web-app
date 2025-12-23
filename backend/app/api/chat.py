@@ -63,6 +63,119 @@ class CreateConversationResponse(BaseModel):
     title: str
 
 
+async def process_text_message(
+    user_message: str,
+    user_id: int,
+    conversation_id: Optional[int] = None,
+    source: str = "text"  # "text" o "audio"
+) -> ChatResponse:
+    """
+    Funzione helper condivisa per processare messaggi testuali.
+    Usata sia da /message che da /audio (dopo trascrizione).
+    
+    Args:
+        user_message: Testo del messaggio
+        user_id: ID utente
+        conversation_id: ID conversazione (opzionale, creata se None)
+        source: Origine messaggio ("text" o "audio")
+    
+    Returns:
+        ChatResponse con risposta AI
+    """
+    logger.info(f"[CHAT] Processamento messaggio {source} da user_id={user_id}: {user_message[:50]}...")
+    
+    # Gestione conversation_id: crea nuova conversazione se non specificata
+    if not conversation_id:
+        # Crea nuova conversazione
+        conversation_id = await db_manager.create_conversation(
+            user_id=user_id,
+            telegram_id=None,
+            title=user_message[:50] + "..." if len(user_message) > 50 else user_message
+        )
+        if not conversation_id:
+            logger.warning(f"[CHAT] Errore creando nuova conversazione per user_id={user_id}")
+            conversation_id = None
+    
+    # Recupera storia conversazione (ultimi 10 messaggi) per questa conversazione
+    conversation_history = None
+    try:
+        conversation_history = await db_manager.get_recent_chat_messages(
+            user_id, 
+            limit=10, 
+            conversation_id=conversation_id
+        )
+        if conversation_history:
+            # Converti in formato OpenAI (solo role e content)
+            conversation_history = [
+                {"role": msg["role"], "content": msg["content"]}
+                for msg in conversation_history
+            ]
+            logger.info(f"[CHAT] Recuperati {len(conversation_history)} messaggi dalla conversazione id={conversation_id}")
+    except Exception as e:
+        logger.warning(f"[CHAT] Errore recupero storia conversazione: {e}")
+        conversation_history = None
+    
+    # Salva messaggio utente PRIMA di processare
+    try:
+        message_to_log = f"🎤 {user_message}" if source == "audio" else user_message
+        await db_manager.log_chat_message(user_id, "user", message_to_log, conversation_id=conversation_id)
+    except Exception as e:
+        logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
+    
+    # Sistema ibrido: prova prima V1, se non funziona passa a V2
+    logger.info(f"[CHAT] 🔄 Provo prima con AIServiceV1...")
+    result = await ai_service_v1.process_message(
+        user_message=user_message,
+        user_id=user_id,
+        conversation_history=conversation_history
+    )
+    
+    # Valuta se la risposta è valida usando ResponseValidator
+    if ai_service_v2 is not None and ResponseValidator.should_fallback_to_v2(result):
+        logger.info(f"[CHAT] ⚠️ Risposta V1 non soddisfacente, passo a AIServiceV2 (multi-agent)")
+        result = await ai_service_v2.process_message(
+            user_message=user_message,
+            user_id=user_id,
+            conversation_history=conversation_history
+        )
+    else:
+        logger.info(f"[CHAT] ✅ Risposta V1 valida, uso quella")
+    
+    # Verifica che result sia valido
+    if not result or not isinstance(result, dict):
+        logger.error(f"[CHAT] AI service ha restituito risultato non valido: {result}")
+        result = {
+            "message": "⚠️ Errore temporaneo dell'AI. Riprova tra qualche minuto.",
+            "metadata": {"error": "invalid_response"},
+            "buttons": None
+        }
+    
+    # Salva risposta AI DOPO la generazione
+    try:
+        ai_response_message = result.get("message", "")
+        if ai_response_message:
+            await db_manager.log_chat_message(user_id, "assistant", ai_response_message, conversation_id=conversation_id)
+            # Aggiorna timestamp ultimo messaggio conversazione
+            if conversation_id:
+                await db_manager.update_conversation_last_message(conversation_id, user_id)
+    except Exception as e:
+        logger.warning(f"[CHAT] Errore salvataggio risposta AI: {e}")
+    
+    # Aggiungi metadata per indicare origine
+    metadata = result.get("metadata", {})
+    metadata["source"] = source
+    if source == "audio":
+        metadata["transcribed_text"] = user_message
+    
+    return ChatResponse(
+        message=result.get("message", "⚠️ Nessuna risposta disponibile"),
+        conversation_id=conversation_id,
+        metadata=metadata,
+        buttons=result.get("buttons"),
+        is_html=result.get("is_html", False)
+    )
+
+
 @router.post("/message", response_model=ChatResponse)
 async def send_message(
     chat_message: ChatMessage,
@@ -74,96 +187,13 @@ async def send_message(
     Richiede autenticazione JWT.
     """
     user_id = current_user["user_id"]
-    user = current_user["user"]
     
-    logger.info(f"[CHAT] Messaggio ricevuto da user_id={user_id}: {chat_message.message[:50]}...")
-    
-    try:
-        # Gestione conversation_id: crea nuova conversazione se non specificata
-        conversation_id = chat_message.conversation_id
-        if not conversation_id:
-            # Crea nuova conversazione
-            conversation_id = await db_manager.create_conversation(
-                user_id=user_id,
-                telegram_id=None,  # Non più necessario per web app
-                title=chat_message.message[:50] + "..." if len(chat_message.message) > 50 else chat_message.message
-            )
-            if not conversation_id:
-                logger.warning(f"[CHAT] Errore creando nuova conversazione per user_id={user_id}")
-                # Continua comunque senza conversation_id (retrocompatibilità)
-                conversation_id = None
-        
-        # Recupera storia conversazione (ultimi 10 messaggi) per questa conversazione
-        conversation_history = None
-        try:
-            conversation_history = await db_manager.get_recent_chat_messages(
-                user_id, 
-                limit=10, 
-                conversation_id=conversation_id
-            )
-            if conversation_history:
-                # Converti in formato OpenAI (solo role e content)
-                conversation_history = [
-                    {"role": msg["role"], "content": msg["content"]}
-                    for msg in conversation_history
-                ]
-                logger.info(f"[CHAT] Recuperati {len(conversation_history)} messaggi dalla conversazione id={conversation_id}")
-        except Exception as e:
-            logger.warning(f"[CHAT] Errore recupero storia conversazione: {e}")
-            conversation_history = None
-        
-        # Salva messaggio utente PRIMA di processare
-        try:
-            await db_manager.log_chat_message(user_id, "user", chat_message.message, conversation_id=conversation_id)
-        except Exception as e:
-            logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
-        
-        # Sistema ibrido: prova prima V1, se non funziona passa a V2
-        logger.info(f"[CHAT] 🔄 Provo prima con AIServiceV1...")
-        result = await ai_service_v1.process_message(
-            user_message=chat_message.message,
-            user_id=user_id,
-            conversation_history=conversation_history
-        )
-        
-        # Valuta se la risposta è valida
-        if ai_service_v2 is not None and ResponseValidator.should_fallback_to_v2(result):
-            logger.info(f"[CHAT] ⚠️ Risposta V1 non soddisfacente, passo a AIServiceV2 (multi-agent)")
-            result = await ai_service_v2.process_message(
-                user_message=chat_message.message,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
-        else:
-            logger.info(f"[CHAT] ✅ Risposta V1 valida, uso quella")
-        
-        # Verifica che result sia valido
-        if not result or not isinstance(result, dict):
-            logger.error(f"[CHAT] AI service ha restituito risultato non valido: {result}")
-            result = {
-                "message": "⚠️ Errore temporaneo dell'AI. Riprova tra qualche minuto.",
-                "metadata": {"error": "invalid_response"},
-                "buttons": None
-            }
-        
-        # Salva risposta AI DOPO la generazione
-        try:
-            ai_response_message = result.get("message", "")
-            if ai_response_message:
-                await db_manager.log_chat_message(user_id, "assistant", ai_response_message, conversation_id=conversation_id)
-                # Aggiorna timestamp ultimo messaggio conversazione
-                if conversation_id:
-                    await db_manager.update_conversation_last_message(conversation_id, user_id)
-        except Exception as e:
-            logger.warning(f"[CHAT] Errore salvataggio risposta AI: {e}")
-        
-        return ChatResponse(
-            message=result.get("message", "⚠️ Nessuna risposta disponibile"),
-            conversation_id=conversation_id,  # Restituisce conversation_id (nuovo o esistente)
-            metadata=result.get("metadata", {}),
-            buttons=result.get("buttons"),  # Includi pulsanti se presenti
-            is_html=result.get("is_html", False)  # Indica se contiene HTML
-        )
+    return await process_text_message(
+        user_message=chat_message.message,
+        user_id=user_id,
+        conversation_id=chat_message.conversation_id,
+        source="text"
+    )
     except Exception as e:
         logger.error(f"[CHAT] Errore processamento messaggio: {e}", exc_info=True)
         raise HTTPException(
@@ -300,12 +330,12 @@ async def send_audio_message(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Processa messaggio audio: converte in testo e passa all'AI.
+    Processa messaggio audio: converte in testo e passa all'AI seguendo il percorso originale.
     
-    Flow:
+    Flow migliorato:
     1. Riceve file audio
     2. AudioAgent converte audio -> testo (Whisper)
-    3. Passa testo all'orchestratore (RouterAgent/AIService)
+    3. Passa testo trascritto a process_text_message (stesso percorso dei messaggi testuali)
     4. Ritorna risposta AI
     """
     user_id = current_user["user_id"]
@@ -321,7 +351,8 @@ async def send_audio_message(
         audio_content = await audio.read()
         filename = audio.filename or "audio.webm"
         
-        # Step 1: Trascrivi audio -> testo
+        # Step 1: Trascrivi audio -> testo usando AudioAgent
+        logger.info(f"[CHAT_AUDIO] 🎤 Trascrizione audio in corso...")
         transcription_result = await audio_agent.transcribe_audio(
             audio_file=audio_content,
             filename=filename,
@@ -337,90 +368,16 @@ async def send_audio_message(
             )
         
         transcribed_text = transcription_result["text"]
-        logger.info(f"[CHAT_AUDIO] ✅ Trascrizione: '{transcribed_text[:50]}...'")
+        logger.info(f"[CHAT_AUDIO] ✅ Trascrizione completata: '{transcribed_text[:50]}...'")
         
-        # Step 2: Gestione conversation_id
-        if not conversation_id:
-            conversation_id = await db_manager.create_conversation(
-                user_id=user_id,
-                telegram_id=None,
-                title=f"🎤 {transcribed_text[:50]}{'...' if len(transcribed_text) > 50 else ''}"
-            )
-            if not conversation_id:
-                conversation_id = None
-        
-        # Step 3: Salva messaggio utente (con nota che è da audio)
-        try:
-            await db_manager.log_chat_message(
-                user_id, 
-                "user", 
-                f"🎤 {transcribed_text}", 
-                conversation_id=conversation_id
-            )
-        except Exception as e:
-            logger.warning(f"[CHAT_AUDIO] Errore salvataggio messaggio: {e}")
-        
-        # Step 4: Recupera storia conversazione
-        conversation_history = None
-        try:
-            conversation_history = await db_manager.get_recent_chat_messages(
-                user_id,
-                limit=10,
-                conversation_id=conversation_id
-            )
-            if conversation_history:
-                conversation_history = [
-                    {"role": msg["role"], "content": msg["content"]}
-                    for msg in conversation_history
-                ]
-        except Exception as e:
-            logger.warning(f"[CHAT_AUDIO] Errore recupero storia: {e}")
-        
-        # Step 5: Sistema ibrido - prova prima V1, se non funziona passa a V2
-        logger.info(f"[CHAT/AUDIO] 🔄 Provo prima con AIServiceV1...")
-        result = await ai_service_v1.process_message(
+        # Step 2: Passa il testo trascritto al percorso originale (stesso di /message)
+        # Questo garantisce che l'audio segua esattamente lo stesso flusso dei messaggi testuali
+        logger.info(f"[CHAT_AUDIO] 🔄 Passo testo trascritto al percorso originale (V1 -> V2 se necessario)")
+        return await process_text_message(
             user_message=transcribed_text,
             user_id=user_id,
-            conversation_history=conversation_history
-        )
-        
-        # Valuta se la risposta è valida
-        if ai_service_v2 is not None and ResponseValidator.should_fallback_to_v2(result):
-            logger.info(f"[CHAT/AUDIO] ⚠️ Risposta V1 non soddisfacente, passo a AIServiceV2")
-            result = await ai_service_v2.process_message(
-                user_message=transcribed_text,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
-        else:
-            logger.info(f"[CHAT/AUDIO] ✅ Risposta V1 valida, uso quella")
-        
-        # Step 6: Salva risposta AI
-        try:
-            ai_response_message = result.get("message", "")
-            if ai_response_message:
-                await db_manager.log_chat_message(
-                    user_id, 
-                    "assistant", 
-                    ai_response_message, 
-                    conversation_id=conversation_id
-                )
-                if conversation_id:
-                    await db_manager.update_conversation_last_message(conversation_id, user_id)
-        except Exception as e:
-            logger.warning(f"[CHAT_AUDIO] Errore salvataggio risposta: {e}")
-        
-        # Step 7: Ritorna risposta (aggiungi metadata per indicare che proviene da audio)
-        metadata = result.get("metadata", {})
-        metadata["source"] = "audio"
-        metadata["transcribed_text"] = transcribed_text
-        
-        return ChatResponse(
-            message=result.get("message", "⚠️ Nessuna risposta disponibile"),
             conversation_id=conversation_id,
-            metadata=metadata,
-            buttons=result.get("buttons"),
-            is_html=result.get("is_html", False)
+            source="audio"
         )
     
     except HTTPException:

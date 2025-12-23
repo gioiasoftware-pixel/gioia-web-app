@@ -20,6 +20,8 @@
     <link rel="stylesheet" href="/static/layout/MobileLayout/mobile.css">
     <!-- Chat Audio Styles -->
     <link rel="stylesheet" href="/static/styles/chat-audio.css">
+    <!-- Notifications Styles -->
+    <link rel="stylesheet" href="/static/styles/notifications.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -116,6 +118,13 @@
                 </div>
                 <h1 class="chat-title">Gio.ia</h1>
                 <div class="header-actions">
+                    <button type="button" id="notifications-btn-mobile" class="btn-notifications-mobile" title="Notifiche">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M15 13.3333V8.33333C15 5.57191 12.7614 3.33333 10 3.33333C7.23858 3.33333 5 5.57191 5 8.33333V13.3333L3.33333 15V16.6667H16.6667V15L15 13.3333Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 3.33333V1.66667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            <circle id="notifications-badge-mobile" class="notifications-badge" cx="14" cy="5" r="4" fill="#dc2626" style="display: none;"></circle>
+                        </svg>
+                    </button>
                     <button type="button" id="add-wine-btn-mobile" class="btn-add-wine-mobile" title="Aggiungi nuovo vino">
                         <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
                             <path d="M10 4V16M4 10H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -401,6 +410,13 @@
                     </div>
                     <div class="chat-header-right">
                         <!-- Desktop buttons -->
+                        <button type="button" id="notifications-btn" class="btn btn-icon desktop-only" title="Notifiche" style="position: relative;">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M15 13.3333V8.33333C15 5.57191 12.7614 3.33333 10 3.33333C7.23858 3.33333 5 5.57191 5 8.33333V13.3333L3.33333 15V16.6667H16.6667V15L15 13.3333Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 3.33333V1.66667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                            <span id="notifications-badge" class="notifications-badge" style="display: none;">0</span>
+                        </button>
                         <button type="button" id="add-wine-btn" class="btn btn-primary desktop-only" title="Aggiungi nuovo vino">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -584,6 +600,17 @@
                 <path d="M6 4L14 10L6 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </button>
+        
+        <!-- Notifications Panel Desktop -->
+        <div class="notifications-panel-desktop" id="notifications-panel-desktop" style="display: none;">
+            <div class="notifications-panel-header">
+                <h2>Notifiche</h2>
+                <button type="button" id="notifications-close-desktop" class="notifications-close-btn">&times;</button>
+            </div>
+            <div class="notifications-panel-body" id="notifications-list-desktop">
+                <div class="notifications-loading">Caricamento notifiche...</div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal per grafico movimenti (creato dinamicamente quando necessario, rimosso quando chiuso) -->
@@ -629,6 +656,8 @@
     <!-- Chat implementations (layout-specific) -->
     <script src="/static/features/chat/mobile/ChatMobile.js"></script>
     <script src="/static/features/chat/desktop/ChatDesktop.js"></script>
+    <!-- Notifications -->
+    <script src="/static/features/notifications/notifications.js"></script>
     <!-- Main app -->
     <script src="/static/app.js"></script>
 </body>

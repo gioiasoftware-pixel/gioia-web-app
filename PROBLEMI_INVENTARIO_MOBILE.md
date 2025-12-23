@@ -82,3 +82,4 @@ async function openInventoryViewerMobile() {
 - [ ] Test: Verificare che il tasto inventario apra correttamente la schermata lista
 - [ ] Test: Verificare che ricerca e filtri funzionino
 
+

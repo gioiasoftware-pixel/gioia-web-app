@@ -31,6 +31,11 @@ async def run_migrations():
             print("[MIGRATIONS] Esecuzione migrazione tabelle LOG interazione...", file=sys.stderr)
             await migrate_log_interaction_tables(session)
             
+            # Migrazione 3: Crea tabella notifications se non esiste
+            print("[MIGRATIONS] Esecuzione migrazione tabella notifications...", file=sys.stderr)
+            from app.core.notifications_service import migrate_notifications_table
+            await migrate_notifications_table(session)
+            
             print("[MIGRATIONS] Commit modifiche database...", file=sys.stderr)
             await session.commit()
             
