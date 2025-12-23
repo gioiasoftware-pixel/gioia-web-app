@@ -1406,12 +1406,15 @@ function setupInventoryNavigation() {
  */
 function handleInventoryBack() {
     if (inventoryCurrentScreen === 'details') {
+        // Da dettagli → lista
         showInventoryScreen('list');
     } else if (inventoryCurrentScreen === 'chart') {
+        // Da grafico → dettagli
         showInventoryScreen('details');
     } else {
-        // Se siamo nella lista, chiudi viewer
-        closeViewer();
+        // Se siamo nella lista, non fare nulla (non chiudere viewer)
+        // Il tasto indietro funziona solo all'interno delle schede inventario
+        return;
     }
 }
 

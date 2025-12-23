@@ -461,25 +461,10 @@
     gap: 12px;
 }
 
-.mobileRoot .mViewer .inventory-logo {
-    display: flex;
-    align-items: flex-start;
-    line-height: 1;
-}
-
-.mobileRoot .mViewer .inventory-logo-g {
-    font-size: 32px;
-    font-weight: 700;
-    color: var(--color-granaccia);
-    font-family: 'Arial', sans-serif;
-}
-
-.mobileRoot .mViewer .inventory-logo-ia {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-granaccia);
-    margin-left: 2px;
-    line-height: 1.2;
+.mobileRoot .mViewer .inventory-header-logo-mobile {
+    height: 32px;
+    width: auto;
+    object-fit: contain;
 }
 
 .mobileRoot .mViewer .inventory-title-mobile {
