@@ -3,6 +3,7 @@ Validation Agent - Specializzato per validazione dati e prevenzione errori.
 Controlla qualità dati prima di operazioni critiche.
 """
 from .base_agent import BaseAgent
+from .wine_card_helper import WineCardHelper
 from app.core.database import db_manager
 from typing import Dict, Any, Optional, List
 import logging
@@ -111,13 +112,29 @@ class ValidationAgent(BaseAgent):
             
             valid = len(errors) == 0
             
+            # Prepara HTML wine card se ci sono errori o warning importanti
+            wine_card_html = None
+            if not valid or (warnings and quantity > 100):  # Mostra card se errori o warning critici
+                error_info = None
+                if not valid:
+                    error_info = {
+                        "requested_quantity": quantity,
+                        "available_quantity": wine.quantity or 0
+                    }
+                wine_card_html = WineCardHelper.generate_wine_card_html(
+                    wine,
+                    error_info=error_info if not valid else None,
+                    badge="⚠️ Validazione fallita" if not valid else None
+                )
+            
             return {
                 "valid": valid,
                 "errors": errors,
                 "warnings": warnings,
                 "suggestions": suggestions,
                 "wine_name": wine.name,
-                "current_stock": wine.quantity or 0
+                "current_stock": wine.quantity or 0,
+                "wine_card_html": wine_card_html  # Aggiunto HTML card per visualizzazione
             }
         
         except Exception as e:

@@ -3,6 +3,7 @@ Notification Agent - Specializzato per notifiche proattive e alert automatici.
 Genera notifiche basate su stato inventario e pattern.
 """
 from .base_agent import BaseAgent
+from .wine_card_helper import WineCardHelper
 from app.core.database import db_manager
 from typing import Dict, Any, Optional, List
 import logging
@@ -241,11 +242,27 @@ class NotificationAgent(BaseAgent):
             elif "scorte" in message.lower() or "bassa" in message.lower():
                 alerts = await self.generate_low_stock_alerts(user_id)
                 if alerts:
+                    # Genera wine cards per i vini a bassa scorta
+                    wine_cards_html = ""
+                    wines_for_cards = []
+                    for alert in alerts[:5]:  # Max 5 vini
+                        wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
+                        if wine:
+                            wines_for_cards.append(wine)
+                            badge = "🔴 Esaurito" if alert["current_stock"] == 0 else "⚠️ Scorta Bassa"
+                            wine_cards_html += WineCardHelper.generate_wine_card_html(wine, badge=badge) + "<br>"
+                    
                     messages = [alert["message"] for alert in alerts]
+                    message_text = "\n\n".join(messages)
+                    
+                    # Combina wine cards e messaggi
+                    full_message = wine_cards_html + "\n\n" + message_text if wine_cards_html else message_text
+                    
                     return {
                         "success": True,
-                        "message": "\n\n".join(messages),
+                        "message": full_message,
                         "agent": self.name,
+                        "is_html": True if wine_cards_html else False,
                         "metadata": {"type": "low_stock_alerts", "count": len(alerts)}
                     }
                 else:

@@ -3,6 +3,7 @@ Wine Management Agent - Specializzato per gestione completa CRUD vini.
 Gestisce creazione, modifica, eliminazione e arricchimento dati vini.
 """
 from .base_agent import BaseAgent
+from .wine_card_helper import WineCardHelper
 from app.core.database import db_manager
 from app.core.processor_client import processor_client
 from typing import Dict, Any, Optional, List
@@ -77,6 +78,33 @@ class WineManagementAgent(BaseAgent):
             # Analizza intenzione (creare, modificare, eliminare)
             intention = await self._analyze_intention(message)
             logger.info(f"[WINE_MANAGEMENT] Intenzione rilevata: {intention}")
+            
+            # Se è una richiesta di creazione/modifica, cerca di estrarre informazioni vino
+            # e mostrare wine card quando appropriato
+            if intention in ["create", "update"]:
+                # Cerca vini menzionati nel messaggio per mostrare cards
+                mentioned_wines = await self._extract_wine_references(message, user_id)
+                if mentioned_wines:
+                    # Se troviamo vini esistenti, mostra wine cards
+                    wine_cards_html = ""
+                    for wine in mentioned_wines[:3]:  # Max 3 vini
+                        badge = "✏️ Vino da modificare" if intention == "update" else None
+                        wine_cards_html += WineCardHelper.generate_wine_card_html(wine, badge=badge) + "<br>"
+                    
+                    # Processa con AI e aggiungi wine cards alla risposta
+                    result = await self.process(
+                        message=enhanced_message,
+                        thread_id=thread_id,
+                        user_id=user_id,
+                        context={"user_id": user_id, "intention": intention, "inventory_context": context}
+                    )
+                    
+                    # Aggiungi wine cards all'inizio della risposta se disponibili
+                    if wine_cards_html and result.get("success"):
+                        result["message"] = wine_cards_html + "\n\n" + result["message"]
+                        result["is_html"] = True  # Marca come HTML
+                    
+                    return result
             
             # Processa con AI per estrazione dati e validazione
             result = await self.process(
@@ -158,6 +186,58 @@ class WineManagementAgent(BaseAgent):
         except Exception as e:
             logger.error(f"Errore recupero contesto inventario: {e}")
             return "Errore nel recupero informazioni inventario."
+    
+    async def _extract_wine_references(self, message: str, user_id: int) -> List:
+        """
+        Estrae riferimenti a vini dal messaggio cercando nell'inventario.
+        Utile per mostrare wine cards quando l'utente menziona vini esistenti.
+        """
+        try:
+            wines = await db_manager.get_user_wines(user_id)
+            if not wines:
+                return []
+            
+            message_lower = message.lower()
+            mentioned_wines = []
+            
+            # Cerca vini per nome nel messaggio
+            for wine in wines:
+                wine_name_lower = wine.name.lower()
+                # Controlla se il nome del vino è menzionato nel messaggio
+                if wine_name_lower in message_lower or any(word in message_lower for word in wine_name_lower.split() if len(word) > 3):
+                    mentioned_wines.append(wine)
+            
+            return mentioned_wines[:5]  # Max 5 vini
+        
+        except Exception as e:
+            logger.error(f"Errore estrazione riferimenti vini: {e}")
+            return []
+    
+    async def _extract_wine_references(self, message: str, user_id: int) -> List:
+        """
+        Estrae riferimenti a vini dal messaggio cercando nell'inventario.
+        Utile per mostrare wine cards quando l'utente menziona vini esistenti.
+        """
+        try:
+            wines = await db_manager.get_user_wines(user_id)
+            if not wines:
+                return []
+            
+            message_lower = message.lower()
+            mentioned_wines = []
+            
+            # Cerca vini per nome nel messaggio
+            for wine in wines:
+                wine_name_lower = wine.name.lower()
+                # Controlla se il nome del vino è menzionato nel messaggio
+                if wine_name_lower in message_lower or any(word in message_lower for word in wine_name_lower.split() if len(word) > 3):
+                    mentioned_wines.append(wine)
+            
+            return mentioned_wines[:5]  # Max 5 vini
+        
+        except Exception as e:
+            logger.error(f"Errore estrazione riferimenti vini: {e}")
+            return []
     
     def _format_context(self, context: Dict[str, Any]) -> str:
         """Formatta contesto per l'agent"""

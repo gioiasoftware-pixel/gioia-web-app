@@ -2,6 +2,7 @@
 Query Agent - Specializzato per ricerche e query inventario.
 """
 from .base_agent import BaseAgent
+from .wine_card_helper import WineCardHelper
 from app.core.database import db_manager
 from typing import Dict, Any, Optional
 import logging

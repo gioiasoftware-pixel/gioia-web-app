@@ -150,7 +150,7 @@ class AIServiceV2:
                         "thread_id": result.get("thread_id")
                     },
                     "buttons": None,  # Per compatibilità con API esistente
-                    "is_html": False  # Per compatibilità con API esistente
+                    "is_html": result.get("is_html", False)  # Usa is_html da result se disponibile
                 }
             else:
                 error_msg = result.get("error", "Errore sconosciuto")

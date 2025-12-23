@@ -3,6 +3,7 @@ Report Agent - Specializzato per generazione report personalizzati ed esportabil
 Estende AnalyticsAgent con formattazione professionale e export multipli formati.
 """
 from .base_agent import BaseAgent
+from .wine_card_helper import WineCardHelper
 from app.core.database import db_manager
 from typing import Dict, Any, Optional, List
 import logging
