@@ -40,6 +40,43 @@ class NotificationAgent(BaseAgent):
             model="gpt-4o-mini"  # Modello economico per analisi semplici
         )
     
+    async def generate_out_of_stock_alerts(
+        self,
+        user_id: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Genera alert per vini esauriti (quantità = 0).
+        
+        Args:
+            user_id: ID utente
+        
+        Returns:
+            Lista di alert per vini esauriti
+        """
+        try:
+            wines = await db_manager.get_user_wines(user_id)
+            if not wines:
+                return []
+            
+            alerts = []
+            out_of_stock_wines = [w for w in wines if (w.quantity or 0) == 0]
+            
+            for wine in out_of_stock_wines:
+                alerts.append({
+                    "type": "out_of_stock",
+                    "severity": "critical",
+                    "wine_id": wine.id,
+                    "wine_name": wine.name,
+                    "current_stock": 0,
+                    "message": f"🔴 **{wine.name}** è esaurito. Considera un riordino urgente."
+                })
+            
+            return alerts
+        
+        except Exception as e:
+            logger.error(f"[NOTIFICATION] Errore generazione alert vini esauriti: {e}", exc_info=True)
+            return []
+    
     async def generate_low_stock_alerts(
         self,
         user_id: int,
@@ -53,7 +90,7 @@ class NotificationAgent(BaseAgent):
             threshold: Soglia minima bottiglie (default: 5)
         
         Returns:
-            Lista di alert per vini a bassa scorta
+            Lista di alert per vini a bassa scorta (esclusi quelli esauriti)
         """
         try:
             wines = await db_manager.get_user_wines(user_id)
@@ -61,12 +98,13 @@ class NotificationAgent(BaseAgent):
                 return []
             
             alerts = []
-            low_stock_wines = [w for w in wines if (w.quantity or 0) < threshold]
+            # Filtra vini a bassa scorta ma NON esauriti (quantity > 0 ma < threshold)
+            low_stock_wines = [w for w in wines if 0 < (w.quantity or 0) < threshold]
             
             for wine in low_stock_wines:
                 alerts.append({
                     "type": "low_stock",
-                    "severity": "warning" if wine.quantity > 0 else "critical",
+                    "severity": "warning",
                     "wine_id": wine.id,
                     "wine_name": wine.name,
                     "current_stock": wine.quantity or 0,
@@ -239,7 +277,56 @@ class NotificationAgent(BaseAgent):
                     "agent": self.name,
                     "metadata": {"type": "report", "data": report["data"]}
                 }
+            elif "esauriti" in message.lower() or "esaurito" in message.lower() or "out of stock" in message.lower() or "finite" in message.lower():
+                # Richiesta specifica per vini esauriti
+                alerts = await self.generate_out_of_stock_alerts(user_id)
+                if alerts:
+                    # Genera wine cards per i vini esauriti
+                    wine_cards_html = ""
+                    wines_for_cards = []
+                    for alert in alerts:  # Mostra tutti i vini esauriti (non limitiamo a 5)
+                        wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
+                        if wine:
+                            wines_for_cards.append(wine)
+                            badge = "🔴 Esaurito"
+                            wine_cards_html += WineCardHelper.generate_wine_card_html(wine, badge=badge) + "<br>"
+                    
+                    # Genera anche lista HTML per vini esauriti (se molti)
+                    if len(wines_for_cards) > 10:
+                        # Usa lista HTML per vini esauriti
+                        wines_list_html = WineCardHelper.generate_wines_list_html(
+                            wines_for_cards,
+                            title=f"Vini Esauriti ({len(alerts)})",
+                            show_buttons=False
+                        )
+                        return {
+                            "success": True,
+                            "message": wines_list_html,
+                            "agent": self.name,
+                            "is_html": True,
+                            "metadata": {"type": "out_of_stock_alerts", "count": len(alerts)}
+                        }
+                    else:
+                        # Usa wine cards individuali
+                        messages = [alert["message"] for alert in alerts]
+                        message_text = "\n\n".join(messages)
+                        full_message = wine_cards_html + "\n\n" + message_text if wine_cards_html else message_text
+                        
+                        return {
+                            "success": True,
+                            "message": full_message,
+                            "agent": self.name,
+                            "is_html": True if wine_cards_html else False,
+                            "metadata": {"type": "out_of_stock_alerts", "count": len(alerts)}
+                        }
+                else:
+                    return {
+                        "success": True,
+                        "message": "✅ Nessun vino esaurito. Tutti i vini hanno scorte disponibili!",
+                        "agent": self.name
+                    }
             elif "scorte" in message.lower() or "bassa" in message.lower():
+                # Richiesta per vini a bassa scorta (ma non esauriti)
                 alerts = await self.generate_low_stock_alerts(user_id)
                 if alerts:
                     # Genera wine cards per i vini a bassa scorta
@@ -249,7 +336,7 @@ class NotificationAgent(BaseAgent):
                         wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
                         if wine:
                             wines_for_cards.append(wine)
-                            badge = "🔴 Esaurito" if alert["current_stock"] == 0 else "⚠️ Scorta Bassa"
+                            badge = "⚠️ Scorta Bassa"
                             wine_cards_html += WineCardHelper.generate_wine_card_html(wine, badge=badge) + "<br>"
                     
                     messages = [alert["message"] for alert in alerts]
