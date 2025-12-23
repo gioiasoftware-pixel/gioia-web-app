@@ -1008,6 +1008,14 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
         }, 100);
     }
     
+    // IMPORTANTE: Setup listener per pulsanti di movimento integrati nelle wine cards
+    // (stesso sistema di app.js per garantire funzionalità su mobile)
+    if (isHtml && role === 'ai') {
+        setTimeout(() => {
+            setupWineCardMovementButtons(messageElement);
+        }, 100);
+    }
+    
     // Scroll automatico
     requestAnimationFrame(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
