@@ -1303,6 +1303,9 @@ function diagnoseChatScroll() {
     let lastWheelTime = 0;
     let lastScrollTime = 0;
     
+    // Variabile per tracciare se lo scroll è stato forzato
+    let scrollForceAttempted = false;
+    
     const wheelHandler = (e) => {
         wheelEventCount++;
         lastWheelTime = Date.now();
@@ -1320,8 +1323,47 @@ function diagnoseChatScroll() {
             target: e.target.tagName + (e.target.id ? '#' + e.target.id : ''),
             currentTarget: e.currentTarget === scrollWrapper ? 'scrollWrapper' : 'altro',
             defaultPrevented: e.defaultPrevented,
-            scrollTop: scrollWrapper.scrollTop
+            cancelable: e.cancelable,
+            scrollTop: scrollWrapper.scrollTop,
+            scrollHeight: scrollWrapper.scrollHeight,
+            clientHeight: scrollWrapper.clientHeight
         });
+        
+        // Se l'evento è dentro il wrapper scrollabile e non è stato preventDefault
+        if (isInside && isScrollable && !e.defaultPrevented && Math.abs(e.deltaY) > 0) {
+            const oldScrollTop = scrollWrapper.scrollTop;
+            const maxScroll = scrollWrapper.scrollHeight - scrollWrapper.clientHeight;
+            
+            // Verifica se lo scroll dovrebbe funzionare ma non funziona
+            requestAnimationFrame(() => {
+                const newScrollTop = scrollWrapper.scrollTop;
+                // Se lo scroll non è cambiato dopo l'evento wheel, forzalo
+                if (oldScrollTop === newScrollTop && Math.abs(e.deltaY) > 0) {
+                    const canScrollDown = oldScrollTop < maxScroll && e.deltaY > 0;
+                    const canScrollUp = oldScrollTop > 0 && e.deltaY < 0;
+                    
+                    if ((canScrollDown || canScrollUp) && !scrollForceAttempted) {
+                        scrollForceAttempted = true;
+                        const scrollAmount = e.deltaY * 0.5; // Riduci per scroll più fluido
+                        const targetScroll = Math.max(0, Math.min(maxScroll, oldScrollTop + scrollAmount));
+                        
+                        console.warn(`[SCROLL DIAG] ⚠️ Wheel ricevuto ma scroll non avvenuto! Forzo scroll:`, {
+                            oldScrollTop: oldScrollTop,
+                            targetScroll: targetScroll,
+                            deltaY: e.deltaY,
+                            scrollAmount: scrollAmount
+                        });
+                        
+                        scrollWrapper.scrollTop = targetScroll;
+                        
+                        // Reset flag dopo breve delay
+                        setTimeout(() => {
+                            scrollForceAttempted = false;
+                        }, 100);
+                    }
+                }
+            });
+        }
     };
     
     const scrollHandler = () => {
