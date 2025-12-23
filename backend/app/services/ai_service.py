@@ -235,6 +235,20 @@ INFORMAZIONI UTENTE:
                     "is_html": True
                 }
             
+            # 2a-bis. Richieste di report inventario
+            if self._is_report_request(user_message):
+                logger.info(f"[AI_SERVICE] Richiesta report inventario rilevata, genero report card")
+                report_response = await self._build_report_card_response(user_id)
+                return {
+                    "message": report_response,
+                    "metadata": {
+                        "type": "inventory_report",
+                        "model": None
+                    },
+                    "buttons": None,
+                    "is_html": True
+                }
+            
             # 2b. Richieste di riepilogo movimenti
             is_movement_request, period = self._is_movement_summary_request(user_message)
             if is_movement_request:
