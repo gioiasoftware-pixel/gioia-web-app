@@ -1412,9 +1412,8 @@ function handleInventoryBack() {
         // Da grafico → dettagli
         showInventoryScreen('details');
     } else {
-        // Se siamo nella lista, non fare nulla (non chiudere viewer)
-        // Il tasto indietro funziona solo all'interno delle schede inventario
-        return;
+        // Se siamo nella lista, chiudi viewer e torna alla chat
+        closeViewer();
     }
 }
 
