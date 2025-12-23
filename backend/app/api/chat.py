@@ -11,7 +11,7 @@ from app.services.ai_service import AIService as AIServiceV1
 from app.core.database import db_manager
 from app.core.auth import get_current_user
 from app.core.config import get_settings
-from app.services.request_complexity_analyzer import RequestComplexityAnalyzer
+from app.services.response_validator import ResponseValidator
 
 logger = logging.getLogger(__name__)
 
@@ -118,33 +118,24 @@ async def send_message(
         except Exception as e:
             logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
         
-        # Sistema ibrido: analizza complessità e scegli servizio appropriato
-        complexity = RequestComplexityAnalyzer.analyze(chat_message.message)
+        # Sistema ibrido: prova prima V1, se non funziona passa a V2
+        logger.info(f"[CHAT] 🔄 Provo prima con AIServiceV1...")
+        result = await ai_service_v1.process_message(
+            user_message=chat_message.message,
+            user_id=user_id,
+            conversation_history=conversation_history
+        )
         
-        if complexity == "simple" and ai_service_v2 is not None:
-            # Richiesta semplice: usa V1 (più veloce e diretto)
-            logger.info(f"[CHAT] 📊 Richiesta semplice -> AIServiceV1 (tradizionale)")
-            result = await ai_service_v1.process_message(
-                user_message=chat_message.message,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
-        elif ai_service_v2 is not None:
-            # Richiesta complessa: usa V2 (multi-agent)
-            logger.info(f"[CHAT] 📊 Richiesta complessa -> AIServiceV2 (multi-agent)")
+        # Valuta se la risposta è valida
+        if ai_service_v2 is not None and ResponseValidator.should_fallback_to_v2(result):
+            logger.info(f"[CHAT] ⚠️ Risposta V1 non soddisfacente, passo a AIServiceV2 (multi-agent)")
             result = await ai_service_v2.process_message(
                 user_message=chat_message.message,
                 user_id=user_id,
                 conversation_history=conversation_history
             )
         else:
-            # Fallback: V2 non disponibile, usa sempre V1
-            logger.info(f"[CHAT] 📊 Fallback -> AIServiceV1 (V2 non disponibile)")
-            result = await ai_service_v1.process_message(
-                user_message=chat_message.message,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
+            logger.info(f"[CHAT] ✅ Risposta V1 valida, uso quella")
         
         # Verifica che result sia valido
         if not result or not isinstance(result, dict):
@@ -385,33 +376,24 @@ async def send_audio_message(
         except Exception as e:
             logger.warning(f"[CHAT_AUDIO] Errore recupero storia: {e}")
         
-        # Step 5: Sistema ibrido - analizza complessità e scegli servizio
-        complexity = RequestComplexityAnalyzer.analyze(transcribed_text)
+        # Step 5: Sistema ibrido - prova prima V1, se non funziona passa a V2
+        logger.info(f"[CHAT/AUDIO] 🔄 Provo prima con AIServiceV1...")
+        result = await ai_service_v1.process_message(
+            user_message=transcribed_text,
+            user_id=user_id,
+            conversation_history=conversation_history
+        )
         
-        if complexity == "simple" and ai_service_v2 is not None:
-            # Richiesta semplice: usa V1
-            logger.info(f"[CHAT/AUDIO] 📊 Richiesta semplice -> AIServiceV1")
-            result = await ai_service_v1.process_message(
-                user_message=transcribed_text,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
-        elif ai_service_v2 is not None:
-            # Richiesta complessa: usa V2
-            logger.info(f"[CHAT/AUDIO] 📊 Richiesta complessa -> AIServiceV2")
+        # Valuta se la risposta è valida
+        if ai_service_v2 is not None and ResponseValidator.should_fallback_to_v2(result):
+            logger.info(f"[CHAT/AUDIO] ⚠️ Risposta V1 non soddisfacente, passo a AIServiceV2")
             result = await ai_service_v2.process_message(
                 user_message=transcribed_text,
                 user_id=user_id,
                 conversation_history=conversation_history
             )
         else:
-            # Fallback: V2 non disponibile
-            logger.info(f"[CHAT/AUDIO] 📊 Fallback -> AIServiceV1")
-            result = await ai_service_v1.process_message(
-                user_message=transcribed_text,
-                user_id=user_id,
-                conversation_history=conversation_history
-            )
+            logger.info(f"[CHAT/AUDIO] ✅ Risposta V1 valida, uso quella")
         
         # Step 6: Salva risposta AI
         try:
