@@ -34,6 +34,8 @@ class BaseAgent:
             raise ValueError("OPENAI_API_KEY non configurata")
         
         # OpenAI Assistants API v2 richiede header specifico
+        # Nota: nella versione più recente di OpenAI Python SDK, l'header viene gestito automaticamente
+        # ma possiamo specificarlo esplicitamente se necessario
         self.client = OpenAI(
             api_key=api_key,
             default_headers={"OpenAI-Beta": "assistants=v2"}
