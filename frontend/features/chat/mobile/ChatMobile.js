@@ -1117,6 +1117,88 @@ async function handleWineCardShowInInventoryMobile(wineCard, wineId) {
     }
 }
 
+/**
+ * Setup listener per pulsanti di movimento integrati nelle wine cards
+ * (gestisce .wines-list-item-button per movimenti multipli/singoli)
+ */
+function setupWineCardMovementButtons(messageElement) {
+    // Cerca tutti i pulsanti di movimento (.wines-list-item-button e .chat-button)
+    const buttonElements = messageElement.querySelectorAll('.chat-button, .wines-list-item-button');
+    
+    if (buttonElements.length > 0) {
+        console.log(`[MOBILE] Trovati ${buttonElements.length} pulsanti movimento da collegare`);
+        buttonElements.forEach((btn, index) => {
+            // Rimuovi listener esistenti per evitare duplicati (se presenti)
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            
+            // Leggi data attributes dal pulsante
+            const wineId = newBtn.dataset.wineId || newBtn.getAttribute('data-wine-id');
+            const wineText = newBtn.dataset.wineText || newBtn.getAttribute('data-wine-text');
+            const movementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
+            const quantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
+            
+            console.log(`[MOBILE] 🔗 Collegamento listener pulsante movimento ${index + 1}:`, {
+                wineId: wineId,
+                wineText: wineText,
+                movementType: movementType,
+                quantity: quantity,
+                hasMovementData: !!(movementType && quantity && wineId)
+            });
+            
+            // Aggiungi listener - usa addUniversalEventListener se disponibile (da app.js), altrimenti addEventListener standard
+            const addListener = (typeof addUniversalEventListener !== 'undefined') 
+                ? addUniversalEventListener 
+                : (el, handler) => el.addEventListener('click', handler);
+            
+            addListener(newBtn, async (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                
+                // Leggi data attributes al momento del click
+                const clickWineId = newBtn.dataset.wineId || newBtn.getAttribute('data-wine-id');
+                const clickWineText = newBtn.dataset.wineText || newBtn.getAttribute('data-wine-text');
+                const clickMovementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
+                const clickQuantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
+                
+                console.log('[MOBILE] 🔘 Click pulsante movimento wine card:', { 
+                    wineId: clickWineId, 
+                    wineText: clickWineText, 
+                    movementType: clickMovementType, 
+                    quantity: clickQuantity,
+                    isMovement: !!(clickMovementType && clickQuantity && clickWineId)
+                });
+                
+                // Se è un pulsante di conferma movimento, processa direttamente
+                if (clickMovementType && clickQuantity && clickWineId) {
+                    console.log('[MOBILE] ✅ Processando movimento:', { 
+                        movementType: clickMovementType, 
+                        quantity: clickQuantity, 
+                        wineId: clickWineId 
+                    });
+                    
+                    // Invia direttamente all'API usando sendChatMessage se disponibile
+                    const message = `[movement:${clickMovementType}] [wine_id:${clickWineId}] [quantity:${clickQuantity}]`;
+                    
+                    if (typeof sendChatMessage !== 'undefined') {
+                        await sendChatMessage(message, false); // false = non mostrare messaggio utente
+                    } else {
+                        // Fallback: chiama direttamente handleChatSubmitMobile
+                        console.warn('[MOBILE] sendChatMessage non disponibile, uso fallback');
+                        // Il movimento verrà gestito dal backend quando riceve il messaggio
+                    }
+                } else if (clickWineId) {
+                    // Pulsante normale (ricerca vino)
+                    console.log('[MOBILE] Click pulsante ricerca vino:', clickWineText);
+                    if (typeof sendChatMessage !== 'undefined') {
+                        await sendChatMessage(clickWineText, true);
+                    }
+                }
+            });
+        });
+    }
+}
+
 // ============================================
 // CLEANUP
 // ============================================
