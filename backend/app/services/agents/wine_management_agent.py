@@ -128,13 +128,27 @@ class WineManagementAgent(BaseAgent):
         """Analizza intenzione del messaggio (create, update, delete)"""
         message_lower = message.lower()
         
-        # Keywords per creazione
-        create_keywords = ["aggiungi", "crea", "nuovo", "inserisci", "add", "create", "new", "inserire"]
+        # Keywords per creazione (più ampie)
+        create_keywords = [
+            "aggiungi", "aggiungere", "crea", "creare", "nuovo", "nuova", 
+            "inserisci", "inserire", "add", "create", "new", "inserire",
+            "voglio aggiungere", "devo aggiungere", "vorrei aggiungere",
+            "inserire un nuovo", "aggiungere un nuovo", "creare un nuovo",
+            "nuovo vino", "nuova bottiglia", "registra nuovo", "registrare nuovo"
+        ]
         # Keywords per modifica
-        update_keywords = ["modifica", "aggiorna", "cambia", "update", "change", "modify", "edit"]
+        update_keywords = [
+            "modifica", "modificare", "aggiorna", "aggiornare", "cambia", "cambiare",
+            "update", "change", "modify", "edit", "cambia il", "modifica il",
+            "aggiorna il", "cambio", "cambiamo"
+        ]
         # Keywords per eliminazione
-        delete_keywords = ["elimina", "rimuovi", "cancella", "delete", "remove", "cancellare"]
+        delete_keywords = [
+            "elimina", "eliminare", "rimuovi", "rimuovere", "cancella", "cancellare",
+            "delete", "remove", "togli", "togliere", "elimina il", "rimuovi il"
+        ]
         
+        # Controlla creazione prima (più comune)
         if any(keyword in message_lower for keyword in create_keywords):
             return "create"
         elif any(keyword in message_lower for keyword in delete_keywords):
@@ -142,6 +156,12 @@ class WineManagementAgent(BaseAgent):
         elif any(keyword in message_lower for keyword in update_keywords):
             return "update"
         else:
+            # Se non trova keywords esplicite, controlla se sembra una descrizione di vino
+            # (nome vino + caratteristiche = probabilmente creazione)
+            wine_indicators = ["bottiglie", "bottiglia", "annata", "produttore", "cantina", "prezzo", "€", "euro"]
+            if any(indicator in message_lower for indicator in wine_indicators):
+                # Se contiene indicatori di vino ma non keywords di modifica/eliminazione, probabilmente è creazione
+                return "create"
             return "unknown"
     
     async def _get_wine_management_context(self, user_id: int) -> str:
