@@ -188,12 +188,13 @@ async def send_message(
     """
     user_id = current_user["user_id"]
     
-    return await process_text_message(
-        user_message=chat_message.message,
-        user_id=user_id,
-        conversation_id=chat_message.conversation_id,
-        source="text"
-    )
+    try:
+        return await process_text_message(
+            user_message=chat_message.message,
+            user_id=user_id,
+            conversation_id=chat_message.conversation_id,
+            source="text"
+        )
     except Exception as e:
         logger.error(f"[CHAT] Errore processamento messaggio: {e}", exc_info=True)
         raise HTTPException(
