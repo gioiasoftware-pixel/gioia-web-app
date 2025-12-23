@@ -535,20 +535,11 @@ class NotificationAgent(BaseAgent):
                         if wine and (wine.quantity or 0) == 0:  # Verifica esplicita quantità = 0
                             wines_for_cards.append(wine)
                     
-                    # Genera lista HTML per vini esauriti (più efficiente per molti vini)
+                    # Genera lista HTML per vini esauriti (sempre, più efficiente)
                     if len(wines_for_cards) > 0:
                         wines_list_html = WineCardHelper.generate_wines_list_html(
                             wines_for_cards,
                             title=f"Vini Esauriti ({len(wines_for_cards)})",
-                            show_buttons=False
-                        )
-                    
-                    # Genera anche lista HTML per vini esauriti (se molti)
-                    if len(wines_for_cards) > 10:
-                        # Usa lista HTML per vini esauriti
-                        wines_list_html = WineCardHelper.generate_wines_list_html(
-                            wines_for_cards,
-                            title=f"Vini Esauriti ({len(alerts)})",
                             show_buttons=False
                         )
                         return {
@@ -556,20 +547,7 @@ class NotificationAgent(BaseAgent):
                             "message": wines_list_html,
                             "agent": self.name,
                             "is_html": True,
-                            "metadata": {"type": "out_of_stock_alerts", "count": len(alerts)}
-                        }
-                    else:
-                        # Usa wine cards individuali
-                        messages = [alert["message"] for alert in alerts]
-                        message_text = "\n\n".join(messages)
-                        full_message = wine_cards_html + "\n\n" + message_text if wine_cards_html else message_text
-                        
-                        return {
-                            "success": True,
-                            "message": full_message,
-                            "agent": self.name,
-                            "is_html": True if wine_cards_html else False,
-                            "metadata": {"type": "out_of_stock_alerts", "count": len(alerts)}
+                            "metadata": {"type": "out_of_stock_alerts", "count": len(wines_for_cards)}
                         }
                 else:
                     return {
