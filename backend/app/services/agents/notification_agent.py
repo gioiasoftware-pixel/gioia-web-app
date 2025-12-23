@@ -4,12 +4,15 @@ Genera notifiche basate su stato inventario e pattern.
 """
 from .base_agent import BaseAgent
 from .wine_card_helper import WineCardHelper
-from app.core.database import db_manager
+from .chart_helper import ChartHelper
+from app.core.database import db_manager, AsyncSessionLocal
+from sqlalchemy import text as sql_text
 from typing import Dict, Any, Optional, List
 import logging
 from datetime import datetime, timedelta
 import httpx
 import os
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +316,10 @@ class NotificationAgent(BaseAgent):
                         "movements": []
                     }
                 
-                # Cerca storico vino
+                # Cerca storico vino con matching più robusto
+                # Prima prova match esatto (case-insensitive)
+                # Poi prova match parziale (LIKE)
+                # Infine prova con caratteri accentati normalizzati
                 query_storico = sql_text(f"""
                     SELECT 
                         current_stock,
@@ -321,17 +327,21 @@ class NotificationAgent(BaseAgent):
                         first_movement_date,
                         last_movement_date,
                         total_consumi,
-                        total_rifornimenti
+                        total_rifornimenti,
+                        wine_name
                     FROM {table_storico}
                     WHERE user_id = :user_id
                     AND (
                         LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact))
                         OR LOWER(wine_name) LIKE LOWER(:wine_name_pattern)
+                        OR LOWER(TRIM(wine_name)) LIKE LOWER(:wine_name_pattern_trim)
+                        OR translate(LOWER(wine_name), 'àáâäèéêëìíîïòóôöùúûü', 'aaaaeeeeiiiioooouuuu') = translate(LOWER(:wine_name_exact), 'àáâäèéêëìíîïòóôöùúûü', 'aaaaeeeeiiiioooouuuu')
                     )
                     ORDER BY 
                         CASE 
                             WHEN LOWER(TRIM(wine_name)) = LOWER(TRIM(:wine_name_exact)) THEN 1
-                            ELSE 2
+                            WHEN LOWER(wine_name) LIKE LOWER(:wine_name_pattern) THEN 2
+                            ELSE 3
                         END
                     LIMIT 1
                 """)
@@ -339,12 +349,22 @@ class NotificationAgent(BaseAgent):
                 result = await session.execute(
                     query_storico,
                     {
-                        "user_id": user_id,
+                        "user_id": user.id,  # Usa user.id invece di user_id
                         "wine_name_exact": wine_name,
-                        "wine_name_pattern": f"%{wine_name}%"
+                        "wine_name_pattern": f"%{wine_name}%",
+                        "wine_name_pattern_trim": f"%{wine_name.strip()}%"
                     }
                 )
                 storico_row = result.fetchone()
+                
+                if not storico_row:
+                    # Log dettagliato per debug
+                    logger.warning(f"[NOTIFICATION] Nessun storico trovato per vino '{wine_name}' (user_id={user.id}, table={table_storico})")
+                    # Prova a vedere quali vini ci sono nella tabella storico
+                    debug_query = sql_text(f"SELECT DISTINCT wine_name FROM {table_storico} WHERE user_id = :user_id LIMIT 10")
+                    debug_result = await session.execute(debug_query, {"user_id": user.id})
+                    debug_wines = [row[0] for row in debug_result.fetchall()]
+                    logger.info(f"[NOTIFICATION] Vini disponibili nello storico (primi 10): {debug_wines}")
                 
                 if not storico_row:
                     return {
@@ -429,10 +449,13 @@ class NotificationAgent(BaseAgent):
                     "agent": self.name
                 }
             
-            # Recupera dati movimenti storici
+            # Recupera dati movimenti storici - usa il nome ESATTO del vino dall'inventario
+            # IMPORTANTE: Passa wine.name (nome esatto dal DB) invece di wine_name (da messaggio utente)
             movements_data = await self.get_wine_movements_data(user_id, wine.name)
             
-            if not movements_data.get("movements"):
+            logger.info(f"[NOTIFICATION] Richiesta statistiche vino '{wine.name}': trovati {len(movements_data.get('movements', []))} movimenti")
+            
+            if not movements_data.get("movements") or len(movements_data.get("movements", [])) == 0:
                 # Nessun movimento, mostra solo wine card
                 wine_card_html = WineCardHelper.generate_wine_card_html(wine, badge="📊 Statistiche")
                 return {
