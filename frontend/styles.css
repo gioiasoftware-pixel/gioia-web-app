@@ -691,7 +691,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         z-index: var(--z-header);
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
         padding: 12px 16px;
         background-color: var(--color-white);
         border-bottom: 1px solid var(--color-border);
@@ -702,9 +702,22 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         pointer-events: auto;
     }
     
+    /* Header logo centrato mobile */
+    .mHeader .header-logo-center {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+        user-select: none;
+        -webkit-user-select: none;
+        cursor: default;
+    }
+    
     /* Logo e titolo NON devono intercettare tap */
-    .mHeader .logo-container,
-    .mHeader .chat-title {
+    .mHeader .logo-container {
         pointer-events: none;
         user-select: none;
         -webkit-user-select: none;
@@ -753,16 +766,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         pointer-events: none;
     }
 
-    .mHeader .logo-container {
-        width: 32px;
-        height: 32px;
-    }
-
-    .mHeader .chat-title {
-        font-size: 20px;
-        font-weight: 700;
-        flex: 1;
-        margin: 0;
+    .mHeader .header-logo-center .logo-container {
+        width: 48px;
+        height: 48px;
     }
 
     /* Toggle dark mode rimosso dall'header mobile */
