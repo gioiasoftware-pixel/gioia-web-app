@@ -997,8 +997,10 @@ INFORMAZIONI UTENTE:
             r"\bmovimenti.*oggi\b",
             r"\bconsumi.*oggi\b",
             r"\brifornimenti.*oggi\b",
-            r"\b(che\s+)?movimenti\s+(sono\s+)?stati\s+effettuati\s+oggi",
+            r"\b(che\s+)?movimenti\s+(sono\s+)?(stati\s+)?effettuati.*oggi",
+            r"\b(che\s+)?movimenti.*oggi",
             r"\bmovimenti\s+(di\s+)?oggi",
+            r"\bmovimenti\s+oggi",
         ]):
             return (True, 'today')
         
