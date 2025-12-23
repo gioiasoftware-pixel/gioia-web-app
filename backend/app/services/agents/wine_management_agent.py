@@ -106,6 +106,11 @@ class WineManagementAgent(BaseAgent):
                     
                     return result
             
+            # Se è creazione e non ci sono vini menzionati, è un nuovo vino da zero
+            if intention == "create":
+                # Aggiungi nota specifica per creazione nuovo vino
+                enhanced_message += "\n\nNOTA IMPORTANTE: Questa è una richiesta di CREAZIONE di un nuovo vino da zero. Estrai tutti i dati dal messaggio (nome, produttore, annata, quantità, prezzi, tipo, regione, paese, ecc.) e fornisci un riepilogo chiaro e completo dei dati estratti."
+            
             # Processa con AI per estrazione dati e validazione
             result = await self.process(
                 message=enhanced_message,
