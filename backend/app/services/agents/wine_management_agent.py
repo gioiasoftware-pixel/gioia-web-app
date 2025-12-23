@@ -233,37 +233,20 @@ class WineManagementAgent(BaseAgent):
             logger.error(f"Errore estrazione riferimenti vini: {e}")
             return []
     
-    async def _extract_wine_references(self, message: str, user_id: int) -> List:
-        """
-        Estrae riferimenti a vini dal messaggio cercando nell'inventario.
-        Utile per mostrare wine cards quando l'utente menziona vini esistenti.
-        """
-        try:
-            wines = await db_manager.get_user_wines(user_id)
-            if not wines:
-                return []
-            
-            message_lower = message.lower()
-            mentioned_wines = []
-            
-            # Cerca vini per nome nel messaggio
-            for wine in wines:
-                wine_name_lower = wine.name.lower()
-                # Controlla se il nome del vino è menzionato nel messaggio
-                if wine_name_lower in message_lower or any(word in message_lower for word in wine_name_lower.split() if len(word) > 3):
-                    mentioned_wines.append(wine)
-            
-            return mentioned_wines[:5]  # Max 5 vini
-        
-        except Exception as e:
-            logger.error(f"Errore estrazione riferimenti vini: {e}")
-            return []
-    
     def _format_context(self, context: Dict[str, Any]) -> str:
         """Formatta contesto per l'agent"""
         user_id = context.get("user_id")
         intention = context.get("intention", "unknown")
         inventory_context = context.get("inventory_context", "")
+        
+        intention_notes = {
+            "create": "CREAZIONE: Estrai tutti i dati del nuovo vino dal messaggio (nome, produttore, annata, quantità, prezzi, tipo, regione, paese, ecc.). Fornisci un riepilogo completo dei dati estratti e verifica duplicati nell'inventario esistente.",
+            "update": "MODIFICA: Identifica quale vino modificare e quali campi aggiornare. Verifica che il vino esista nell'inventario.",
+            "delete": "ELIMINAZIONE: Identifica quale vino eliminare. Chiedi sempre conferma esplicita prima di procedere.",
+            "unknown": "ANALIZZA: Determina se è una richiesta di creazione, modifica o eliminazione basandoti sul messaggio e sul contesto inventario."
+        }
+        
+        note = intention_notes.get(intention, intention_notes["unknown"])
         
         return f"""
 Contesto gestione vino:
@@ -272,8 +255,8 @@ Contesto gestione vino:
 - Inventario disponibile:
 {inventory_context}
 
-Nota: Quando identifichi una richiesta valida di gestione vino, fornisci un messaggio chiaro
-con i dettagli dell'operazione che verrà eseguita. Per operazioni critiche (eliminazioni),
-chiedi sempre conferma esplicita all'utente.
+{note}
+
+Fornisci sempre un feedback chiaro e dettagliato all'utente.
 """
 
