@@ -58,13 +58,26 @@ class AudioAgent(BaseAgent):
             audio_io = io.BytesIO(audio_file)
             audio_io.name = f"audio.{file_ext}"
             
-            # Chiama Whisper API
-            logger.info(f"[AudioAgent] Trascrizione audio: {filename} ({len(audio_file)} bytes)")
+            # Chiama Whisper API con parametri ottimizzati
+            # whisper-1 è il modello più recente e accurato disponibile tramite OpenAI API
+            logger.info(f"[AudioAgent] Trascrizione audio: {filename} ({len(audio_file)} bytes), language={language}")
+            
+            # Prompt specifico per migliorare accuratezza nel dominio inventario vini
+            # Aiuta il modello a riconoscere meglio termini tecnici come nomi di vini, quantità, movimenti
+            prompt = (
+                "Trascrivi il seguente audio in italiano. "
+                "Questo è un messaggio relativo alla gestione di un inventario di vini. "
+                "Termini comuni: vino, bottiglie, consumo, rifornimento, quantità, inventario, "
+                "barolo, chianti, brunello, rosso, bianco, rosato, spumante. "
+                "Usa punteggiatura corretta e scrivi i numeri in cifre (es: 5 bottiglie, non cinque bottiglie)."
+            )
+            
             transcript = self.client.audio.transcriptions.create(
-                model="whisper-1",
+                model="whisper-1",  # Modello più recente e accurato disponibile (ultimo aggiornamento: 2023)
                 file=audio_io,
-                language=language,
-                response_format="text"  # Restituisce solo testo, non JSON
+                language=language,  # "it" per italiano - migliora accuratezza
+                response_format="text",  # Restituisce solo testo, non JSON
+                prompt=prompt  # Prompt contestuale per migliorare accuratezza nel dominio specifico
             )
             
             # Se transcript è una stringa, è già il testo
