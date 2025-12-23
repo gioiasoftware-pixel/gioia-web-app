@@ -2,7 +2,7 @@
 API endpoints per chat AI - Cuore della web app
 Reuse logica telegram bot senza componente Telegram
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import logging
@@ -276,6 +276,134 @@ async def delete_conversation(
         raise HTTPException(status_code=500, detail="Errore cancellando conversazione")
 
 
+@router.post("/audio", response_model=ChatResponse)
+async def send_audio_message(
+    audio: UploadFile = File(...),
+    conversation_id: Optional[int] = Form(None),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Processa messaggio audio: converte in testo e passa all'AI.
+    
+    Flow:
+    1. Riceve file audio
+    2. AudioAgent converte audio -> testo (Whisper)
+    3. Passa testo all'orchestratore (RouterAgent/AIService)
+    4. Ritorna risposta AI
+    """
+    user_id = current_user["user_id"]
+    
+    logger.info(f"[CHAT_AUDIO] Audio ricevuto da user_id={user_id}: {audio.filename}")
+    
+    try:
+        # Inizializza AudioAgent
+        from app.services.agents.audio_agent import AudioAgent
+        audio_agent = AudioAgent()
+        
+        # Leggi file audio
+        audio_content = await audio.read()
+        filename = audio.filename or "audio.webm"
+        
+        # Step 1: Trascrivi audio -> testo
+        transcription_result = await audio_agent.transcribe_audio(
+            audio_file=audio_content,
+            filename=filename,
+            language="it"  # Italiano di default
+        )
+        
+        if not transcription_result["success"]:
+            error_msg = transcription_result.get("error", "Errore trascrizione")
+            logger.error(f"[CHAT_AUDIO] ❌ Trascrizione fallita: {error_msg}")
+            raise HTTPException(
+                status_code=400,
+                detail=error_msg
+            )
+        
+        transcribed_text = transcription_result["text"]
+        logger.info(f"[CHAT_AUDIO] ✅ Trascrizione: '{transcribed_text[:50]}...'")
+        
+        # Step 2: Gestione conversation_id
+        if not conversation_id:
+            conversation_id = await db_manager.create_conversation(
+                user_id=user_id,
+                telegram_id=None,
+                title=f"🎤 {transcribed_text[:50]}{'...' if len(transcribed_text) > 50 else ''}"
+            )
+            if not conversation_id:
+                conversation_id = None
+        
+        # Step 3: Salva messaggio utente (con nota che è da audio)
+        try:
+            await db_manager.log_chat_message(
+                user_id, 
+                "user", 
+                f"🎤 {transcribed_text}", 
+                conversation_id=conversation_id
+            )
+        except Exception as e:
+            logger.warning(f"[CHAT_AUDIO] Errore salvataggio messaggio: {e}")
+        
+        # Step 4: Recupera storia conversazione
+        conversation_history = None
+        try:
+            conversation_history = await db_manager.get_recent_chat_messages(
+                user_id,
+                limit=10,
+                conversation_id=conversation_id
+            )
+            if conversation_history:
+                conversation_history = [
+                    {"role": msg["role"], "content": msg["content"]}
+                    for msg in conversation_history
+                ]
+        except Exception as e:
+            logger.warning(f"[CHAT_AUDIO] Errore recupero storia: {e}")
+        
+        # Step 5: Passa testo all'AI service (come messaggio normale)
+        result = await ai_service.process_message(
+            user_message=transcribed_text,
+            user_id=user_id,
+            conversation_history=conversation_history
+        )
+        
+        # Step 6: Salva risposta AI
+        try:
+            ai_response_message = result.get("message", "")
+            if ai_response_message:
+                await db_manager.log_chat_message(
+                    user_id, 
+                    "assistant", 
+                    ai_response_message, 
+                    conversation_id=conversation_id
+                )
+                if conversation_id:
+                    await db_manager.update_conversation_last_message(conversation_id, user_id)
+        except Exception as e:
+            logger.warning(f"[CHAT_AUDIO] Errore salvataggio risposta: {e}")
+        
+        # Step 7: Ritorna risposta (aggiungi metadata per indicare che proviene da audio)
+        metadata = result.get("metadata", {})
+        metadata["source"] = "audio"
+        metadata["transcribed_text"] = transcribed_text
+        
+        return ChatResponse(
+            message=result.get("message", "⚠️ Nessuna risposta disponibile"),
+            conversation_id=conversation_id,
+            metadata=metadata,
+            buttons=result.get("buttons"),
+            is_html=result.get("is_html", False)
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CHAT_AUDIO] ❌ Errore processamento audio: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Errore processamento audio: {str(e)}"
+        )
+
+
 @router.get("/health")
 async def chat_health():
     """Health check per servizio chat"""
@@ -293,6 +421,7 @@ async def chat_health():
         "status": "healthy",
         "service": "chat",
         "ai_configured": ai_configured,
-        "ai_system": "multi-agent" if settings.USE_AGENT_SYSTEM else "function-calling"
+        "ai_system": "multi-agent" if settings.USE_AGENT_SYSTEM else "function-calling",
+        "audio_enabled": True
     }
 

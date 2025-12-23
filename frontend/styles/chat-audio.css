@@ -1,0 +1,164 @@
+/**
+ * Chat Audio Styles - Pulsanti e UI per registrazione audio
+ * Stile Telegram/WhatsApp
+ */
+
+/* Pulsante audio */
+.chat-audio-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    min-height: 48px;
+    border: none;
+    background: var(--color-primary, #6366f1);
+    color: white;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.chat-audio-btn:hover {
+    background: var(--color-primary-dark, #4f46e5);
+    transform: scale(1.05);
+}
+
+.chat-audio-btn:active {
+    transform: scale(0.95);
+}
+
+.chat-audio-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Contenitore registrazione audio */
+.chat-audio-recording {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background: var(--color-danger-light, #fee2e2);
+    border-radius: 24px;
+    flex: 1;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.chat-audio-recording.active {
+    display: flex;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+/* Timer audio */
+.chat-audio-timer {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-danger, #dc2626);
+    min-width: 40px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Pulsanti registrazione */
+.chat-audio-cancel-btn,
+.chat-audio-send-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 16px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.chat-audio-cancel-btn {
+    background: var(--color-gray-200, #e5e7eb);
+    color: var(--color-gray-700, #374151);
+}
+
+.chat-audio-cancel-btn:hover {
+    background: var(--color-gray-300, #d1d5db);
+}
+
+.chat-audio-send-btn {
+    background: var(--color-success, #10b981);
+    color: white;
+}
+
+.chat-audio-send-btn:hover {
+    background: var(--color-success-dark, #059669);
+}
+
+.chat-audio-send-btn:active,
+.chat-audio-cancel-btn:active {
+    transform: scale(0.95);
+}
+
+/* Mobile specific */
+.mobileRoot .chat-audio-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.mobileRoot .chat-audio-btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.mobileRoot .chat-audio-recording {
+    padding: 6px 12px;
+    gap: 8px;
+}
+
+.mobileRoot .chat-audio-timer {
+    font-size: 13px;
+    min-width: 35px;
+}
+
+.mobileRoot .chat-audio-cancel-btn,
+.mobileRoot .chat-audio-send-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+}
+
+/* Desktop specific */
+.desktopRoot .chat-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Integrazione con form chat */
+.chat-form {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.chat-form .chat-input {
+    flex: 1;
+}
+
+/* Nascondi elementi quando in registrazione */
+.chat-form:has(.chat-audio-recording[style*="display: flex"]) .chat-input,
+.chat-form:has(.chat-audio-recording[style*="display: flex"]) .chat-send-btn {
+    display: none !important;
+}
+
+.chat-form:has(.chat-audio-recording[style*="display: flex"]) .chat-audio-btn {
+    display: none !important;
+}
+

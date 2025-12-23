@@ -100,12 +100,47 @@ async function deleteConversationAPI(conversationId) {
     }
 }
 
+/**
+ * Invia messaggio audio alla chat
+ * @param {Blob} audioBlob - File audio registrato
+ * @param {number|null} conversationId - ID conversazione (opzionale)
+ * @returns {Promise<Object>} Risposta dell'API
+ */
+async function sendAudioMessage(audioBlob, conversationId = null) {
+    if (!authToken) {
+        throw new Error('Token di autenticazione non disponibile');
+    }
+    
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.webm');
+    if (conversationId) {
+        formData.append('conversation_id', conversationId.toString());
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/api/chat/audio`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${authToken}`
+        },
+        body: formData
+    });
+    
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || `Errore invio audio: ${response.status}`);
+    }
+    
+    return await response.json();
+}
+
 // Export per uso globale
 if (typeof window !== 'undefined') {
     window.ChatAPI = {
         sendMessage: sendChatMessage,
+        sendAudio: sendAudioMessage,
         loadConversations: loadConversationsAPI,
         loadMessages: loadConversationMessagesAPI,
         deleteConversation: deleteConversationAPI
     };
 }
+

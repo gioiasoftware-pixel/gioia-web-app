@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="/static/styles.css">
     <!-- Mobile Layout CSS (DOPO legacy per sovrascrivere regole mobile vecchie) -->
     <link rel="stylesheet" href="/static/layout/MobileLayout/mobile.css">
+    <!-- Chat Audio Styles -->
+    <link rel="stylesheet" href="/static/styles/chat-audio.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -140,6 +142,18 @@
             <!-- Composer Mobile -->
             <footer class="mComposer">
                 <form id="chat-form-mobile" class="chat-form">
+                    <button type="button" class="chat-audio-btn" id="chat-audio-btn-mobile" title="Registra audio">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                            <path d="M10 3C8.89543 3 8 3.89543 8 5V9C8 10.1046 8.89543 11 10 11C11.1046 11 12 10.1046 12 9V5C12 3.89543 11.1046 3 10 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M5 9C5 11.7614 7.23858 14 10 14C12.7614 14 15 11.7614 15 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M10 14V17M6 17H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="chat-audio-recording" id="chat-audio-recording-mobile" style="display: none;">
+                        <div class="chat-audio-timer" id="chat-audio-timer-mobile">0:00</div>
+                        <button type="button" class="chat-audio-cancel-btn" id="chat-audio-cancel-btn-mobile">Annulla</button>
+                        <button type="button" class="chat-audio-send-btn" id="chat-audio-send-btn-mobile">Invia</button>
+                    </div>
                     <textarea 
                         id="chat-input-mobile" 
                         class="chat-input" 
@@ -292,6 +306,18 @@
                 <!-- Chat Input -->
                 <div class="chat-input-container">
                     <form id="chat-form" class="chat-form">
+                        <button type="button" class="chat-audio-btn" id="chat-audio-btn" title="Registra audio">
+                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                <path d="M10 3C8.89543 3 8 3.89543 8 5V9C8 10.1046 8.89543 11 10 11C11.1046 11 12 10.1046 12 9V5C12 3.89543 11.1046 3 10 3Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 9C5 11.7614 7.23858 14 10 14C12.7614 14 15 11.7614 15 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 14V17M6 17H14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <div class="chat-audio-recording" id="chat-audio-recording" style="display: none;">
+                            <div class="chat-audio-timer" id="chat-audio-timer">0:00</div>
+                            <button type="button" class="chat-audio-cancel-btn" id="chat-audio-cancel-btn">Annulla</button>
+                            <button type="button" class="chat-audio-send-btn" id="chat-audio-send-btn">Invia</button>
+                        </div>
                         <textarea 
                             id="chat-input" 
                             class="chat-input" 
@@ -476,8 +502,10 @@
     <script src="/static/features/charts/shared/anchoredFlowStockChartBuilder.js"></script>
     <script src="/static/features/charts/desktop/AnchoredFlowStockChart.js"></script>
     <!-- Chat API e Selectors (shared) -->
+    <script src="/static/features/chat/shared/audioRecorder.js"></script>
     <script src="/static/features/chat/shared/chatAPI.js"></script>
     <script src="/static/features/chat/shared/chatSelectors.js"></script>
+    <script src="/static/features/chat/shared/chatAudioHandler.js"></script>
     <!-- Chat implementations (layout-specific) -->
     <script src="/static/features/chat/mobile/ChatMobile.js"></script>
     <script src="/static/features/chat/desktop/ChatDesktop.js"></script>
