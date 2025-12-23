@@ -1818,8 +1818,9 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         messageEl.appendChild(contentDiv);
         
         // Aggiungi event listeners ai pulsanti - usa pointer events per mobile
+        // Include sia .chat-button che .wines-list-item-button
         if (buttons && buttons.length > 0) {
-            const buttonElements = messageEl.querySelectorAll('.chat-button');
+            const buttonElements = messageEl.querySelectorAll('.chat-button, .wines-list-item-button');
             buttonElements.forEach(btn => {
                 btn.addEventListener('pointerup', async (e) => {
                     e.stopPropagation();

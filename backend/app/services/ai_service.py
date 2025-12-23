@@ -706,6 +706,9 @@ INFORMAZIONI UTENTE:
         display_wines = wines[:10]
         for wine in display_wines:
             html += '<div class="wines-list-item">'
+            
+            # Contenuto informativo del vino
+            html += '<div class="wines-list-item-content">'
             html += f'<span class="wines-list-item-name">{self._escape_html(wine.name)}</span>'
             if wine.producer:
                 html += f'<span class="wines-list-item-producer">{self._escape_html(wine.producer)}</span>'
@@ -715,13 +718,28 @@ INFORMAZIONI UTENTE:
                 html += f'<span class="wines-list-item-qty">{wine.quantity} bott.</span>'
             html += '</div>'
             
-            # Prepara buttons per 2-10 vini
+            # Aggiungi pulsante direttamente dentro la card se necessario
             if show_buttons and 2 <= num_wines <= 10:
+                button_text = f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+                
+                # Prepara attributi per il pulsante
+                button_attrs = f'data-wine-id="{wine.id}" data-wine-text="{self._escape_html(button_text)}"'
+                
+                # Se è un movimento, aggiungi dati movimento
+                if movement_context:
+                    movement_type = movement_context.get("movement_type", "consumo")
+                    quantity = movement_context.get("quantity", 1)
+                    button_attrs += f' data-movement-type="{movement_type}" data-quantity="{quantity}"'
+                
+                html += f'<button class="wines-list-item-button chat-button" {button_attrs}>'
+                html += f'{self._escape_html(button_text)}'
+                html += '</button>'
+                
+                # Prepara buttons per compatibilità con il codice esistente (per listener)
                 button_data = {
                     "id": wine.id,
-                    "text": f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+                    "text": button_text
                 }
-                # Se è un movimento, aggiungi dati movimento ai buttons
                 if movement_context:
                     button_data["data"] = {
                         "wine_id": wine.id,
@@ -730,19 +748,14 @@ INFORMAZIONI UTENTE:
                         "quantity": movement_context.get("quantity", 1)
                     }
                 buttons.append(button_data)
+            
+            html += '</div>'  # Chiude wines-list-item
         
-        html += '</div>'
+        html += '</div>'  # Chiude wines-list-body
         
-        # Footer con suggerimento
+        # Footer solo se ci sono più di 10 vini
         if num_wines > 10:
             html += f'<div class="wines-list-footer">... e altri {num_wines - 10} vini. Usa il viewer a destra per vedere tutti.</div>'
-        elif num_wines >= 2:
-            if movement_context:
-                # Messaggio per movimento
-                html += '<div class="wines-list-footer">💡 Seleziona quale vino vuoi registrare per questo movimento.</div>'
-            else:
-                # Messaggio normale
-                html += '<div class="wines-list-footer">💡 Seleziona quale vuoi vedere per maggiori dettagli.</div>'
         
         html += '</div>'
         
@@ -866,6 +879,9 @@ INFORMAZIONI UTENTE:
         display_wines = wines[:10]
         for wine in display_wines:
             html += '<div class="wines-list-item">'
+            
+            # Contenuto informativo del vino
+            html += '<div class="wines-list-item-content">'
             html += f'<span class="wines-list-item-name">{self._escape_html(wine.name)}</span>'
             if wine.producer:
                 html += f'<span class="wines-list-item-producer">{self._escape_html(wine.producer)}</span>'
@@ -874,11 +890,18 @@ INFORMAZIONI UTENTE:
             if wine.quantity is not None:
                 html += f'<span class="wines-list-item-qty">{wine.quantity} bott.</span>'
             html += '</div>'
+            
+            # Pulsante integrato nella card
+            button_text = f"{wine.name}" + (f" ({wine.producer})" if wine.producer else "") + (f" {wine.vintage}" if wine.vintage else "")
+            html += f'<button class="wines-list-item-button chat-button" '
+            html += f'data-wine-id="{wine.id}" data-wine-text="{self._escape_html(button_text)}" '
+            html += f'data-movement-type="{movement_type}" data-quantity="{quantity}">'
+            html += f'{self._escape_html(button_text)}'
+            html += '</button>'
+            
+            html += '</div>'  # Chiude wines-list-item
         
         html += '</div>'
-        
-        # Footer con istruzioni
-        html += '<div class="wines-list-footer">💡 Seleziona quale vino vuoi registrare per questo movimento.</div>'
         
         html += '</div>'
         

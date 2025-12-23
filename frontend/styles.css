@@ -3639,11 +3639,22 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 
 .wines-list-item {
     display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background-color: var(--color-light-gray);
+    border-radius: 8px;
+    transition: background-color 0.2s;
+}
+
+.wines-list-item:hover {
+    background-color: rgba(154, 24, 46, 0.05);
+}
+
+.wines-list-item-content {
+    display: flex;
     align-items: center;
     gap: 8px;
-    padding: 10px;
-    background-color: var(--color-light-gray);
-    border-radius: 6px;
     flex-wrap: wrap;
 }
 
@@ -3668,6 +3679,31 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     font-weight: 600;
     color: var(--color-text-primary);
     margin-left: auto;
+}
+
+.wines-list-item-button {
+    width: 100%;
+    padding: 10px 16px;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.wines-list-item-button:hover {
+    background-color: rgba(154, 24, 46, 0.9);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(154, 24, 46, 0.2);
+}
+
+.wines-list-item-button:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(154, 24, 46, 0.2);
 }
 
 .wines-list-footer {
@@ -3873,12 +3909,23 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     }
 
     .wines-list-item {
+        padding: 10px;
+        gap: 8px;
+    }
+    
+    .wines-list-item-content {
         flex-direction: column;
         align-items: flex-start;
+        gap: 4px;
     }
 
     .wines-list-item-qty {
         margin-left: 0;
+    }
+    
+    .wines-list-item-button {
+        padding: 8px 12px;
+        font-size: 13px;
     }
 
     .btn-secondary {
