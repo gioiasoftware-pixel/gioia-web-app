@@ -534,15 +534,14 @@ class NotificationAgent(BaseAgent):
                         wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
                         if wine and (wine.quantity or 0) == 0:  # Verifica esplicita quantità = 0
                             wines_for_cards.append(wine)
-                    # Genera wine cards per i vini esauriti
-                    wine_cards_html = ""
-                    wines_for_cards = []
-                    for alert in alerts:  # Mostra tutti i vini esauriti (non limitiamo a 5)
-                        wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
-                        if wine:
-                            wines_for_cards.append(wine)
-                            badge = "🔴 Esaurito"
-                            wine_cards_html += WineCardHelper.generate_wine_card_html(wine, badge=badge) + "<br>"
+                    
+                    # Genera lista HTML per vini esauriti (più efficiente per molti vini)
+                    if len(wines_for_cards) > 0:
+                        wines_list_html = WineCardHelper.generate_wines_list_html(
+                            wines_for_cards,
+                            title=f"Vini Esauriti ({len(wines_for_cards)})",
+                            show_buttons=False
+                        )
                     
                     # Genera anche lista HTML per vini esauriti (se molti)
                     if len(wines_for_cards) > 10:

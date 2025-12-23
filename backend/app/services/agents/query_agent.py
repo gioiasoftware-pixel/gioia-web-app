@@ -66,8 +66,18 @@ class QueryAgent(BaseAgent):
             if keyword in message_lower:
                 # Filtra vini per tipo
                 all_wines = await db_manager.get_user_wines(user_id)
-                filtered_wines = [w for w in all_wines if w.wine_type and wine_type.lower() in w.wine_type.lower()]
-                logger.info(f"[QUERY] Filtro tipo '{wine_type}' applicato: {len(filtered_wines)} vini trovati")
+                # Filtra con confronto più robusto (case-insensitive, controlla match esatto o parziale)
+                filtered_wines = [
+                    w for w in all_wines 
+                    if w.wine_type and (
+                        wine_type.lower() in w.wine_type.lower() or 
+                        w.wine_type.lower() in wine_type.lower()
+                    )
+                ]
+                logger.info(f"[QUERY] Filtro tipo '{wine_type}' (keyword: '{keyword}') applicato: {len(filtered_wines)}/{len(all_wines)} vini trovati")
+                # Log esempio per debug
+                if filtered_wines:
+                    logger.info(f"[QUERY] Esempi vini filtrati: {[w.name for w in filtered_wines[:3]]}")
                 break
         
         if filtered_wines is not None:
