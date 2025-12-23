@@ -33,7 +33,11 @@ class BaseAgent:
         if not api_key:
             raise ValueError("OPENAI_API_KEY non configurata")
         
-        self.client = OpenAI(api_key=api_key)
+        # OpenAI Assistants API v2 richiede header specifico
+        self.client = OpenAI(
+            api_key=api_key,
+            default_headers={"OpenAI-Beta": "assistants=v2"}
+        )
         self.name = name
         self.model = model
         self.instructions = instructions
