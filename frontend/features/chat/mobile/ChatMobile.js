@@ -973,7 +973,7 @@ async function handleChatSubmitMobile(e) {
     
     // Usa la funzione helper per inviare il messaggio
     await sendChatMessageMobile(message, true);
-    
+}
 
 /**
  * Aggiunge un messaggio alla chat mobile
