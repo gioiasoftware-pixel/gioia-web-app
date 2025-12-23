@@ -232,10 +232,12 @@ function initAudioHandler(layout) {
             } catch (error) {
                 console.error(`[ChatAudioHandler] ❌ Errore invio audio:`, error);
                 console.error(`[ChatAudioHandler] Stack trace:`, error.stack);
-                hideAudioRecording(layout, visualizerContainer);
+                if (audioRecording && visualizerContainer) {
+                    hideAudioRecording(layout, visualizerContainer);
+                }
                 isRecording = false;
-                audioBtn.style.opacity = '1';
-                audioBtn.style.transform = 'scale(1)';
+                cleanAudioBtn.style.opacity = '1';
+                cleanAudioBtn.style.transform = 'scale(1)';
                 
                 const addMessage = window.ChatMobile?.addMessage;
                 if (addMessage) {
