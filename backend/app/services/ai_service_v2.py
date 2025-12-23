@@ -53,9 +53,10 @@ class AIServiceV2:
         
         Flow:
         1. Router analizza messaggio e determina agent appropriato
-        2. Instrada al agent specializzato
-        3. Agent processa con contesto inventario
-        4. Ritorna risposta formattata
+        2. Valida routing e applica fallback se necessario
+        3. Instrada al agent specializzato
+        4. Agent processa con contesto inventario
+        5. Ritorna risposta formattata
         
         Args:
             user_message: Messaggio dell'utente
@@ -75,69 +76,36 @@ class AIServiceV2:
             # Step 1: Router determina agent appropriato
             logger.info(f"[AI_SERVICE_V2] Processing message: {user_message[:50]}...")
             agent_name = await self.router.route(user_message)
-            logger.info(f"[AI_SERVICE_V2] 📍 Router instradato a: {agent_name}")
             
-            # Step 2: Instrada al agent appropriato
-            # Nota: Extraction agent lasciato da parte per ora come richiesto
-            if agent_name == "query":
-                result = await self.query.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "movement":
-                # Movimento singolo: usa MovementAgent
-                result = await self.movement.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "multi_movement":
-                # Movimenti multipli: usa MultiMovementAgent che coordina MovementAgent
-                logger.info(f"[AI_SERVICE_V2] 📦 Rilevati movimenti multipli, uso MultiMovementAgent")
-                result = await self.multi_movement.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "analytics":
-                result = await self.analytics.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "wine_management":
-                result = await self.wine_management.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "report":
-                result = await self.report.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "notification":
-                result = await self.notification.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "conversation":
-                # ConversationAgent può richiedere storia conversazione
-                # Per ora usa solo il messaggio corrente
-                result = await self.conversation.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
-            elif agent_name == "extraction":
-                # Extraction agent non implementato ancora, fallback a query
-                logger.info(f"[AI_SERVICE_V2] ⚠️ Extraction agent non disponibile, uso query agent")
-                result = await self.query.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
+            # Step 2: Valida e normalizza agent name
+            agent_name = self._validate_and_normalize_agent(agent_name, user_message)
+            
+            logger.info(f"[AI_SERVICE_V2] 📍 Router instradato a: {agent_name} (validato)")
+            
+            # Step 3: Ottieni istanza agent
+            agent_instance = self._get_agent_by_name(agent_name)
+            
+            if not agent_instance:
+                # Agent non disponibile (es. extraction), fallback a query
+                if agent_name == "extraction":
+                    logger.info(f"[AI_SERVICE_V2] ⚠️ Extraction agent non disponibile, uso query agent")
+                else:
+                    logger.warning(f"[AI_SERVICE_V2] ⚠️ Agent '{agent_name}' non disponibile, uso query agent")
+                agent_instance = self.query
+                agent_name = "query"  # Aggiorna per metadata
+            
+            # Step 4: Instrada al agent appropriato
+            logger.info(f"[AI_SERVICE_V2] 🔄 Invio messaggio a {agent_name}")
+            result = await agent_instance.process_with_context(
+                message=user_message,
+                user_id=user_id
+            )
+            
+            # Log risultato
+            if result.get("success"):
+                logger.info(f"[AI_SERVICE_V2] ✅ {agent_name} completato con successo")
             else:
-                # Fallback a query agent
-                logger.warning(f"[AI_SERVICE_V2] ⚠️ Agent '{agent_name}' non riconosciuto, uso query")
-                result = await self.query.process_with_context(
-                    message=user_message,
-                    user_id=user_id
-                )
+                logger.warning(f"[AI_SERVICE_V2] ⚠️ {agent_name} completato con errori: {result.get('error', 'unknown')}")
             
             # Step 3: Formatta risposta
             if result.get("success"):
