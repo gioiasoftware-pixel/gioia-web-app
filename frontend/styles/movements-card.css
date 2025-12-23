@@ -11,17 +11,6 @@
     animation: fadeInUp 0.4s ease-out;
 }
 
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
 /* Header migliorato */
 .movements-header {
     background: linear-gradient(135deg, rgba(154, 24, 46, 0.05) 0%, rgba(154, 24, 46, 0.02) 100%);

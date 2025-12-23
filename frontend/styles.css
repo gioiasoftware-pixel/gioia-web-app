@@ -65,6 +65,18 @@ body.dark-theme {
     display: none !important;
 }
 
+/* Animazioni globali */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 /* ============================================
    AUTH PAGE (Login/Signup)
    ============================================ */
@@ -3038,6 +3050,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     margin: 0;
     position: relative;
     transition: max-width 0.3s ease, width 0.3s ease;
+    animation: fadeInUp 0.4s ease-out;
     /* La card deve essere sopra i segnalibri */
     z-index: 10;
     /* Altezza minima standard per garantire che i segnalibri siano sempre contenuti */
@@ -3081,13 +3094,32 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 }
 
 .wine-card-badge {
-    background-color: #d4edda;
-    color: #155724;
-    padding: 4px 12px;
-    border-radius: 12px;
+    background: linear-gradient(135deg, var(--color-granaccia) 0%, #b81f38 100%);
+    color: var(--color-white);
+    padding: 6px 14px;
+    border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     align-self: flex-start;
+    box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
+    transition: all 0.2s ease;
+}
+
+body.dark-theme .wine-card-badge {
+    background: linear-gradient(135deg, var(--color-granaccia) 0%, #ffed4e 100%);
+    color: var(--color-black);
+}
+
+.wine-card-badge.error-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+body.dark-theme .wine-card-badge.error-badge {
+    background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);
+    color: var(--color-white);
 }
 
 .wine-card-title {
@@ -3686,12 +3718,17 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     max-width: 500px;
     margin: 0;
+    animation: fadeInUp 0.4s ease-out;
 }
 
 .wines-list-header {
     margin-bottom: 16px;
     padding-bottom: 16px;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: 2px solid var(--color-granaccia);
+    background: linear-gradient(135deg, rgba(154, 24, 46, 0.05) 0%, rgba(154, 24, 46, 0.02) 100%);
+    margin: -20px -20px 16px -20px;
+    padding: 20px;
+    border-radius: 12px 12px 0 0;
 }
 
 .wines-list-title {
@@ -3722,11 +3759,15 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     padding: 12px;
     background-color: var(--color-light-gray);
     border-radius: 8px;
-    transition: background-color 0.2s;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
 }
 
 .wines-list-item:hover {
     background-color: rgba(154, 24, 46, 0.05);
+    border-color: var(--color-granaccia);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .wines-list-item-content {
@@ -3793,6 +3834,213 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     text-align: center;
 }
 
+/* Report Card - Stile gio.ia */
+.report-card {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+.report-card .wine-card-header {
+    background: linear-gradient(135deg, rgba(154, 24, 46, 0.05) 0%, rgba(154, 24, 46, 0.02) 100%);
+    border-bottom: 2px solid var(--color-granaccia);
+    padding: 20px;
+    margin: -20px -20px 20px -20px;
+    border-radius: 12px 12px 0 0;
+}
+
+.report-statistics {
+    margin-bottom: 24px;
+}
+
+.report-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+}
+
+.report-stat-item {
+    background: var(--color-white);
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.report-stat-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--color-granaccia);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+}
+
+.report-stat-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-granaccia);
+}
+
+.report-stat-item:hover::before {
+    transform: scaleY(1);
+}
+
+.report-stat-item .stat-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.report-stat-item .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+body.dark-theme .report-stat-item {
+    background: #2a2a2a;
+    border-color: var(--color-border);
+}
+
+.report-distribution,
+.report-low-stock,
+.report-out-of-stock {
+    margin-top: 24px;
+}
+
+.report-types-list,
+.report-wines-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.report-type-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--color-light-gray);
+    border-radius: 8px;
+    border-left: 3px solid var(--color-granaccia);
+    transition: all 0.2s ease;
+}
+
+.report-type-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.report-type-item .type-name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 14px;
+}
+
+.report-type-item .type-count {
+    font-weight: 700;
+    color: var(--color-granaccia);
+    font-size: 18px;
+    background: rgba(154, 24, 46, 0.1);
+    padding: 4px 12px;
+    border-radius: 12px;
+}
+
+body.dark-theme .report-type-item {
+    background: #2a2a2a;
+}
+
+.report-wine-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: var(--color-light-gray);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.report-wine-item:hover {
+    background: rgba(154, 24, 46, 0.05);
+    transform: translateX(4px);
+}
+
+.report-wine-item .wine-name {
+    font-weight: 600;
+    color: var(--color-text-primary);
+    font-size: 14px;
+    flex: 1;
+}
+
+.report-wine-item .wine-quantity {
+    font-weight: 700;
+    color: var(--color-granaccia);
+    font-size: 16px;
+    margin-left: 12px;
+}
+
+.report-low-stock .wine-card-field-label {
+    color: #f59e0b;
+}
+
+.report-out-of-stock .wine-card-field-label {
+    color: #ef4444;
+}
+
+.report-more {
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    padding: 8px;
+    margin-top: 4px;
+}
+
+body.dark-theme .report-wine-item {
+    background: #2a2a2a;
+}
+
+/* Wine Card Error Message */
+.wine-card-error-message {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    border: 1px solid #fecaca;
+    border-left: 3px solid #ef4444;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+body.dark-theme .wine-card-error-message {
+    background: linear-gradient(135deg, #1f1f1f 0%, #2a1f1f 100%);
+    border-color: #991b1b;
+    border-left-color: #ef4444;
+}
+
+.wine-card-error-message .error-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: #991b1b;
+}
+
+body.dark-theme .wine-card-error-message .error-text {
+    color: #fca5a5;
+}
+
 /* Empty State Card */
 .empty-state-card {
     background: var(--color-white);
@@ -3802,6 +4050,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     text-align: center;
     max-width: 400px;
     margin: 0;
+    animation: fadeInUp 0.4s ease-out;
 }
 
 .empty-state-icon {
