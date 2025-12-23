@@ -66,16 +66,26 @@ class RouterAgent(BaseAgent):
            - Report automatici
            - Keywords: "notifiche", "alert", "scorte basse", "promemoria", "avvisi"
         
-        9. **conversation**: Per gestione contesto conversazionale (raro, solo se esplicito)
-           - Chiarimenti ambiguità
-           - Riassunto conversazione
-           - Keywords: "riassumi", "chiarisci", "cosa abbiamo detto"
+        9. **conversation**: Per gestione contesto conversazionale (MOLTO RARO, solo se esplicitamente richiesto)
+           - Chiarimenti ambiguità espliciti
+           - Riassunto conversazione quando esplicitamente chiesto
+           - Keywords: "cosa abbiamo detto prima", "di cosa stavamo parlando", "riassumi la conversazione"
+           - IMPORTANTE: NON usare per richieste che possono essere gestite da altri agent (gestione vini, movimenti, report, ecc.)
         
-        IMPORTANTE: 
+        IMPORTANTE - PRIORITÀ DI ROUTING:
+        1. Se la richiesta riguarda GESTIONE VINI (creare/modificare/eliminare/aggiornare vini) → usa "wine_management"
+        2. Se la richiesta riguarda MOVIMENTI (consumo/rifornimento) → usa "movement" o "multi_movement"
+        3. Se la richiesta riguarda RICERCHE/QUERY vini → usa "query"
+        4. Se la richiesta riguarda REPORT/STATISTICHE → usa "report" o "analytics"
+        5. Se la richiesta riguarda NOTIFICHE/ALERT → usa "notification"
+        6. Solo se è ESPLICITAMENTE una richiesta di gestione contesto conversazionale (es: "cosa abbiamo detto prima", "di cosa stavamo parlando") → usa "conversation"
+        
+        REGOLE SPECIFICHE:
         - Per movimenti, distingui tra SINGOLO (movement) e MULTIPLO (multi_movement)
         - Se il messaggio contiene più di un movimento (più vini/quantità), usa multi_movement
         - Per report formattati usa "report", per statistiche semplici usa "analytics"
-        - Per gestione vini (creare/modificare/eliminare) usa "wine_management"
+        - Per gestione vini (creare/modificare/eliminare/aggiornare) SEMPRE usa "wine_management"
+        - "conversation" è l'ultima scelta, solo per richieste esplicite di contesto conversazionale
         - Rispondi SOLO con il nome dell'agent (extraction, query, movement, multi_movement, analytics, wine_management, report, notification, conversation)
         - Non aggiungere altro testo, spiegazioni o commenti.
         """
