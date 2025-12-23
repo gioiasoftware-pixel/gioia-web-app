@@ -1356,98 +1356,176 @@ async function saveAddWineMobile(form) {
 /**
  * Apre il viewer inventario (mobile)
  */
+// ============================================
+// INVENTORY VIEWER MOBILE - 3 Screens Design
+// ============================================
+
+// State management per navigazione schermate
+let inventoryCurrentScreen = 'list'; // 'list', 'details', 'chart'
+let inventoryCurrentWine = null;
+
 async function openInventoryViewerMobile() {
     const viewerMobile = document.getElementById('viewerPanel');
     if (!viewerMobile) {
         return;
     }
     
-    // Verifica che la struttura HTML esista (dovrebbe essere già presente in index.html)
-    const viewerContent = viewerMobile.querySelector('.viewer-content');
-    if (!viewerContent) {
-        return;
-    }
+    // Setup navigazione schermate PRIMA di aprire
+    setupInventoryNavigation();
     
-    // Setup viewer close button PRIMA di aprire
-    setupViewerClose();
+    // Setup funzionalità inventario mobile (ricerca, filtri)
+    setupInventoryMobileFeatures();
     
-    // Setup funzionalità viewer mobile (ricerca, filtri, download)
-    setupViewerMobileFeatures();
+    // Reset alla schermata lista
+    showInventoryScreen('list');
+    
+    // Setup bottone indietro
+    setupInventoryBackButton();
     
     // Ora apri il viewer (imposta stato e mostra)
     openViewer();
     
-    // Forza la visualizzazione del viewer (assicurati che hidden sia rimosso)
+    // Forza la visualizzazione del viewer
     viewerMobile.removeAttribute('hidden');
     
     // Carica dati inventario
-    await loadViewerDataMobile();
+    await loadInventoryDataMobile();
 }
 
 /**
- * Setup funzionalità viewer mobile (ricerca, filtri, download CSV)
+ * Setup navigazione tra schermate inventario
  */
-function setupViewerMobileFeatures() {
-    // Setup ricerca mobile
-    const searchInputMobile = document.getElementById('viewer-search-mobile');
-    if (searchInputMobile) {
-        // Rimuovi listener esistenti
-        const newInput = searchInputMobile.cloneNode(true);
-        searchInputMobile.parentNode.replaceChild(newInput, searchInputMobile);
+function setupInventoryNavigation() {
+    // Bottone indietro comune
+    const backBtn = document.getElementById('inventory-back-btn-mobile');
+    if (backBtn) {
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
         
+        newBtn.addEventListener('click', () => {
+            handleInventoryBack();
+        });
+    }
+}
+
+/**
+ * Gestisce click bottone indietro
+ */
+function handleInventoryBack() {
+    if (inventoryCurrentScreen === 'details') {
+        showInventoryScreen('list');
+    } else if (inventoryCurrentScreen === 'chart') {
+        showInventoryScreen('details');
+    } else {
+        // Se siamo nella lista, chiudi viewer
+        closeViewer();
+    }
+}
+
+/**
+ * Mostra una specifica schermata inventario
+ */
+function showInventoryScreen(screen) {
+    inventoryCurrentScreen = screen;
+    
+    // Nascondi tutte le schermate
+    document.querySelectorAll('.inventory-screen').forEach(el => {
+        el.classList.add('hidden');
+    });
+    
+    // Mostra schermata richiesta
+    const targetScreen = document.getElementById(`inventory-screen-${screen}`);
+    if (targetScreen) {
+        targetScreen.classList.remove('hidden');
+    }
+    
+    // Aggiorna visibilità bottone indietro (sempre visibile)
+    const backBtn = document.getElementById('inventory-back-btn-mobile');
+    if (backBtn) {
+        backBtn.style.display = 'flex';
+    }
+}
+
+/**
+ * Setup bottone indietro
+ */
+function setupInventoryBackButton() {
+    const backBtn = document.getElementById('inventory-back-btn-mobile');
+    if (backBtn) {
+        // Rimuovi listener esistenti e aggiungi nuovo
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
+        newBtn.addEventListener('click', handleInventoryBack);
+    }
+}
+
+/**
+ * Setup funzionalità inventario mobile (ricerca, filtri)
+ */
+function setupInventoryMobileFeatures() {
+    // Setup ricerca
+    const searchInput = document.getElementById('inventory-search-input-mobile');
+    if (searchInput) {
+        const newInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newInput, searchInput);
+        
+        let searchTimeout = null;
         newInput.addEventListener('input', (e) => {
-            handleViewerSearchMobile(e);
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                filterInventoryList();
+            }, 300);
         });
     }
     
-    // Setup download CSV mobile
-    const downloadBtnMobile = document.getElementById('viewer-download-csv-mobile');
-    if (downloadBtnMobile) {
-        // Rimuovi listener esistenti
-        const newBtn = downloadBtnMobile.cloneNode(true);
-        downloadBtnMobile.parentNode.replaceChild(newBtn, downloadBtnMobile);
+    // Setup dropdown filtri
+    const filtersBtn = document.getElementById('inventory-filters-dropdown-btn');
+    if (filtersBtn) {
+        const newBtn = filtersBtn.cloneNode(true);
+        filtersBtn.parentNode.replaceChild(newBtn, filtersBtn);
         
         newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
             e.stopPropagation();
-            handleViewerDownloadCSV();
-        });
-    }
-    
-    // Setup toggle filtri mobile
-    const filtersToggle = document.getElementById('viewer-filters-toggle-mobile');
-    if (filtersToggle) {
-        const newToggle = filtersToggle.cloneNode(true);
-        filtersToggle.parentNode.replaceChild(newToggle, filtersToggle);
-        
-        newToggle.addEventListener('click', () => {
-            const filtersContent = document.getElementById('viewer-filters-content-mobile');
-            if (filtersContent) {
-                filtersContent.classList.toggle('hidden');
-                // Ruota icona
-                const icon = newToggle.querySelector('svg');
-                if (icon) {
-                    icon.style.transform = filtersContent.classList.contains('hidden') 
-                        ? 'rotate(0deg)' 
-                        : 'rotate(180deg)';
-                }
+            const menu = document.getElementById('inventory-filters-dropdown-menu');
+            if (menu) {
+                menu.classList.toggle('hidden');
             }
         });
     }
     
-    // Setup reset filtri mobile
-    const resetFiltersBtn = document.getElementById('reset-filters-btn-mobile');
-    if (resetFiltersBtn) {
-        const newBtn = resetFiltersBtn.cloneNode(true);
-        resetFiltersBtn.parentNode.replaceChild(newBtn, resetFiltersBtn);
+    // Chiudi dropdown quando si clicca fuori
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.inventory-filters-dropdown-mobile')) {
+            const menu = document.getElementById('inventory-filters-dropdown-menu');
+            if (menu) {
+                menu.classList.add('hidden');
+            }
+        }
+    });
+    
+    // Setup select filtri
+    ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
+        const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
+        if (select) {
+            const newSelect = select.cloneNode(true);
+            select.parentNode.replaceChild(newSelect, select);
+            
+            newSelect.addEventListener('change', () => {
+                filterInventoryList();
+            });
+        }
+    });
+    
+    // Setup reset filtri
+    const resetBtn = document.getElementById('inventory-filter-reset-btn-mobile');
+    if (resetBtn) {
+        const newBtn = resetBtn.cloneNode(true);
+        resetBtn.parentNode.replaceChild(newBtn, resetBtn);
         
         newBtn.addEventListener('click', () => {
-            resetViewerFiltersMobile();
+            resetInventoryFilters();
         });
     }
-    
-    // Setup dropdown filtri mobile (usa stessa logica desktop)
-    setupViewerFiltersMobile();
 }
 
 /**
@@ -1687,30 +1765,33 @@ function applyViewerFiltersMobile() {
     renderViewerTableMobile(filtered);
 }
 
+// Variabili globali per inventario
+let inventoryDataMobile = null;
+let inventoryFilteredDataMobile = null;
+
 /**
- * Carica dati inventario nel viewer mobile
+ * Carica dati inventario mobile
  */
-async function loadViewerDataMobile() {
+async function loadInventoryDataMobile() {
     const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
     const apiBase = window.API_BASE_URL || (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '');
     
     if (!token || !apiBase) {
-        const tableBody = document.getElementById('viewer-table-body-mobile');
-        if (tableBody) {
-            tableBody.innerHTML = '<tr><td colspan="4" class="viewer-error">Errore: Configurazione non valida</td></tr>';
+        const wineList = document.getElementById('inventory-wine-list-mobile');
+        if (wineList) {
+            wineList.innerHTML = '<div class="inventory-loading">Errore: Configurazione non valida</div>';
         }
         return;
     }
     
-    const tableBody = document.getElementById('viewer-table-body-mobile');
-    if (!tableBody) {
+    const wineList = document.getElementById('inventory-wine-list-mobile');
+    if (!wineList) {
         return;
     }
     
-    tableBody.innerHTML = '<tr><td colspan="4" class="viewer-loading">Caricamento...</td></tr>';
+    wineList.innerHTML = '<div class="inventory-loading">Caricamento inventario...</div>';
     
     try {
-        // Usa endpoint viewer snapshot
         const response = await fetch(`${apiBase}/api/viewer/snapshot`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -1720,77 +1801,432 @@ async function loadViewerDataMobile() {
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Errore nel caricamento dei dati' }));
-            throw new Error(errorData.detail || `Errore ${response.status}: ${response.statusText}`);
+            throw new Error(errorData.detail || `Errore ${response.status}`);
         }
         
         const data = await response.json();
+        inventoryDataMobile = data;
+        inventoryFilteredDataMobile = data.rows || [];
         
-        // Salva dati globalmente per filtri/ricerca (se necessario)
-        if (typeof window !== 'undefined') {
-            window.viewerData = data;
-            // Salva anche in viewerData globale se esiste
-            if (typeof viewerData !== 'undefined') {
-                window.viewerData = data;
-            }
-        }
+        // Popola opzioni filtri
+        populateInventoryFilters(data);
         
-        // Popola filtri mobile (dopo aver salvato i dati)
-        if (data && data.facets) {
-            populateFiltersMobile(data.facets);
-        }
-        
-        // Renderizza tabella se ci sono dati
-        if (data && data.rows) {
-            renderViewerTableMobile(data.rows);
-        } else {
-            tableBody.innerHTML = '<tr><td colspan="4" class="viewer-empty">Nessun dato disponibile</td></tr>';
-        }
-        
-        // Se c'è una query di ricerca o filtri attivi, applica filtri
-        const hasSearch = typeof viewerSearchQuery !== 'undefined' && viewerSearchQuery && viewerSearchQuery.trim();
-        const hasFilters = typeof viewerFilters !== 'undefined' && viewerFilters && 
-            (viewerFilters.type || viewerFilters.vintage || viewerFilters.winery || viewerFilters.supplier);
-        
-        if (hasSearch || hasFilters) {
-            applyViewerFiltersMobile();
-        }
+        // Renderizza lista vini
+        renderInventoryList(inventoryFilteredDataMobile);
         
     } catch (error) {
-        tableBody.innerHTML = `<tr><td colspan="4" class="viewer-error">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento dei dati')}</td></tr>`;
+        if (wineList) {
+            wineList.innerHTML = `<div class="inventory-loading">Errore: ${escapeHtmlMobile(error.message || 'Errore nel caricamento')}</div>`;
+        }
     }
 }
 
 /**
- * Renderizza tabella inventario nel viewer mobile
+ * Popola opzioni filtri da dati inventario
  */
-function renderViewerTableMobile(rows) {
-    const tableBody = document.getElementById('viewer-table-body-mobile');
-    if (!tableBody) {
+function populateInventoryFilters(data) {
+    if (!data || !data.facets) return;
+    
+    ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
+        const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
+        if (!select) return;
+        
+        // Mantieni opzione "Tutte"
+        const allOption = select.querySelector('option[value=""]');
+        select.innerHTML = allOption ? allOption.outerHTML : `<option value="">${filterType === 'supplier' ? 'Tutti' : 'Tutte'}</option>`;
+        
+        const facets = data.facets[filterType] || {};
+        const sortedItems = Object.entries(facets).sort((a, b) => b[1] - a[1]);
+        
+        sortedItems.forEach(([value, count]) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = `${value} (${count})`;
+            select.appendChild(option);
+        });
+    });
+}
+
+/**
+ * Renderizza lista vini (schermata 1)
+ */
+function renderInventoryList(wines) {
+    const wineList = document.getElementById('inventory-wine-list-mobile');
+    if (!wineList) return;
+    
+    if (!wines || wines.length === 0) {
+        wineList.innerHTML = '<div class="inventory-loading">Nessun vino trovato</div>';
         return;
     }
     
-    if (!rows || rows.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="4" class="viewer-empty">Nessun vino trovato</td></tr>';
-        return;
-    }
-    
-    // Mappa i dati usando i nomi corretti dei campi (come nel desktop)
-    tableBody.innerHTML = rows.map(row => {
-        // Supporta sia i nomi nuovi che quelli vecchi per compatibilità
-        const name = row.name || row.Nome || '';
-        const vintage = row.vintage || row.Annata || 'N/A';
-        const qty = row.qty !== undefined ? row.qty : (row.quantity !== undefined ? row.quantity : (row.Quantità !== undefined ? row.Quantità : 0));
-        const price = row.price !== undefined ? row.price : (row.selling_price !== undefined ? row.selling_price : (row.Prezzo !== undefined ? row.Prezzo : 0));
+    wineList.innerHTML = wines.map(wine => {
+        const name = wine.name || wine.Nome || 'Vino sconosciuto';
+        const vintage = wine.vintage || wine.Annata || '';
+        const displayName = vintage ? `${name} ${vintage}` : name;
+        const wineId = wine.id || wine.ID || '';
         
         return `
-            <tr>
-                <td>${escapeHtmlMobile(name)}</td>
-                <td>${escapeHtmlMobile(vintage)}</td>
-                <td>${qty}</td>
-                <td>${price ? parseFloat(price).toFixed(2) : 'N/A'}</td>
-            </tr>
+            <button type="button" class="inventory-wine-item-btn" data-wine-id="${wineId}" data-wine-data='${JSON.stringify(wine).replace(/'/g, "&apos;")}'>
+                ${escapeHtmlMobile(displayName)}
+            </button>
         `;
     }).join('');
+    
+    // Attacca listener click
+    wineList.querySelectorAll('.inventory-wine-item-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const wineData = JSON.parse(btn.dataset.wineData.replace(/&apos;/g, "'"));
+            showWineDetails(wineData);
+        });
+    });
+}
+
+/**
+ * Mostra dettagli vino (schermata 2)
+ */
+function showWineDetails(wine) {
+    inventoryCurrentWine = wine;
+    
+    // Aggiorna banner
+    const wineName = wine.name || wine.Nome || 'Vino sconosciuto';
+    const vintage = wine.vintage || wine.Annata || '';
+    const displayName = vintage ? `${wineName} ${vintage}` : wineName;
+    
+    const banner = document.getElementById('inventory-wine-name-banner-mobile');
+    if (banner) {
+        banner.textContent = displayName;
+    }
+    
+    // Aggiorna quantità
+    const qty = wine.qty !== undefined ? wine.qty : (wine.quantity || 0);
+    const qtyValue = document.getElementById('inventory-quantity-value-mobile');
+    if (qtyValue) {
+        qtyValue.textContent = `${qty} bottiglie`;
+    }
+    
+    // Renderizza form campi vino
+    renderWineForm(wine);
+    
+    // Setup salvataggio modifiche
+    setupWineSaveButton();
+    
+    // Renderizza grafico preview
+    renderWineGraphPreview(wine);
+    
+    // Carica e renderizza log movimenti
+    loadWineMovements(wine);
+    
+    // Mostra schermata dettagli
+    showInventoryScreen('details');
+}
+
+/**
+ * Renderizza form campi vino
+ */
+function renderWineForm(wine) {
+    const formContainer = document.getElementById('inventory-wine-form-mobile');
+    if (!formContainer) return;
+    
+    const fields = [
+        { key: 'name', label: 'NOME', prop: 'name' },
+        { key: 'quantity', label: 'QUANTITÀ', prop: 'qty' },
+        { key: 'purchase_price', label: 'PREZZO ACQUISTO (€)', prop: 'purchase_price' },
+        { key: 'region', label: 'REGIONE', prop: 'region' },
+        { key: 'type', label: 'TIPO', prop: 'type' },
+        { key: 'grape_variety', label: 'VITIGNO', prop: 'grape_variety' },
+        { key: 'alcohol', label: 'GRADAZIONE (% VOL)', prop: 'alcohol' },
+        { key: 'producer', label: 'PRODUTTORE', prop: 'producer' },
+        { key: 'selling_price', label: 'PREZZO VENDITA (€)', prop: 'selling_price' },
+        { key: 'vintage', label: 'ANNATA', prop: 'vintage' },
+        { key: 'country', label: 'PAESE', prop: 'country' },
+        { key: 'supplier', label: 'FORNITORE', prop: 'supplier' },
+        { key: 'classification', label: 'CLASSIFICAZIONE', prop: 'classification' },
+    ];
+    
+    formContainer.innerHTML = fields.map(field => {
+        const value = wine[field.prop] || wine[field.key] || '';
+        return `
+            <div class="inventory-form-field-mobile">
+                <label class="inventory-form-label-mobile">${field.label}</label>
+                <input type="text" class="inventory-form-input-mobile" 
+                       data-field="${field.key}" 
+                       value="${escapeHtmlMobile(String(value))}" 
+                       ${field.key === 'quantity' || field.key === 'purchase_price' || field.key === 'selling_price' || field.key === 'alcohol' ? 'inputmode="numeric"' : ''}>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Renderizza grafico preview (cliccabile)
+ */
+function renderWineGraphPreview(wine) {
+    const canvas = document.getElementById('inventory-graph-preview-canvas-mobile');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Reset canvas
+    ctx.clearRect(0, 0, width, height);
+    
+    // TODO: Implementare disegno grafico reale con dati movimenti
+    // Per ora disegno placeholder
+    ctx.strokeStyle = '#9a182e';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, height);
+    ctx.lineTo(width / 3, height / 2);
+    ctx.lineTo(2 * width / 3, height / 3);
+    ctx.lineTo(width, height / 4);
+    ctx.stroke();
+    
+    // Attacca listener click per aprire grafico fullscreen
+    const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+    if (previewContainer) {
+        const newContainer = previewContainer.cloneNode(true);
+        previewContainer.parentNode.replaceChild(newContainer, previewContainer);
+        
+        newContainer.addEventListener('click', () => {
+            showWineChart(wine);
+        });
+        
+        // Ripristina canvas dopo clone
+        const newCanvas = newContainer.querySelector('#inventory-graph-preview-canvas-mobile');
+        if (newCanvas) {
+            renderWineGraphPreview(wine); // Re-render
+        }
+    }
+}
+
+/**
+ * Carica log movimenti vino
+ */
+async function loadWineMovements(wine) {
+    const logContainer = document.getElementById('inventory-movements-log-mobile');
+    if (!logContainer) return;
+    
+    logContainer.innerHTML = '<div class="inventory-loading">Caricamento movimenti...</div>';
+    
+    // TODO: Implementare caricamento movimenti da API
+    // Per ora placeholder
+    setTimeout(() => {
+        renderWineMovements([]);
+    }, 500);
+}
+
+/**
+ * Renderizza log movimenti
+ */
+function renderWineMovements(movements) {
+    const logContainer = document.getElementById('inventory-movements-log-mobile');
+    if (!logContainer) return;
+    
+    if (!movements || movements.length === 0) {
+        logContainer.innerHTML = '<div class="inventory-loading">Nessun movimento registrato</div>';
+        return;
+    }
+    
+    logContainer.innerHTML = movements.map((mov, index) => {
+        const isConsumed = mov.type === 'consumption' || mov.type === 'consumed';
+        const type = isConsumed ? 'consumed' : 'refilled';
+        const label = isConsumed ? 'CONSUMATO' : 'Rifornito';
+        const qty = mov.quantity || 0;
+        const date = mov.date || mov.created_at || 'N/A';
+        const time = mov.time || '';
+        
+        return `
+            <div class="inventory-movement-card-mobile ${type}">
+                <div class="inventory-movement-label-mobile">${label}</div>
+                <div class="inventory-movement-quantity-mobile">X${qty}</div>
+                <div class="inventory-movement-date-mobile">${date} ${time}</div>
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Mostra grafico fullscreen (schermata 3)
+ */
+function showWineChart(wine) {
+    inventoryCurrentWine = wine;
+    
+    // Aggiorna banner
+    const wineName = wine.name || wine.Nome || 'Vino sconosciuto';
+    const vintage = wine.vintage || wine.Annata || '';
+    const displayName = vintage ? `${wineName} ${vintage}` : wineName;
+    
+    const banner = document.getElementById('inventory-wine-name-chart-mobile');
+    if (banner) {
+        banner.textContent = displayName;
+    }
+    
+    // Renderizza grafico
+    renderWineChartFullscreen(wine);
+    
+    // Mostra schermata grafico
+    showInventoryScreen('chart');
+}
+
+/**
+ * Renderizza grafico fullscreen
+ */
+function renderWineChartFullscreen(wine, period = 'week') {
+    const canvas = document.getElementById('inventory-chart-canvas-mobile');
+    if (!canvas) return;
+    
+    // Set canvas size
+    const container = canvas.parentElement;
+    if (container) {
+        canvas.width = container.clientWidth;
+        canvas.height = Math.max(400, window.innerHeight * 0.5);
+    }
+    
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    // Reset
+    ctx.clearRect(0, 0, width, height);
+    
+    // Setup filtri periodo se non già fatto
+    setupPeriodFilters();
+    
+    // TODO: Implementare disegno grafico completo con Chart.js o simile
+    // Per ora placeholder
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, width, height);
+    
+    ctx.fillStyle = '#666';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Grafico movimenti - ${period} (da implementare)`, width / 2, height / 2);
+}
+
+/**
+ * Filtra lista inventario
+ */
+function filterInventoryList() {
+    if (!inventoryDataMobile || !inventoryDataMobile.rows) return;
+    
+    let filtered = [...inventoryDataMobile.rows];
+    
+    // Ricerca
+    const searchInput = document.getElementById('inventory-search-input-mobile');
+    if (searchInput && searchInput.value.trim()) {
+        const query = searchInput.value.toLowerCase().trim();
+        filtered = filtered.filter(wine => {
+            const name = (wine.name || wine.Nome || '').toLowerCase();
+            const vintage = (wine.vintage || wine.Annata || '').toLowerCase();
+            return name.includes(query) || vintage.includes(query);
+        });
+    }
+    
+    // Filtri
+    ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
+        const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
+        if (select && select.value) {
+            filtered = filtered.filter(wine => {
+                const wineValue = wine[filterType] || '';
+                return String(wineValue) === String(select.value);
+            });
+        }
+    });
+    
+    inventoryFilteredDataMobile = filtered;
+    renderInventoryList(filtered);
+}
+
+/**
+ * Reset filtri inventario
+ */
+function resetInventoryFilters() {
+    const searchInput = document.getElementById('inventory-search-input-mobile');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    ['type', 'vintage', 'winery', 'supplier'].forEach(filterType => {
+        const select = document.getElementById(`inventory-filter-${filterType}-mobile`);
+        if (select) {
+            select.value = '';
+        }
+    });
+    
+    filterInventoryList();
+}
+
+/**
+ * Setup salvataggio modifiche vino
+ */
+function setupWineSaveButton() {
+    const saveBtn = document.getElementById('inventory-save-btn-mobile');
+    if (saveBtn) {
+        const newBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newBtn, saveBtn);
+        
+        newBtn.addEventListener('click', async () => {
+            await saveWineChanges();
+        });
+    }
+}
+
+/**
+ * Salva modifiche vino
+ */
+async function saveWineChanges() {
+    if (!inventoryCurrentWine) return;
+    
+    const formContainer = document.getElementById('inventory-wine-form-mobile');
+    if (!formContainer) return;
+    
+    const inputs = formContainer.querySelectorAll('.inventory-form-input-mobile');
+    const changes = {};
+    
+    inputs.forEach(input => {
+        const field = input.dataset.field;
+        const value = input.value.trim();
+        if (value !== String(inventoryCurrentWine[field] || '')) {
+            changes[field] = value;
+        }
+    });
+    
+    if (Object.keys(changes).length === 0) {
+        alert('Nessuna modifica da salvare');
+        return;
+    }
+    
+    // TODO: Implementare salvataggio via API
+    console.log('Salvataggio modifiche:', changes);
+    alert('Funzionalità salvataggio in sviluppo');
+}
+
+/**
+ * Setup filtri periodo grafico
+ */
+function setupPeriodFilters() {
+    const periodBtns = document.querySelectorAll('.inventory-period-btn');
+    periodBtns.forEach(btn => {
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        newBtn.addEventListener('click', () => {
+            // Rimuovi active da tutti
+            document.querySelectorAll('.inventory-period-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+            
+            // Aggiungi active a quello cliccato
+            newBtn.classList.add('active');
+            
+            // Renderizza grafico con periodo selezionato
+            const period = newBtn.dataset.period;
+            if (inventoryCurrentWine) {
+                renderWineChartFullscreen(inventoryCurrentWine, period);
+            }
+        });
+    });
 }
 
 // ============================================

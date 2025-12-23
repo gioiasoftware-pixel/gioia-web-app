@@ -396,10 +396,6 @@
     width: 20px !important;
     height: 20px !important;
 }
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border);
-    flex-shrink: 0;
-}
 
 .mobileRoot .mSidebar .chat-sidebar-list {
     flex: 1;
@@ -426,8 +422,8 @@
 }
 
 /* ============================================
-   VIEWER MOBILE (.mViewer) - Sheet
-   ============================================ */
+  INVENTORY VIEWER MOBILE (.mViewer) - 3 Screens Design
+  ============================================ */
 .mobileRoot .mViewer {
     position: fixed !important;
     top: 0 !important;
@@ -439,11 +435,490 @@
     display: none !important;
     flex-direction: column !important;
     pointer-events: none !important;
+    overflow: hidden !important;
 }
 
 .mobileRoot .mViewer:not([hidden]) {
     display: flex;
     pointer-events: auto;
+}
+
+/* Header comune inventario */
+.mobileRoot .mViewer .inventory-header-mobile {
+    flex-shrink: 0;
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-white);
+    z-index: 10;
+}
+
+.mobileRoot .mViewer .inventory-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.mobileRoot .mViewer .inventory-logo {
+    display: flex;
+    align-items: flex-start;
+    line-height: 1;
+}
+
+.mobileRoot .mViewer .inventory-logo-g {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-granaccia);
+    font-family: 'Arial', sans-serif;
+}
+
+.mobileRoot .mViewer .inventory-logo-ia {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-granaccia);
+    margin-left: 2px;
+    line-height: 1.2;
+}
+
+.mobileRoot .mViewer .inventory-title-mobile {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--color-granaccia);
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.mobileRoot .mViewer .inventory-back-btn-mobile {
+    padding: 10px 20px;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-back-btn-mobile:active {
+    opacity: 0.8;
+}
+
+/* Container schermate */
+.mobileRoot .mViewer .inventory-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.mobileRoot .mViewer .inventory-screen.hidden {
+    display: none !important;
+}
+
+/* ============================================
+   SCHERMATA 1: LISTA INVENTARIO
+   ============================================ */
+.mobileRoot .mViewer .inventory-screen-list {
+    padding: 0 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Search Bar */
+.mobileRoot .mViewer .inventory-search-bar-mobile {
+    position: relative;
+    margin: 16px 0;
+    flex-shrink: 0;
+}
+
+.mobileRoot .mViewer .inventory-search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-secondary);
+    pointer-events: none;
+}
+
+.mobileRoot .mViewer .inventory-search-input-mobile {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 16px;
+    background-color: var(--color-white);
+    color: var(--color-text-primary);
+}
+
+.mobileRoot .mViewer .inventory-search-input-mobile:focus {
+    outline: none;
+    border-color: var(--color-granaccia);
+}
+
+/* Filters Dropdown */
+.mobileRoot .mViewer .inventory-filters-dropdown-mobile {
+    margin-bottom: 16px;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.mobileRoot .mViewer .inventory-filters-dropdown-btn {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: var(--color-white);
+    border: 2px solid var(--color-granaccia);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-granaccia);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-filters-dropdown-btn:active {
+    background-color: rgba(154, 24, 46, 0.05);
+}
+
+.mobileRoot .mViewer .inventory-filters-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin-top: 8px;
+    background-color: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 20;
+}
+
+.mobileRoot .mViewer .inventory-filters-dropdown-menu.hidden {
+    display: none;
+}
+
+.mobileRoot .mViewer .inventory-filter-item-mobile {
+    margin-bottom: 16px;
+}
+
+.mobileRoot .mViewer .inventory-filter-item-mobile:last-child {
+    margin-bottom: 0;
+}
+
+.mobileRoot .mViewer .inventory-filter-label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+}
+
+.mobileRoot .mViewer .inventory-filter-select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 14px;
+    background-color: var(--color-white);
+    color: var(--color-text-primary);
+}
+
+.mobileRoot .mViewer .inventory-filter-reset-btn {
+    width: 100%;
+    padding: 10px;
+    margin-top: 12px;
+    background-color: var(--color-light-gray);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-filter-reset-btn:active {
+    background-color: var(--color-border);
+}
+
+/* Wine List (Scrollable) */
+.mobileRoot .mViewer .inventory-wine-list-mobile {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 16px;
+}
+
+.mobileRoot .mViewer .inventory-wine-item-btn {
+    width: 100%;
+    padding: 16px;
+    margin-bottom: 12px;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+}
+
+.mobileRoot .mViewer .inventory-wine-item-btn:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+}
+
+.mobileRoot .mViewer .inventory-loading {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+}
+
+/* ============================================
+   SCHERMATA 2: DETTAGLI VINO
+   ============================================ */
+.mobileRoot .mViewer .inventory-screen-details {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Wine Banner */
+.mobileRoot .mViewer .inventory-wine-banner-mobile {
+    width: 100%;
+    padding: 16px;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    font-size: 18px;
+    font-weight: 600;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* Content Layout */
+.mobileRoot .mViewer .inventory-details-content-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+
+/* Left Column */
+.mobileRoot .mViewer .inventory-details-left-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Quantity Section */
+.mobileRoot .mViewer .inventory-quantity-section-mobile {
+    padding: 16px;
+    background-color: var(--color-light-gray);
+    border-radius: 8px;
+}
+
+.mobileRoot .mViewer .inventory-quantity-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.mobileRoot .mViewer .inventory-quantity-value {
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+/* Graph Preview (Clickable) */
+.mobileRoot .mViewer .inventory-graph-preview-mobile {
+    width: 100%;
+    height: 200px;
+    background-color: var(--color-light-gray);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-graph-preview-mobile:active {
+    background-color: var(--color-border);
+}
+
+.mobileRoot .mViewer .inventory-graph-preview-canvas-mobile {
+    width: 100%;
+    height: 100%;
+}
+
+/* Save Button */
+.mobileRoot .mViewer .inventory-save-btn-mobile {
+    width: 100%;
+    padding: 16px;
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-save-btn-mobile:active {
+    opacity: 0.8;
+}
+
+/* Wine Form */
+.mobileRoot .mViewer .inventory-wine-form-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.mobileRoot .mViewer .inventory-form-field-mobile {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.mobileRoot .mViewer .inventory-form-label-mobile {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+}
+
+.mobileRoot .mViewer .inventory-form-input-mobile {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 16px;
+    background-color: var(--color-white);
+    color: var(--color-text-primary);
+}
+
+.mobileRoot .mViewer .inventory-form-input-mobile:focus {
+    outline: none;
+    border-color: var(--color-granaccia);
+}
+
+/* Right Column: Movements Log */
+.mobileRoot .mViewer .inventory-details-right-mobile {
+    display: flex;
+    flex-direction: column;
+}
+
+.mobileRoot .mViewer .inventory-movements-log-mobile {
+    max-height: 400px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    background-color: var(--color-light-gray);
+    border-radius: 8px;
+}
+
+.mobileRoot .mViewer .inventory-movement-card-mobile {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 14px;
+}
+
+.mobileRoot .mViewer .inventory-movement-card-mobile.consumed {
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+}
+
+.mobileRoot .mViewer .inventory-movement-card-mobile.refilled {
+    background-color: var(--color-white);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+}
+
+.mobileRoot .mViewer .inventory-movement-label-mobile {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.mobileRoot .mViewer .inventory-movement-quantity-mobile {
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.mobileRoot .mViewer .inventory-movement-date-mobile {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* ============================================
+   SCHERMATA 3: GRAFICO FULLSCREEN
+   ============================================ */
+.mobileRoot .mViewer .inventory-screen-chart {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Period Filters */
+.mobileRoot .mViewer .inventory-period-filters-mobile {
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    flex-shrink: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.mobileRoot .mViewer .inventory-period-btn {
+    padding: 10px 16px;
+    background-color: var(--color-light-gray);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.mobileRoot .mViewer .inventory-period-btn.active {
+    background-color: var(--color-granaccia);
+    color: var(--color-white);
+    border-color: var(--color-granaccia);
+}
+
+.mobileRoot .mViewer .inventory-period-btn:active {
+    opacity: 0.8;
+}
+
+/* Chart Container */
+.mobileRoot .mViewer .inventory-chart-container-mobile {
+    flex: 1;
+    padding: 16px;
+    min-height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobileRoot .mViewer .inventory-chart-canvas-mobile {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
 }
 
 .mobileRoot .mViewer .viewer-content {
