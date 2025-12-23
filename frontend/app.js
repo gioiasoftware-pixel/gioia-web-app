@@ -601,13 +601,21 @@ function applyTheme(theme, persist = true) {
         }
     }
 
-    // Aggiorna stato del toggle switch (checked = dark mode)
-    const themeCheckbox = document.getElementById('themeToggle');
-    if (themeCheckbox) {
-        themeCheckbox.checked = currentTheme === 'dark';
-        const themeLabel = themeCheckbox.nextElementSibling;
-        if (themeLabel && themeLabel.classList.contains('ui-themeToggle__track')) {
-            themeLabel.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
+    // Aggiorna stato dei toggle switch (checked = dark mode) - ora nella sidebar
+    const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
+    if (themeCheckboxDesktop) {
+        themeCheckboxDesktop.checked = currentTheme === 'dark';
+        const themeLabelDesktop = themeCheckboxDesktop.nextElementSibling;
+        if (themeLabelDesktop && themeLabelDesktop.classList.contains('ui-themeToggle__track')) {
+            themeLabelDesktop.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
+        }
+    }
+    const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
+    if (themeCheckboxMobile) {
+        themeCheckboxMobile.checked = currentTheme === 'dark';
+        const themeLabelMobile = themeCheckboxMobile.nextElementSibling;
+        if (themeLabelMobile && themeLabelMobile.classList.contains('ui-themeToggle__track')) {
+            themeLabelMobile.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
         }
     }
 }
@@ -673,38 +681,48 @@ function setupEventListeners() {
         });
     }
 
-    // Logout - usa listener universale per mobile
-    const logoutBtn = document.getElementById('logout-btn');
+    // Logout - ora nella sidebar (desktop)
+    const logoutBtn = document.getElementById('logout-btn-sidebar');
     if (logoutBtn) {
         addUniversalEventListener(logoutBtn, handleLogout);
     }
+    
+    // Logout button mobile - ora nella sidebar
+    const logoutBtnMobile = document.getElementById('logout-btn-sidebar-mobile');
+    if (logoutBtnMobile) {
+        addUniversalEventListener(logoutBtnMobile, handleLogout);
+    }
 
-    // Theme toggle switch (giorno/notte) - Desktop
-    const themeCheckbox = document.getElementById('themeToggle');
-    if (themeCheckbox) {
-        themeCheckbox.checked = currentTheme === 'dark';
-        themeCheckbox.addEventListener('change', (e) => {
+    // Theme toggle switch (giorno/notte) - Desktop sidebar
+    const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
+    if (themeCheckboxDesktop) {
+        themeCheckboxDesktop.checked = currentTheme === 'dark';
+        themeCheckboxDesktop.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             const nextTheme = isChecked ? 'dark' : 'light';
             applyTheme(nextTheme, true);
+            // Sincronizza anche il toggle mobile se presente
+            const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
+            if (themeCheckboxMobile) {
+                themeCheckboxMobile.checked = isChecked;
+            }
         });
     }
 
-    // Theme toggle switch mobile
-    const themeCheckboxMobile = document.getElementById('themeToggle-mobile');
+    // Theme toggle switch mobile - ora nella sidebar
+    const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
     if (themeCheckboxMobile) {
         themeCheckboxMobile.checked = currentTheme === 'dark';
         themeCheckboxMobile.addEventListener('change', (e) => {
             const isChecked = e.target.checked;
             const nextTheme = isChecked ? 'dark' : 'light';
             applyTheme(nextTheme, true);
+            // Sincronizza anche il toggle desktop se presente
+            const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
+            if (themeCheckboxDesktop) {
+                themeCheckboxDesktop.checked = isChecked;
+            }
         });
-    }
-    
-    // Logout button mobile
-    const logoutBtnMobile = document.getElementById('logout-btn-sidebar-mobile');
-    if (logoutBtnMobile) {
-        addUniversalEventListener(logoutBtnMobile, handleLogout);
     }
     
     // Bottone aggiungi vino (desktop)
