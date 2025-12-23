@@ -1,10 +1,11 @@
 """
 Nuovo servizio AI che usa sistema multi-agent.
-Integra RouterAgent, QueryAgent, MovementAgent e AnalyticsAgent.
+Integra RouterAgent, QueryAgent, MovementAgent, MultiMovementAgent e AnalyticsAgent.
 """
 from .agents.router_agent import RouterAgent
 from .agents.query_agent import QueryAgent
 from .agents.movement_agent import MovementAgent
+from .agents.multi_movement_agent import MultiMovementAgent
 from .agents.analytics_agent import AnalyticsAgent
 from typing import Dict, Any, Optional
 import logging
@@ -22,6 +23,8 @@ class AIServiceV2:
             self.router = RouterAgent()
             self.query = QueryAgent()
             self.movement = MovementAgent()
+            # MultiMovementAgent usa MovementAgent per ogni movimento singolo
+            self.multi_movement = MultiMovementAgent(movement_agent=self.movement)
             self.analytics = AnalyticsAgent()
             
             logger.info("✅ Sistema multi-agent inizializzato con successo")
@@ -72,7 +75,15 @@ class AIServiceV2:
                     user_id=user_id
                 )
             elif agent_name == "movement":
+                # Movimento singolo: usa MovementAgent
                 result = await self.movement.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
+            elif agent_name == "multi_movement":
+                # Movimenti multipli: usa MultiMovementAgent che coordina MovementAgent
+                logger.info(f"[AI_SERVICE_V2] 📦 Rilevati movimenti multipli, uso MultiMovementAgent")
+                result = await self.multi_movement.process_with_context(
                     message=user_message,
                     user_id=user_id
                 )

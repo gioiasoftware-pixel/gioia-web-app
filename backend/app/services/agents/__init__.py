@@ -6,6 +6,7 @@ from .base_agent import BaseAgent
 from .router_agent import RouterAgent
 from .query_agent import QueryAgent
 from .movement_agent import MovementAgent
+from .multi_movement_agent import MultiMovementAgent
 from .analytics_agent import AnalyticsAgent
 from .audio_agent import AudioAgent
 
@@ -14,6 +15,7 @@ __all__ = [
     "RouterAgent",
     "QueryAgent",
     "MovementAgent",
+    "MultiMovementAgent",
     "AnalyticsAgent",
     "AudioAgent",
 ]

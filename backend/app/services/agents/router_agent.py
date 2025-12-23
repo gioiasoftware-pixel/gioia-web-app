@@ -29,19 +29,30 @@ class RouterAgent(BaseAgent):
            - Lista inventario
            - Keywords: "cerca", "trova", "quale", "info", "dettagli", "lista", "mostra", "vini"
         
-        3. **movement**: Per registrazione movimenti
-           - Consumi (vendite)
-           - Rifornimenti (acquisti)
+        3. **movement**: Per registrazione movimenti SINGOLI
+           - UN SOLO consumo o rifornimento
+           - Esempi: "ho venduto 3 Barolo", "consumato 2 Chianti", "ricevuto 10 Brunello"
            - Keywords: "consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "registra"
         
-        4. **analytics**: Per statistiche e report
+        4. **multi_movement**: Per registrazione movimenti MULTIPLI
+           - PIÙ movimenti in un singolo messaggio
+           - Esempi: "ho venduto 3 Barolo e 2 Chianti", "ricevuto 10 Brunello, 5 Amarone e 3 Chianti"
+           - Identifica quando ci sono:
+             * Più vini menzionati (con "e", ",", "più")
+             * Più quantità specificate per vini diversi
+           - Keywords: "e", ",", "più", congiunzioni tra vini/quantità
+        
+        5. **analytics**: Per statistiche e report
            - Statistiche inventario
            - Report periodici
            - Analisi trend
            - Keywords: "statistiche", "report", "riepilogo", "analisi", "trend", "stat"
         
-        IMPORTANTE: Rispondi SOLO con il nome dell'agent (extraction, query, movement, analytics).
-        Non aggiungere altro testo, spiegazioni o commenti.
+        IMPORTANTE: 
+        - Per movimenti, distingui tra SINGOLO (movement) e MULTIPLO (multi_movement)
+        - Se il messaggio contiene più di un movimento (più vini/quantità), usa multi_movement
+        - Rispondi SOLO con il nome dell'agent (extraction, query, movement, multi_movement, analytics)
+        - Non aggiungere altro testo, spiegazioni o commenti.
         """
         
         # Usa modello economico per routing
@@ -69,7 +80,7 @@ class RouterAgent(BaseAgent):
             agent_name = agent_name.replace(".", "").replace("!", "").strip()
             
             # Validazione
-            valid_agents = ["extraction", "query", "movement", "analytics"]
+            valid_agents = ["extraction", "query", "movement", "multi_movement", "analytics"]
             if agent_name in valid_agents:
                 logger.info(f"✅ Router instradato a: {agent_name}")
                 return agent_name
