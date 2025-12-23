@@ -1274,6 +1274,16 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         padding: 16px;
         /* Mantieni altezza minima anche su mobile per allineare i segnalibri */
         min-height: 220px;
+        box-sizing: border-box;
+    }
+
+    /* Movements card mobile - previene taglio verticale */
+    .movements-period-card {
+        max-width: 100%;
+        width: calc(100% - 32px);
+        margin: 0 16px;
+        box-sizing: border-box;
+        overflow-x: hidden;
     }
     
     .wine-card-body {
