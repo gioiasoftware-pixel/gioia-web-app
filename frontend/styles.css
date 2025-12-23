@@ -3145,6 +3145,50 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     color: var(--color-black);
 }
 
+/* Sezione grafico integrata nella wine card */
+.wine-card-chart-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.wine-card-chart-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.wine-card-chart-stats {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.wine-card-chart-stat-item {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.wine-card-chart-stat-item strong {
+    color: var(--color-text-primary);
+    font-weight: 600;
+}
+
+.wine-card-chart-wrapper {
+    width: 100%;
+    position: relative;
+    min-height: 300px;
+    margin-top: 8px;
+}
+
+.wine-card-chart-canvas {
+    max-width: 100%;
+    height: auto;
+}
+
 /* Wine Card Bookmarks (Segnalibri) */
 /* I segnalibri sono ora nel wrapper, non nella card, quindi possono essere sotto */
 .wine-card-wrapper .wine-card-bookmarks {

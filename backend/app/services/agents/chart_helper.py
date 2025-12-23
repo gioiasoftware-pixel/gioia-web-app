@@ -88,7 +88,8 @@ class ChartHelper:
         badge: Optional[str] = None
     ) -> str:
         """
-        Genera wine card completa con grafico integrato.
+        Genera wine card completa con grafico integrato nello stesso container.
+        Il grafico viene integrato come parte della wine card per uniformità visiva.
         
         Args:
             wine: Oggetto vino
@@ -97,20 +98,118 @@ class ChartHelper:
             badge: Badge opzionale per la wine card
         
         Returns:
-            HTML string con wine card e grafico
+            HTML string con wine card e grafico integrati
         """
         from .wine_card_helper import WineCardHelper
         
-        # Genera wine card standard
-        wine_card_html = WineCardHelper.generate_wine_card_html(wine, badge=badge)
+        wine_id = getattr(wine, 'id', None)
+        wine_id_attr = f' data-wine-id="{wine_id}"' if wine_id else ''
         
-        # Genera grafico
-        chart_html = ChartHelper.generate_chart_html(
-            wine_name=wine.name,
-            movements_data=movements_data,
-            period=period
-        )
+        # Inizia la wine card
+        html = f'<div class="wine-card"{wine_id_attr}>'
+        html += '<div class="wine-card-header">'
         
-        # Combina
-        return wine_card_html + "<br>" + chart_html
+        # Badge
+        if badge:
+            html += f'<div class="wine-card-badge">{WineCardHelper.escape_html(badge)}</div>'
+        
+        html += f'<div><h3 class="wine-card-title">{WineCardHelper.escape_html(wine.name)}</h3>'
+        if hasattr(wine, 'producer') and wine.producer:
+            html += f'<div class="wine-card-producer">{WineCardHelper.escape_html(wine.producer)}</div>'
+        html += '</div>'
+        html += '</div>'  # Chiude wine-card-header
+        
+        # Body con informazioni vino
+        html += '<div class="wine-card-body">'
+        
+        # Quantità
+        if hasattr(wine, 'quantity') and wine.quantity is not None:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Quantità disponibile</span>'
+            html += f'<span class="wine-card-field-value quantity">{wine.quantity} bottiglie</span>'
+            html += '</div>'
+        
+        # Prezzo vendita
+        if hasattr(wine, 'selling_price') and wine.selling_price:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Prezzo Vendita</span>'
+            html += f'<span class="wine-card-field-value price">€{wine.selling_price:.2f}</span>'
+            html += '</div>'
+        
+        # Prezzo acquisto
+        if hasattr(wine, 'cost_price') and wine.cost_price:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Prezzo Acquisto</span>'
+            html += f'<span class="wine-card-field-value">€{wine.cost_price:.2f}</span>'
+            html += '</div>'
+        
+        # Annata
+        if hasattr(wine, 'vintage') and wine.vintage:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Annata</span>'
+            html += f'<span class="wine-card-field-value">{wine.vintage}</span>'
+            html += '</div>'
+        
+        # Regione
+        if hasattr(wine, 'region') and wine.region:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Regione</span>'
+            html += f'<span class="wine-card-field-value">{WineCardHelper.escape_html(wine.region)}</span>'
+            html += '</div>'
+        
+        # Paese
+        if hasattr(wine, 'country') and wine.country:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Paese</span>'
+            html += f'<span class="wine-card-field-value">{WineCardHelper.escape_html(wine.country)}</span>'
+            html += '</div>'
+        
+        # Tipo
+        if hasattr(wine, 'wine_type') and wine.wine_type:
+            html += '<div class="wine-card-field">'
+            html += '<span class="wine-card-field-label">Tipo</span>'
+            html += f'<span class="wine-card-field-value">{WineCardHelper.escape_html(wine.wine_type)}</span>'
+            html += '</div>'
+        
+        html += '</div>'  # Chiude wine-card-body
+        
+        # Sezione grafico integrata nella wine card
+        movements = movements_data.get("movements", [])
+        current_stock = movements_data.get("current_stock", 0)
+        
+        if movements and len(movements) > 0:
+            chart_data = {
+                "wine_name": wine.name,
+                "current_stock": current_stock,
+                "opening_stock": movements_data.get("opening_stock", 0),
+                "movements": movements,
+                "period": period,
+                "total_consumi": movements_data.get("total_consumi", 0),
+                "total_rifornimenti": movements_data.get("total_rifornimenti", 0),
+                "first_movement_date": movements_data.get("first_movement_date"),
+                "last_movement_date": movements_data.get("last_movement_date")
+            }
+            
+            import uuid
+            chart_id = f"wine-chart-{uuid.uuid4().hex[:8]}"
+            
+            # Sezione grafico con stesso stile della wine card
+            html += '<div class="wine-card-chart-section">'
+            html += '<div class="wine-card-field wine-card-chart-header">'
+            html += '<span class="wine-card-field-label">📊 Andamento Storico</span>'
+            html += '<div class="wine-card-chart-stats">'
+            html += f'<span class="wine-card-chart-stat-item">Stock: <strong>{current_stock}</strong></span>'
+            html += f'<span class="wine-card-chart-stat-item">Riforniti: <strong>{chart_data["total_rifornimenti"]}</strong></span>'
+            html += f'<span class="wine-card-chart-stat-item">Consumati: <strong>{chart_data["total_consumi"]}</strong></span>'
+            html += '</div>'
+            html += '</div>'
+            html += f'<div class="wine-card-chart-wrapper" data-chart-id="{chart_id}">'
+            html += '<canvas class="wine-card-chart-canvas" width="800" height="400"></canvas>'
+            html += '</div>'
+            html += f'<script type="application/json" class="wine-chart-data">{json.dumps(chart_data, default=str)}</script>'
+            html += '</div>'  # Chiude wine-card-chart-section
+        
+        html += '</div>'  # Chiude wine-card
+        
+        return html
 

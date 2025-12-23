@@ -1941,7 +1941,8 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
     }
     
     // Inizializza grafici vino se presenti (dopo inserimento nel DOM)
-    const hasChart = messageEl.querySelector('.wine-chart-container');
+    // Supporta sia formato integrato (wine-card-chart-wrapper) che legacy (wine-chart-container)
+    const hasChart = messageEl.querySelector('.wine-chart-container') || messageEl.querySelector('.wine-card-chart-wrapper');
     if ((isHtml || hasChart) && role === 'ai') {
         // Usa setTimeout per assicurarsi che il DOM sia completamente renderizzato
         setTimeout(() => {
@@ -1961,19 +1962,40 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
  * Cerca elementi con classe wine-chart-container e renderizza i grafici usando AnchoredFlowStockChart.
  */
 function initializeWineCharts(container) {
+    // Supporta sia il vecchio formato (wine-chart-container separato) che il nuovo (integrato nella wine card)
     const chartContainers = container.querySelectorAll('.wine-chart-container');
-    if (chartContainers.length === 0) {
+    const chartWrappers = container.querySelectorAll('.wine-card-chart-wrapper');
+    
+    const allChartElements = [];
+    chartContainers.forEach(el => allChartElements.push({ element: el, isIntegrated: false }));
+    chartWrappers.forEach(el => allChartElements.push({ element: el, isIntegrated: true }));
+    
+    if (allChartElements.length === 0) {
         return;
     }
     
-    console.log(`[CHART] Trovati ${chartContainers.length} container grafico da inizializzare`);
+    console.log(`[CHART] Trovati ${allChartElements.length} grafici da inizializzare`);
     
-    chartContainers.forEach((chartContainer, index) => {
-        const canvasWrapper = chartContainer.querySelector('.wine-chart-canvas-wrapper');
-        const dataScript = chartContainer.querySelector('script.wine-chart-data');
+    allChartElements.forEach((chartItem, index) => {
+        const chartElement = chartItem.element;
+        const isIntegrated = chartItem.isIntegrated;
+        
+        // Trova canvas e dati in base al formato
+        const canvasWrapper = isIntegrated 
+            ? chartElement 
+            : chartElement.querySelector('.wine-chart-canvas-wrapper');
+        const dataScript = chartElement.parentElement 
+            ? chartElement.parentElement.querySelector('script.wine-chart-data')
+            : chartElement.querySelector('script.wine-chart-data');
         
         if (!canvasWrapper || !dataScript) {
-            console.warn(`[CHART] Container ${index + 1} non ha canvas wrapper o dati JSON`);
+            console.warn(`[CHART] Elemento ${index + 1} non ha canvas wrapper o dati JSON`);
+            return;
+        }
+        
+        const canvas = canvasWrapper.querySelector('canvas');
+        if (!canvas) {
+            console.warn(`[CHART] Elemento ${index + 1} non ha canvas`);
             return;
         }
         
@@ -2024,6 +2046,42 @@ function initializeWineCharts(container) {
             }
         }
     });
+    
+    // Supporta anche il formato legacy (wine-chart-container separato)
+    if (chartContainers.length > 0) {
+        chartContainers.forEach((chartContainer, index) => {
+            const canvasWrapper = chartContainer.querySelector('.wine-chart-canvas-wrapper');
+            const dataScript = chartContainer.querySelector('script.wine-chart-data');
+            
+            if (!canvasWrapper || !dataScript) {
+                return;
+            }
+            
+            try {
+                const chartData = JSON.parse(dataScript.textContent);
+                const movementsData = {
+                    wine_name: chartData.wine_name,
+                    current_stock: chartData.current_stock || 0,
+                    opening_stock: chartData.opening_stock || 0,
+                    movements: chartData.movements || [],
+                    total_consumi: chartData.total_consumi || 0,
+                    total_rifornimenti: chartData.total_rifornimenti || 0
+                };
+                
+                const preset = chartData.period || 'week';
+                const chartInstance = window.AnchoredFlowStockChart.create(canvasWrapper, movementsData, {
+                    preset: preset,
+                    now: new Date()
+                });
+                
+                if (chartInstance) {
+                    canvasWrapper._chartInstance = chartInstance;
+                }
+            } catch (error) {
+                console.error(`[CHART] Errore grafico legacy ${index + 1}:`, error);
+            }
+        });
+    }
 }
 
 function removeChatMessage(messageId) {
