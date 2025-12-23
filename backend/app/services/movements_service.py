@@ -106,6 +106,8 @@ async def get_movements_for_period(
         
         table_storico = f'"{user_id}/{user.business_name} Storico vino"'
         
+        logger.info(f"[MOVEMENTS] Recupero movimenti per user_id={user_id}, periodo={period_description} ({start_date} - {end_date}), tabella={table_storico}")
+        
         async with AsyncSessionLocal() as session:
             # Verifica che la tabella esista
             table_name_check = table_storico.strip('"')
@@ -120,13 +122,15 @@ async def get_movements_for_period(
             table_exists = result.scalar()
             
             if not table_exists:
-                logger.info(f"[MOVEMENTS] Tabella Storico vino non esiste per user_id={user_id}")
+                logger.warning(f"[MOVEMENTS] Tabella Storico vino non esiste per user_id={user_id}, table_name={table_name_check}")
                 return {
                     "wines_with_movements": [],
                     "total_consumi": 0,
                     "total_rifornimenti": 0,
                     "period_description": period_description
                 }
+            
+            logger.info(f"[MOVEMENTS] Tabella {table_name_check} trovata, recupero dati...")
             
             # Recupera tutti i vini
             query_storico = sql_text(f"""
@@ -141,6 +145,8 @@ async def get_movements_for_period(
             """)
             result = await session.execute(query_storico, {"user_id": user_id})
             storico_rows = result.fetchall()
+            
+            logger.info(f"[MOVEMENTS] Recuperate {len(storico_rows)} righe dalla tabella Storico vino")
             
             if not storico_rows:
                 logger.info(f"[MOVEMENTS] Nessun vino nello storico per user_id={user_id}")
@@ -174,6 +180,8 @@ async def get_movements_for_period(
                     wine_consumi = 0
                     wine_rifornimenti = 0
                     
+                    logger.debug(f"[MOVEMENTS] Analizzando {len(history)} movimenti per vino {wine_name}")
+                    
                     for movement in history:
                         if not isinstance(movement, dict):
                             continue
@@ -183,14 +191,28 @@ async def get_movements_for_period(
                             continue
                         
                         try:
-                            # Parse data movimento
-                            if " " in movement_date_str:
+                            # Parse data movimento (formato ISO: 2025-01-23T10:30:00.123456 o 2025-01-23)
+                            movement_date = None
+                            
+                            # Prova formato ISO completo (con T e orario)
+                            if "T" in movement_date_str:
+                                # Estrai solo la parte data (prima della T)
+                                date_part = movement_date_str.split("T")[0]
+                                movement_date = datetime.strptime(date_part, "%Y-%m-%d").date()
+                            # Prova formato con spazio (es: "2025-01-23 10:30:00")
+                            elif " " in movement_date_str:
                                 movement_date = datetime.strptime(movement_date_str.split()[0], "%Y-%m-%d").date()
+                            # Prova formato semplice YYYY-MM-DD
                             else:
                                 movement_date = datetime.strptime(movement_date_str, "%Y-%m-%d").date()
                             
+                            if movement_date is None:
+                                logger.debug(f"[MOVEMENTS] Impossibile parsare data: {movement_date_str}")
+                                continue
+                            
                             # Verifica se è nel periodo
                             if start_date <= movement_date <= end_date:
+                                logger.debug(f"[MOVEMENTS] Movimento nel periodo: vino={wine_name}, data={movement_date}, tipo={movement.get('type')}, qty={movement.get('quantity')}")
                                 period_movements.append(movement)
                                 movement_type = movement.get("type", "").lower()
                                 quantity = abs(int(movement.get("quantity", 0)))
@@ -201,8 +223,10 @@ async def get_movements_for_period(
                                 elif "rifornimento" in movement_type or "riforn" in movement_type:
                                     wine_rifornimenti += quantity
                                     total_rifornimenti += quantity
+                            else:
+                                logger.debug(f"[MOVEMENTS] Movimento FUORI periodo: vino={wine_name}, data={movement_date} (periodo: {start_date} - {end_date})")
                         except Exception as e:
-                            logger.debug(f"[MOVEMENTS] Errore parsing data movimento: {e}")
+                            logger.warning(f"[MOVEMENTS] Errore parsing data movimento '{movement_date_str}': {e}")
                             continue
                     
                     if period_movements:
