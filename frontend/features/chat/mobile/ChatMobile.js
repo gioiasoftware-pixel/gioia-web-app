@@ -1889,28 +1889,37 @@ function renderWineGraphPreview(wine) {
         );
         
         // Attacca listener click per aprire grafico fullscreen
-        // IMPORTANTE: rimuovi listener precedente se esiste e riattacca con il vino corrente
-        // Questo assicura che quando si cambia vino, il preview grafico passi sempre il vino corretto
+        // IMPORTANTE: usa sempre inventoryCurrentWine invece di wine catturato nella closure
+        // Questo garantisce che quando si clicca, viene sempre usato il vino corretto (più recente)
+        // Rimuovi listener precedente se esiste clonando il container
         if (previewContainer.dataset.listenerAttached) {
-            // Rimuovi listener precedente clonando il container
             const newContainer = previewContainer.cloneNode(true);
             previewContainer.parentNode.replaceChild(newContainer, previewContainer);
-            // Aggiorna riferimento
             const updatedContainer = document.getElementById('inventory-graph-preview-mobile');
             if (updatedContainer) {
                 updatedContainer.dataset.listenerAttached = 'true';
                 updatedContainer.style.cursor = 'pointer';
+                // IMPORTANTE: non catturare wine nella closure, usa inventoryCurrentWine al momento del click
                 updatedContainer.addEventListener('click', () => {
-                    console.log('[INVENTORY] Click preview grafico per vino:', wine.name || wine.Nome);
-                    showWineChart(wine);
+                    if (inventoryCurrentWine) {
+                        console.log('[INVENTORY] Click preview grafico, usando inventoryCurrentWine:', inventoryCurrentWine.name || inventoryCurrentWine.Nome);
+                        showWineChart(inventoryCurrentWine);
+                    } else {
+                        console.warn('[INVENTORY] inventoryCurrentWine non disponibile al click preview');
+                    }
                 });
             }
         } else {
             previewContainer.dataset.listenerAttached = 'true';
             previewContainer.style.cursor = 'pointer';
+            // IMPORTANTE: non catturare wine nella closure, usa inventoryCurrentWine al momento del click
             previewContainer.addEventListener('click', () => {
-                console.log('[INVENTORY] Click preview grafico per vino:', wine.name || wine.Nome);
-                showWineChart(wine);
+                if (inventoryCurrentWine) {
+                    console.log('[INVENTORY] Click preview grafico, usando inventoryCurrentWine:', inventoryCurrentWine.name || inventoryCurrentWine.Nome);
+                    showWineChart(inventoryCurrentWine);
+                } else {
+                    console.warn('[INVENTORY] inventoryCurrentWine non disponibile al click preview');
+                }
             });
         }
     } catch (error) {
@@ -2087,17 +2096,27 @@ let currentChartWineName = null;
  */
 function renderWineChartFullscreen(wine, period = 'week') {
     try {
+        // IMPORTANTE: usa sempre il parametro wine passato, non inventoryCurrentWine
+        // Questo garantisce che quando viene chiamato dai filtri periodo, usa il vino corretto
+        const wineToUse = wine || inventoryCurrentWine;
+        if (!wineToUse) {
+            console.error('[INVENTORY] Nessun vino disponibile per grafico fullscreen');
+            return;
+        }
+        
         const container = document.getElementById('inventory-chart-container-mobile');
         if (!container) {
             console.error('[INVENTORY] Container grafico fullscreen non trovato');
             return;
         }
         
-        const wineName = wine.name || wine.Nome || '';
+        const wineName = wineToUse.name || wineToUse.Nome || '';
         if (!wineName) {
             console.error('[INVENTORY] Nome vino non disponibile per grafico');
             return;
         }
+        
+        console.log('[INVENTORY] renderWineChartFullscreen per vino:', wineName, 'period:', period);
         
         // Salva il nome del vino attualmente visualizzato
         currentChartWineName = wineName;
