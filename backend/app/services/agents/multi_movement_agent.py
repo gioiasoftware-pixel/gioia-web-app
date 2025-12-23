@@ -4,10 +4,8 @@ Quando l'utente registra più movimenti in un singolo messaggio,
 questo agent estrae tutti i movimenti e li processa sequenzialmente
 usando MovementAgent per ogni movimento singolo.
 """
-from .base_agent import BaseAgent
 from .movement_agent import MovementAgent
 from app.core.database import db_manager
-from app.core.processor_client import processor_client
 from typing import Dict, Any, Optional, List
 import logging
 import json
@@ -16,8 +14,11 @@ import re
 
 logger = logging.getLogger(__name__)
 
-class MultiMovementAgent(BaseAgent):
-    """Agent specializzato per coordinare movimenti multipli"""
+class MultiMovementAgent:
+    """
+    Agent specializzato per coordinare movimenti multipli.
+    Non usa Assistants API, delega ogni movimento singolo a MovementAgent.
+    """
     
     def __init__(self, movement_agent: MovementAgent):
         """
@@ -26,47 +27,7 @@ class MultiMovementAgent(BaseAgent):
         Args:
             movement_agent: Istanza di MovementAgent da usare per ogni movimento singolo
         """
-        instructions = """
-        Sei un coordinatore specializzato per gestire movimenti inventario multipli.
-        
-        Quando ricevi un messaggio con più movimenti (es: "ho venduto 3 Barolo e 2 Chianti"),
-        devi:
-        1. Identificare TUTTI i movimenti nel messaggio
-        2. Per ogni movimento, estrarre:
-           - Tipo di movimento (consumo/rifornimento)
-           - Nome del vino
-           - Quantità
-        3. Organizzare i movimenti in una lista strutturata
-        4. Processare ogni movimento singolarmente
-        
-        IMPORTANTE:
-        - Riconosci movimenti multipli da messaggi come:
-          * "Ho venduto 3 Barolo e 2 Chianti"
-          * "Ricevuto 10 Brunello, 5 Amarone e 3 Chianti"
-          * "Consumati 2 Barolo, 1 Chianti e 4 Brunello"
-        - Supporta congiunzioni: "e", ",", "più"
-        - Distingui tra consumo e rifornimento nel contesto
-        - Estrai sempre quantità numeriche precise
-        
-        Rispondi con un JSON che contiene una lista di movimenti estratti:
-        {
-            "movements": [
-                {
-                    "type": "consumo" | "rifornimento",
-                    "wine_name": "Nome vino",
-                    "quantity": numero
-                },
-                ...
-            ]
-        }
-        """
-        
-        super().__init__(
-            name="MultiMovementAgent",
-            instructions=instructions,
-            model="gpt-4o"
-        )
-        
+        self.name = "MultiMovementAgent"
         self.movement_agent = movement_agent
     
     async def process_with_context(
@@ -212,69 +173,79 @@ class MultiMovementAgent(BaseAgent):
         user_id: int
     ) -> List[Dict[str, Any]]:
         """
-        Estrae tutti i movimenti dal messaggio usando AI.
+        Estrae tutti i movimenti dal messaggio usando parsing diretto.
+        Delega ad AIServiceV1 per estrazione se parsing fallisce.
         
         Returns:
             Lista di dict con movimenti estratti
         """
         try:
-            # Aggiungi contesto inventario per migliorare l'estrazione
-            context = await self._get_inventory_context(user_id)
-            enhanced_message = f"""
-Messaggio utente: {message}
-
-Contesto inventario:
-{context}
-
-Analizza il messaggio e estrai TUTTI i movimenti (consumo/rifornimento).
-Rispondi SOLO con un JSON valido nel formato:
-{{
-    "movements": [
-        {{"type": "consumo", "wine_name": "Nome vino", "quantity": numero}},
-        ...
-    ]
-}}
-"""
+            # Prova prima parsing diretto con regex
+            movements = self._parse_movements_direct(message)
             
-            # Usa l'AI per estrarre movimenti
-            result = await self.process(
-                message=enhanced_message,
-                user_id=user_id
+            if movements:
+                logger.info(f"[MULTI_MOVEMENT] ✅ Parsing diretto: {len(movements)} movimenti trovati")
+                return movements
+            
+            # Se parsing diretto fallisce, delega ad AIServiceV1 che può gestire movimenti multipli
+            # usando function calling (non Assistants API)
+            logger.info(f"[MULTI_MOVEMENT] Parsing diretto fallito, delega ad AIServiceV1")
+            from app.services.ai_service import AIService
+            ai_service_v1 = AIService()
+            result = await ai_service_v1.process_message(
+                user_message=message,
+                user_id=user_id,
+                conversation_history=None
             )
             
-            if not result.get("success"):
-                logger.error(f"[MULTI_MOVEMENT] ❌ Errore estrazione movimenti: {result.get('error')}")
+            # Se AIServiceV1 ha processato con successo, considera come movimento singolo processato
+            # (AIServiceV1 gestisce già movimenti multipli internamente)
+            if result.get("message"):
+                # Ritorna lista vuota per indicare che è già stato processato da AIServiceV1
+                # Il risultato verrà gestito dal chiamante
                 return []
             
-            response_text = result.get("message", "").strip()
-            
-            # Estrai JSON dalla risposta (potrebbe essere racchiuso in markdown code block)
-            json_text = self._extract_json_from_response(response_text)
-            
-            if not json_text:
-                logger.warning(f"[MULTI_MOVEMENT] ⚠️ Nessun JSON trovato nella risposta: {response_text}")
-                return []
-            
-            # Parse JSON
-            data = json.loads(json_text)
-            movements = data.get("movements", [])
-            
-            # Valida movimenti estratti
-            validated_movements = []
-            for mov in movements:
-                if isinstance(mov, dict) and all(k in mov for k in ["type", "wine_name", "quantity"]):
-                    if mov["type"] in ["consumo", "rifornimento"] and mov["quantity"] > 0:
-                        validated_movements.append(mov)
-            
-            logger.info(f"[MULTI_MOVEMENT] ✅ Estratti {len(validated_movements)} movimenti validi")
-            return validated_movements
-        
-        except json.JSONDecodeError as e:
-            logger.error(f"[MULTI_MOVEMENT] ❌ Errore parsing JSON: {e}")
             return []
+        
         except Exception as e:
             logger.error(f"[MULTI_MOVEMENT] ❌ Errore estrazione movimenti: {e}", exc_info=True)
             return []
+    
+    def _parse_movements_direct(self, message: str) -> List[Dict[str, Any]]:
+        """
+        Tenta parsing diretto dei movimenti usando regex.
+        Funziona per pattern semplici come "3 Barolo e 2 Chianti".
+        """
+        movements = []
+        message_lower = message.lower()
+        
+        # Determina tipo movimento
+        movement_type = "consumo"
+        if any(word in message_lower for word in ["rifornito", "ricevuto", "aggiunto", "acquistato", "comprado"]):
+            movement_type = "rifornimento"
+        elif any(word in message_lower for word in ["consumato", "venduto", "bevuto", "usato"]):
+            movement_type = "consumo"
+        
+        # Pattern per trovare quantità + nome vino
+        # Es: "3 Barolo", "5 bottiglie di Chianti", "10 Brunello"
+        pattern = r'(\d+)\s+(?:bottiglie?\s+di\s+)?([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+)*)'
+        matches = re.finditer(pattern, message, re.IGNORECASE)
+        
+        for match in matches:
+            quantity = int(match.group(1))
+            wine_name = match.group(2).strip()
+            
+            # Pulisci nome vino (rimuovi parole comuni)
+            wine_name = re.sub(r'\b(e|di|del|della|dei|delle|il|la|lo|i|gli|le)\b', '', wine_name, flags=re.IGNORECASE).strip()
+            
+            if wine_name and quantity > 0:
+                movements.append({
+                    "type": movement_type,
+                    "wine_name": wine_name,
+                    "quantity": quantity
+                })
+        
+        return movements
     
     def _extract_json_from_response(self, response: str) -> Optional[str]:
         """Estrae JSON da risposta che potrebbe contenere markdown code blocks"""
@@ -454,7 +425,7 @@ Rispondi SOLO con un JSON valido nel formato:
         return error_msg if error_msg else "Errore sconosciuto"
 
     def _format_context(self, context: Dict[str, Any]) -> str:
-        """Formatta contesto per l'agent"""
+        """Formatta contesto per l'agent (non più usato, mantenuto per compatibilità)"""
         user_id = context.get("user_id")
         return f"Contesto utente: User ID {user_id}"
 

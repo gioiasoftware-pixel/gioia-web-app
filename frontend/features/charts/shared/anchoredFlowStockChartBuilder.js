@@ -420,3 +420,4 @@ if (typeof window !== 'undefined') {
 } else {
     console.error('[AnchoredFlowStockChartBuilder] window non disponibile');
 }
+

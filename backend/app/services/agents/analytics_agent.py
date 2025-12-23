@@ -48,19 +48,40 @@ class AnalyticsAgent(BaseAgent):
         user_id: int,
         thread_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Processa richiesta analytics con dati inventario"""
-        # Aggiungi dati inventario completi
+        """Processa richiesta analytics con dati inventario - calcola direttamente senza AI"""
+        # Ottieni dati statistici
         analytics_data = await self._get_analytics_data(user_id)
-        enhanced_message = f"{message}\n\nDati inventario:\n{analytics_data}"
         
-        result = await self.process(
-            message=enhanced_message,
-            thread_id=thread_id,
-            user_id=user_id,
-            context={"user_id": user_id, "analytics_data": analytics_data}
-        )
+        # Analizza domanda per determinare quale statistica mostrare
+        message_lower = message.lower()
         
-        return result
+        # Estrai statistiche da analytics_data (formattato come stringa)
+        # Le statistiche sono già calcolate, formattiamo la risposta direttamente
+        stats_text = analytics_data.replace("STATISTICHE INVENTARIO (SOLO AGGREGATI, NON LISTA VINI):", "").strip()
+        
+        # Formatta risposta basata sulla domanda
+        if "bottiglie" in message_lower and ("quante" in message_lower or "quanto" in message_lower):
+            # Estrai numero totale bottiglie
+            import re
+            match = re.search(r'Totale bottiglie:\s*(\d+)', stats_text)
+            if match:
+                total_bottles = match.group(1)
+                response = f"📊 Hai **{total_bottles} bottiglie** in totale.\n\n"
+                response += "## Statistiche Dettagliate\n\n"
+                response += stats_text.replace('\n', '\n\n')
+            else:
+                response = stats_text
+        else:
+            # Risposta generica con tutte le statistiche
+            response = "## 📊 Statistiche Inventario\n\n"
+            response += stats_text.replace('\n', '\n\n')
+        
+        return {
+            "success": True,
+            "message": response,
+            "agent": self.name,
+            "metadata": {"type": "analytics", "user_id": user_id}
+        }
     
     async def _get_analytics_data(self, user_id: int) -> str:
         """Ottiene SOLO statistiche aggregate per analytics (NO lista vini)"""

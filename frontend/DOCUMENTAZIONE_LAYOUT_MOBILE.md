@@ -1207,3 +1207,4 @@ stylesheets.forEach(sheet => {
 **Ultima modifica**: 2024
 **Versione**: 1.0.0
 **Filosofia**: Semplice, affidabile, prevedibile
+

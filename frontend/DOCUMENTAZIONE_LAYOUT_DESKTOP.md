@@ -803,3 +803,4 @@ console.log('Saved state:', localStorage.getItem('sidebarCollapsed'));
 
 **Ultima modifica**: 2024
 **Versione**: 1.0.0
+

@@ -125,3 +125,4 @@ if (require.main === module) {
 }
 
 module.exports = { checkFile, DANGEROUS_PATTERNS, LAYOUT_BOUNDARY_PATTERNS };
+

@@ -101,19 +101,29 @@ class QueryAgent(BaseAgent):
                     "agent": self.name
                 }
         
-        # Per altre query, usa il sistema normale
-        # Aggiungi contesto inventario al messaggio (limitato a non mostrare tutto)
-        context = await self._get_inventory_context(user_id, limit=10)
-        enhanced_message = f"{message}\n\nContesto inventario (esempi):\n{context}\n\nIMPORTANTE: Se l'utente chiede di mostrare/filtrare vini, usa i dati forniti per rispondere con precisione. Non mostrare tutti i vini se non richiesto esplicitamente."
+        # Per altre query, usa ricerca diretta nel database senza AI
+        # Estrai termine di ricerca dal messaggio
+        search_term = self._extract_search_term(message)
+        wines = await db_manager.search_wines(user_id, search_term, limit=50)
         
-        result = await self.process(
-            message=enhanced_message,
-            thread_id=thread_id,
-            user_id=user_id,
-            context={"user_id": user_id, "inventory_context": context}
-        )
-        
-        return result
+        if wines:
+            wine_cards_html = WineCardHelper.generate_wines_list_html(
+                wines=wines,
+                title=f"Risultati ricerca ({len(wines)})",
+                show_buttons=True
+            )
+            return {
+                "success": True,
+                "message": wine_cards_html,
+                "agent": self.name,
+                "is_html": True
+            }
+        else:
+            return {
+                "success": True,
+                "message": f"⚠️ Nessun vino trovato per '{search_term}'.",
+                "agent": self.name
+            }
     
     async def _get_inventory_context(self, user_id: int, limit: int = 5) -> str:
         """Ottiene contesto inventario per l'agent (limitato per non mostrare tutto)"""
@@ -145,8 +155,31 @@ class QueryAgent(BaseAgent):
             logger.error(f"Errore recupero contesto inventario: {e}")
             return "Errore nel recupero informazioni inventario."
     
+    def _extract_search_term(self, message: str) -> str:
+        """Estrae termine di ricerca dal messaggio"""
+        # Rimuovi frasi comuni
+        message_lower = message.lower()
+        common_prefixes = [
+            "cerca", "trova", "mostra", "dimmi", "voglio vedere",
+            "cerco", "trovami", "mostrami", "dimmi", "fammi vedere"
+        ]
+        
+        for prefix in common_prefixes:
+            if prefix in message_lower:
+                # Rimuovi il prefisso e tutto ciò che precede
+                idx = message_lower.find(prefix) + len(prefix)
+                message = message[idx:].strip()
+                # Rimuovi articoli e preposizioni comuni all'inizio
+                stop_words = ["il", "la", "lo", "i", "gli", "le", "un", "una", "di", "del", "della", "dei", "delle"]
+                words = message.split()
+                if words and words[0].lower() in stop_words:
+                    message = " ".join(words[1:])
+                break
+        
+        return message.strip() or message
+    
     def _format_context(self, context: Dict[str, Any]) -> str:
-        """Formatta contesto per l'agent"""
+        """Formatta contesto per l'agent (non più usato, mantenuto per compatibilità)"""
         user_id = context.get("user_id")
         inventory_context = context.get("inventory_context", "")
         

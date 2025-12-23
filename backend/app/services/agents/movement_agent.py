@@ -1,46 +1,25 @@
 """
 Movement Agent - Specializzato per registrazione movimenti inventario.
+Delega ad AIServiceV1 che ha già tutta la logica per gestire i movimenti.
 """
-from .base_agent import BaseAgent
-from app.core.database import db_manager
-from app.core.processor_client import processor_client
 from typing import Dict, Any, Optional
 import logging
 
 logger = logging.getLogger(__name__)
 
-class MovementAgent(BaseAgent):
-    """Agent specializzato per movimenti inventario"""
+class MovementAgent:
+    """
+    Agent specializzato per movimenti inventario.
+    Delega ad AIServiceV1 che ha già tutta la logica per gestire i movimenti
+    tramite function calling (non usa Assistants API).
+    """
     
     def __init__(self):
-        instructions = """
-        Sei un assistente specializzato nella gestione movimenti inventario vini.
-        
-        Quando l'utente registra un movimento:
-        1. Identifica il tipo di movimento (consumo/rifornimento)
-        2. Identifica il vino (nome o ID)
-        3. Identifica la quantità
-        4. Valida che il vino esista nell'inventario
-        5. Verifica che la quantità sia ragionevole
-        6. Fornisci feedback chiaro all'utente
-        
-        IMPORTANTE:
-        - Riconosci movimenti da messaggi naturali come:
-          * "Ho venduto 3 bottiglie di Barolo"
-          * "Consumato 2 Chianti"
-          * "Ricevuto 10 bottiglie di Brunello"
-          * "Aggiunto 5 Barolo"
-        - Chiedi conferma se il vino non è univoco
-        - Valida sempre i dati prima di suggerire la registrazione
-        - Avvisa se le scorte diventano basse dopo il movimento
-        - Mantieni un tono professionale e chiaro
-        """
-        
-        super().__init__(
-            name="MovementAgent",
-            instructions=instructions,
-            model="gpt-4o-mini"
-        )
+        # Non inizializza BaseAgent, non usa Assistants API
+        self.name = "MovementAgent"
+        # Importa AIServiceV1 per delegare
+        from app.services.ai_service import AIService
+        self.ai_service_v1 = AIService()
     
     async def process_with_context(
         self,
@@ -49,11 +28,8 @@ class MovementAgent(BaseAgent):
         thread_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Processa movimento con validazione.
-        
-        IMPORTANTE: MovementAgent usa il sistema legacy (AIService) che gestisce 
-        effettivamente la registrazione dei movimenti tramite function calling.
-        Questo agent serve solo per routing e contesto.
+        Processa movimento delegando ad AIServiceV1.
+        AIServiceV1 ha già tutta la logica per gestire i movimenti tramite function calling.
         """
         # Valida quantità negativa nel messaggio (prevenzione base)
         import re
@@ -61,25 +37,29 @@ class MovementAgent(BaseAgent):
         for qty_str in quantity_matches:
             qty = int(qty_str)
             if qty < 0:
-                # Quantità negativa trovata
                 return {
                     "success": False,
                     "error": f"❌ Errore: La quantità non può essere negativa ({qty}). Per registrare un consumo, usa una quantità positiva (es: 'consumato 5 Barolo').",
                     "agent": self.name
                 }
         
-        # Aggiungi contesto inventario
-        context = await self._get_movement_context(user_id)
-        enhanced_message = f"{message}\n\nContesto inventario:\n{context}\n\nIMPORTANTE: Quando identifichi un movimento, assicurati che la quantità sia positiva (maggiore di zero)."
-        
-        result = await self.process(
-            message=enhanced_message,
-            thread_id=thread_id,
+        # Delega ad AIServiceV1 che gestisce i movimenti con function calling
+        logger.info(f"[MOVEMENT] Delega movimento ad AIServiceV1: {message[:50]}...")
+        result = await self.ai_service_v1.process_message(
+            user_message=message,
             user_id=user_id,
-            context={"user_id": user_id, "inventory_context": context}
+            conversation_history=None  # Non usiamo storia conversazione per movimenti
         )
         
-        return result
+        # Converti formato risultato da AIServiceV1 al formato agent
+        return {
+            "success": True,  # AIServiceV1 gestisce errori internamente
+            "message": result.get("message", ""),
+            "agent": self.name,
+            "is_html": result.get("is_html", False),
+            "buttons": result.get("buttons"),
+            "metadata": result.get("metadata", {})
+        }
     
     async def _get_movement_context(self, user_id: int) -> str:
         """Ottiene contesto per validazione movimenti"""

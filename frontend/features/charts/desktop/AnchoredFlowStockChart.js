@@ -813,3 +813,4 @@ if (typeof window !== 'undefined') {
 } else {
     console.error('[AnchoredFlowStockChart] window non disponibile');
 }
+

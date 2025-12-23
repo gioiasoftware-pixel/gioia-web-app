@@ -617,18 +617,14 @@ class NotificationAgent(BaseAgent):
                         "agent": self.name
                     }
             else:
-                # Analisi generica con AI
+                # Analisi generica - mostra summary inventario direttamente
                 context = await self._get_notification_context(user_id)
-                enhanced_message = f"{message}\n\nContesto inventario:\n{context}"
-                
-                result = await self.process(
-                    message=enhanced_message,
-                    thread_id=thread_id,
-                    user_id=user_id,
-                    context={"user_id": user_id, "notification_context": context}
-                )
-                
-                return result
+                return {
+                    "success": True,
+                    "message": f"📊 **Riepilogo Inventario**\n\n{context}",
+                    "agent": self.name,
+                    "metadata": {"type": "notification_summary", "user_id": user_id}
+                }
         
         except Exception as e:
             logger.error(f"[NOTIFICATION] Errore processamento: {e}", exc_info=True)
