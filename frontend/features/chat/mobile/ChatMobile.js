@@ -1376,10 +1376,9 @@ async function openInventoryViewerMobile() {
     viewerMobile.removeAttribute('hidden');
     
     // 2. POI setup e mostra schermata (elementi ora accessibili)
-    setupInventoryNavigation();
     setupInventoryMobileFeatures();
-    showInventoryScreen('list');
-    setupInventoryBackButton();
+    showInventoryScreen('list'); // Imposta inventoryCurrentScreen = 'list'
+    setupInventoryBackButton(); // Setup listener bottone indietro DOPO aver impostato lo screen
     
     // 3. INFINE carica dati inventario
     await loadInventoryDataMobile();
@@ -1387,32 +1386,31 @@ async function openInventoryViewerMobile() {
 
 /**
  * Setup navigazione tra schermate inventario
+ * NOTA: Il bottone indietro viene configurato in setupInventoryBackButton()
+ * Questa funzione è lasciata per retrocompatibilità ma non configura più il bottone
  */
 function setupInventoryNavigation() {
-    // Bottone indietro comune
-    const backBtn = document.getElementById('inventory-back-btn-mobile');
-    if (backBtn) {
-        const newBtn = backBtn.cloneNode(true);
-        backBtn.parentNode.replaceChild(newBtn, backBtn);
-        
-        newBtn.addEventListener('click', () => {
-            handleInventoryBack();
-        });
-    }
+    // Il bottone indietro viene configurato in setupInventoryBackButton()
+    // per evitare duplicazione di listener
 }
 
 /**
  * Gestisce click bottone indietro
  */
 function handleInventoryBack() {
+    console.log('[INVENTORY] handleInventoryBack chiamato, inventoryCurrentScreen:', inventoryCurrentScreen);
+    
     if (inventoryCurrentScreen === 'details') {
         // Da dettagli → lista
+        console.log('[INVENTORY] Da dettagli → lista');
         showInventoryScreen('list');
     } else if (inventoryCurrentScreen === 'chart') {
         // Da grafico → dettagli
+        console.log('[INVENTORY] Da grafico → dettagli');
         showInventoryScreen('details');
     } else {
         // Se siamo nella lista, chiudi viewer e torna alla chat
+        console.log('[INVENTORY] Dalla lista → chiudo viewer e torno alla chat');
         closeViewer();
     }
 }
