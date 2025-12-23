@@ -105,8 +105,7 @@ function switchLayout() {
         }
     }
     
-    // Log per debug (rimuovere in produzione se necessario)
-    console.log(`Layout switched to: ${isMobile ? 'MOBILE' : 'DESKTOP'} (width: ${window.innerWidth}px)`);
+    // Layout switched (debug log rimosso per produzione)
 }
 
 /**
@@ -402,7 +401,7 @@ document.addEventListener("pointerup", (e) => {
         return `${idx}: ${tag}#${id}.${className.split(' ')[0]} (z:${zIndex}, d:${display}) ${hidden}`;
     }).join('\n');
     
-    console.log("FROM POINT stack:\n", stackInfo);
+    // Debug stack info (rimosso console.log per produzione)
     
     // Verifica se ci sono layer sospetti (overlay/sidebar/viewer/modal) anche quando dovrebbero essere chiusi
     // Verifica anche se elementi dell'header (tranne hamburger) intercettano tap
@@ -486,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
         window.history.replaceState({}, '', newUrl);
         
-        console.log('[SPECTATOR] Token spectator ricevuto, modalità spectator attivata');
+        // Modalità spectator attivata (debug log rimosso)
     } else {
         // Check if user is already logged in
         authToken = localStorage.getItem('auth_token');
@@ -836,7 +835,7 @@ async function handleLogin(e) {
         if (contentType && contentType.includes('application/json')) {
             try {
                 data = await response.json();
-                console.log('[LOGIN] Dati ricevuti:', data);
+                // Dati ricevuti (debug log rimosso)
             } catch (jsonError) {
                 console.error('[LOGIN] Errore parsing JSON:', jsonError);
                 const textResponse = await response.text();
@@ -884,12 +883,8 @@ async function handleLogin(e) {
             throw new Error('Token di autenticazione non ricevuto dal server');
         }
         
-        console.log('[LOGIN] Token ricevuto, lunghezza:', authToken.length);
         localStorage.setItem('auth_token', authToken);
         currentUser = data;
-
-        console.log('[LOGIN] Login riuscito per:', email);
-        console.log('[LOGIN] Chiamata showChatPage...');
         
         try {
             showChatPage();
@@ -901,7 +896,7 @@ async function handleLogin(e) {
         
         try {
             loadUserInfo();
-            console.log('[LOGIN] loadUserInfo completata');
+            // loadUserInfo completata (debug log rimosso)
         } catch (loadError) {
             console.error('[LOGIN] Errore in loadUserInfo:', loadError);
             // Non bloccare il login se loadUserInfo fallisce
@@ -1025,7 +1020,7 @@ async function loadUserInfo() {
         }
 
         currentUser = await response.json();
-        console.log('[AUTH] Info utente caricate:', currentUser.email || 'N/A');
+        // Info utente caricate (debug log rimosso)
     } catch (error) {
         console.error('[AUTH] Errore caricamento info utente:', error);
         // In caso di errore di rete, non fare logout automatico (potrebbe essere temporaneo)
@@ -1108,18 +1103,11 @@ function showChatPage() {
 // ============================================
 
 function diagnoseChatScroll() {
-    console.log('[SCROLL DIAG] 🚀 Funzione diagnoseChatScroll() INIZIATA');
-    console.log('[SCROLL DIAG] Window width:', window.innerWidth);
-    
     const isMobile = window.innerWidth <= 768;
-    console.log('[SCROLL DIAG] Is mobile?', isMobile);
     
     if (isMobile) {
-        console.log('[SCROLL DIAG] ⏭️ Saltato su mobile');
-        return;
+        return; // Diagnostica solo su desktop
     }
-    
-    console.log('[SCROLL DIAG] 🔍 ========== DIAGNOSTICA SCROLL CHAT DESKTOP ==========');
     
     // 1. Verifica esistenza elemento scroll wrapper
     // Cerca prima il wrapper scrollabile (quello corretto)
@@ -1179,14 +1167,8 @@ function diagnoseChatScroll() {
         'isolation': computedStyle.isolation
     };
     
-    console.log('[SCROLL DIAG] 📐 Proprietà CSS:');
-    Object.entries(cssChecks).forEach(([prop, value]) => {
-        console.log(`[SCROLL DIAG]   - ${prop}: ${value}`);
-    });
-    
     // Verifica problemi CSS
     const cssIssues = [];
-    console.log(`[SCROLL DIAG] 🔍 Valore effettivo overflow-y: "${computedStyle.overflowY}"`);
     if (computedStyle.overflowY !== 'auto' && computedStyle.overflowY !== 'scroll') {
         cssIssues.push(`overflow-y è "${computedStyle.overflowY}" invece di "auto" o "scroll"`);
         // Forza overflow-y se non è corretto
@@ -1213,12 +1195,7 @@ function diagnoseChatScroll() {
     const isScrollable = scrollHeight > clientHeight;
     const maxScroll = scrollHeight - clientHeight;
     
-    console.log('[SCROLL DIAG] 📏 Dimensioni:');
-    console.log('[SCROLL DIAG]   - scrollHeight:', scrollHeight, 'px');
-    console.log('[SCROLL DIAG]   - clientHeight:', clientHeight, 'px');
-    console.log('[SCROLL DIAG]   - scrollTop:', scrollTop, 'px');
-    console.log('[SCROLL DIAG]   - maxScroll possibile:', maxScroll, 'px');
-    console.log('[SCROLL DIAG]   - È scrollabile?', isScrollable ? '✅ SÌ' : '❌ NO');
+    // Dimensioni verificate (debug log rimosso)
     
     if (!isScrollable) {
         console.warn('[SCROLL DIAG] ⚠️ PROBLEMA: Elemento non scrollabile');
@@ -1279,7 +1256,6 @@ function diagnoseChatScroll() {
     // 5. Test scroll programmatico (solo se non è già al limite)
     let scrollProgrammaticWorks = false;
     if (isScrollable && maxScroll > 0 && scrollTop < maxScroll - 10) {
-        console.log('[SCROLL DIAG] 🧪 Test scroll programmatico:');
         const originalScrollTop = scrollWrapper.scrollTop;
         const testScrollAmount = Math.min(10, maxScroll - scrollTop - 1); // Scroll di 10px o meno, senza superare il limite
         
@@ -1289,10 +1265,6 @@ function diagnoseChatScroll() {
             requestAnimationFrame(() => {
                 const newScrollTop = scrollWrapper.scrollTop;
                 scrollProgrammaticWorks = Math.abs(newScrollTop - (originalScrollTop + testScrollAmount)) < 2;
-                
-                console.log('[SCROLL DIAG]   - scrollTop iniziale:', originalScrollTop);
-                console.log('[SCROLL DIAG]   - Tentativo scroll a:', originalScrollTop + testScrollAmount);
-                console.log('[SCROLL DIAG]   - scrollTop effettivo:', newScrollTop);
                 console.log('[SCROLL DIAG]   - Scroll funziona?', scrollProgrammaticWorks ? '✅ SÌ' : '❌ NO');
                 
                 // Ripristina
