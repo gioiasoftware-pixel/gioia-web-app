@@ -1,0 +1,186 @@
+/* ============================================
+   MOVEMENTS CARD STYLES
+   ============================================ */
+
+.movements-period-card {
+    /* Usa stile wine-card esistente */
+}
+
+.movements-statistics {
+    margin-bottom: 20px;
+}
+
+.movements-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.movement-stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.movement-stat-item .stat-label {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+
+.movement-stat-item .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.movements-wines-list {
+    margin-top: 20px;
+}
+
+.movements-wines-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 12px;
+}
+
+.movement-wine-item {
+    background-color: var(--color-light-gray);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.movement-wine-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 12px;
+}
+
+.movement-wine-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    flex: 1;
+}
+
+.movement-wine-stock {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+.movement-wine-stats {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+}
+
+.movement-stat {
+    font-size: 14px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.movement-stat.consumption {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+body.dark-theme .movement-stat.consumption {
+    background-color: #7f1d1d;
+    color: #fca5a5;
+}
+
+.movement-stat.replenishment {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+body.dark-theme .movement-stat.replenishment {
+    background-color: #14532d;
+    color: #86efac;
+}
+
+.movement-wine-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border);
+}
+
+.movement-detail {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    font-size: 13px;
+    padding: 6px 8px;
+    border-radius: 4px;
+}
+
+.movement-detail.consumption {
+    background-color: #fef2f2;
+}
+
+body.dark-theme .movement-detail.consumption {
+    background-color: #1f1f1f;
+}
+
+.movement-detail.replenishment {
+    background-color: #f0fdf4;
+}
+
+body.dark-theme .movement-detail.replenishment {
+    background-color: #1f1f1f;
+}
+
+.movement-type {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    flex: 1;
+}
+
+.movement-quantity {
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.movement-date {
+    font-size: 12px;
+    color: var(--color-text-light);
+}
+
+.movement-more {
+    font-size: 12px;
+    color: var(--color-text-light);
+    font-style: italic;
+    margin-top: 4px;
+}
+
+.movements-more {
+    text-align: center;
+    padding: 16px;
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    font-style: italic;
+}
+
+/* Dark theme */
+body.dark-theme .movement-wine-item {
+    background-color: #2a2a2a;
+    border-color: var(--color-border);
+}
+
+body.dark-theme .movement-detail {
+    border-color: var(--color-border);
+}
+

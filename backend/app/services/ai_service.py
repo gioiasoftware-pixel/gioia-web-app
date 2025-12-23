@@ -253,20 +253,13 @@ INFORMAZIONI UTENTE:
             is_movement_request, period = self._is_movement_summary_request(user_message)
             if is_movement_request:
                 logger.info(f"[AI_SERVICE] Richiesta movimenti rilevata: period={period}")
-                # TODO: Implementare recupero movimenti quando necessario
-                # Per ora ritorna messaggio informativo
-                if period == 'yesterday':
-                    return {
-                        "message": "📊 Funzionalità riepilogo movimenti in fase di implementazione. Usa Function Calling per ora.",
-                        "metadata": {"type": "movement_summary", "period": period},
-                        "buttons": None
-                    }
-                else:
-                    return {
-                        "message": "📊 Per quale periodo vuoi vedere i movimenti? (giorno/settimana/mese)",
-                        "metadata": {"type": "movement_summary_ask_period"},
-                        "buttons": None
-                    }
+                movements_response = await self._build_movements_response(user_id, period, user_message)
+                return {
+                    "message": movements_response,
+                    "metadata": {"type": "movement_summary", "period": period},
+                    "buttons": None,
+                    "is_html": True
+                }
             
             # 2c. Query informative (min/max)
             query_type, field = self._is_informational_query(user_message)
@@ -977,53 +970,88 @@ INFORMAZIONI UTENTE:
     
     def _is_movement_summary_request(self, prompt: str) -> tuple[bool, Optional[str]]:
         """
-        Riconosce richieste tipo: ultimi consumi/movimenti/ricavi.
-        Ritorna (is_request, period) dove period può essere 'day', 'week', 'month', o 'yesterday'.
+        Riconosce richieste tipo: movimenti/consumi/rifornimenti per periodo.
+        Ritorna (is_request, period) dove period può essere 'today', 'yesterday', 'week', 'month', o None.
         """
         p = prompt.lower().strip()
         
-        # Controlla prima per richieste specifiche con date
-        # Richieste consumo ieri
+        # Pattern per movimenti/consumi/rifornimenti
+        movement_keywords = [
+            r"\bmovimenti\b",
+            r"\bconsumi\b",
+            r"\brifornimenti\b",
+            r"\bconsumati\b",
+            r"\briforniti\b",
+            r"\barrivati\b",
+            r"\bvenduti\b",
+            r"\beffettuati\b"
+        ]
+        
+        # Verifica se contiene keyword di movimento
+        has_movement_keyword = any(re.search(kw, p) for kw in movement_keywords)
+        if not has_movement_keyword:
+            return (False, None)
+        
+        # Controlla periodo: oggi
         if any(re.search(pt, p) for pt in [
+            r"\bmovimenti.*oggi\b",
+            r"\bconsumi.*oggi\b",
+            r"\brifornimenti.*oggi\b",
+            r"\b(che\s+)?movimenti\s+(sono\s+)?stati\s+effettuati\s+oggi",
+            r"\bmovimenti\s+(di\s+)?oggi",
+        ]):
+            return (True, 'today')
+        
+        # Controlla periodo: ieri
+        if any(re.search(pt, p) for pt in [
+            r"\bmovimenti.*ieri\b",
+            r"\bconsumi.*ieri\b",
+            r"\brifornimenti.*ieri\b",
+            r"\bmovimenti\s+(di|del)\s+ieri\b",
+            r"\b(che\s+)?movimenti\s+(sono\s+)?stati\s+effettuati\s+ieri",
             r"\b(consumato|consumi|consumate)\s+(ieri|il\s+giorno\s+prima)\b",
             r"\bvini\s+(consumato|consumi|consumate)\s+ieri\b",
             r"\b(che\s+)?vini\s+ho\s+consumato\s+ieri\b",
-            r"\b(che\s+)?vini\s+hai\s+consumato\s+ieri\b",
             r"\bconsumi\s+(di|del)\s+ieri\b",
             r"\b(ieri|il\s+giorno\s+prima)\s+(ho|hai)\s+consumato\b",
-        ]):
-            return (True, 'yesterday')
-        
-        # Richieste rifornimenti/arrivati/ricevuti ieri
-        if any(re.search(pt, p) for pt in [
             r"\b(che\s+)?vini\s+(mi\s+sono\s+)?(arrivati|ricevuti|riforniti)\s+ieri",
-            r"\b(che\s+)?vini\s+ho\s+(ricevuto|rifornito)\s+ieri",
-            r"\bvini\s+(mi\s+sono\s+)?arrivati\s+ieri",
-            r"\b(ieri|il\s+giorno\s+prima)\s+(sono\s+arrivati|ho\s+ricevuto|ho\s+rifornito)",
             r"\brifornimenti\s+(di|del)\s+ieri",
-            r"\b(arrivati|arrivate|arrivato|ricevuti|ricevute|ricevuto|riforniti|rifornite|rifornito)\s+(ieri|il\s+giorno\s+prima)",
-        ]):
-            return (True, 'yesterday_replenished')
-        
-        # Richieste movimenti generici di ieri
-        if any(re.search(pt, p) for pt in [
-            r"\bmovimenti\s+(di|del)\s+ieri\b",
         ]):
             return (True, 'yesterday')
         
-        # Pattern generici (senza data specifica)
+        # Controlla periodo: ultimi 7 giorni / ultima settimana
         if any(re.search(pt, p) for pt in [
-            r"\bultimi\s+consumi\b",
-            r"\bultimi\s+movimenti\b",
-            r"\bconsumi\s+recenti\b",
-            r"\bmovimenti\s+recenti\b",
-            r"\bmi\s+dici\s+i\s+miei\s+ultimi\s+consumi\b",
-            r"\bmi\s+dici\s+gli\s+ultimi\s+miei\s+consumi\b",
-            r"\bultimi\s+miei\s+consumi\b",
-            r"\bmostra\s+(ultimi|recenti)\s+(consumi|movimenti)\b",
-            r"\briepilogo\s+(consumi|movimenti)\b",
+            r"\bultimi\s+7\s+giorni\b",
+            r"\bultime\s+7\s+giorni\b",
+            r"\bultima\s+settimana\b",
+            r"\bmovimenti.*ultimi\s+7\s+giorni",
+            r"\bconsumi.*ultimi\s+7\s+giorni",
         ]):
-            return (True, None)  # Period non specificato, chiedi all'utente
+            return (True, 'week')
+        
+        # Controlla periodo: ultimi 30 giorni / ultimo mese
+        if any(re.search(pt, p) for pt in [
+            r"\bultimi\s+30\s+giorni\b",
+            r"\bultime\s+30\s+giorni\b",
+            r"\bultimo\s+mese\b",
+            r"\bmovimenti.*ultimi\s+30\s+giorni",
+            r"\bconsumi.*ultimi\s+30\s+giorni",
+        ]):
+            return (True, 'month')
+        
+        # Controlla data specifica (DD/MM/YYYY, YYYY-MM-DD, DD-MM-YYYY)
+        date_patterns = [
+            r'\d{1,2}/\d{1,2}/\d{4}',
+            r'\d{4}-\d{1,2}-\d{1,2}',
+            r'\d{1,2}-\d{1,2}-\d{4}',
+        ]
+        if any(re.search(pt, p) for pt in date_patterns):
+            # Data trovata, passa None così viene parsata da parse_period
+            return (True, None)
+        
+        # Pattern generici (senza data specifica) - passa None per parsing dal messaggio
+        if has_movement_keyword:
+            return (True, None)  # Period verrà parsato dal messaggio
         
         return (False, None)
     
@@ -1257,6 +1285,62 @@ INFORMAZIONI UTENTE:
         except Exception as e:
             logger.error(f"[INVENTORY_LIST] Errore costruzione lista: {e}", exc_info=True)
             return self._generate_error_message_html("Errore nel recupero dell'inventario. Riprova.")
+    
+    async def _build_movements_response(self, user_id: int, period: Optional[str], user_message: str) -> str:
+        """
+        Genera risposta HTML con movimenti per periodo.
+        """
+        try:
+            from app.services.movements_service import get_movements_for_period, parse_period
+            from app.services.agents.movements_card_helper import MovementsCardHelper
+            
+            # Se period è None, prova a estrarre dal messaggio
+            if period is None:
+                start_date, end_date, period_desc = parse_period(user_message)
+                if start_date is None:
+                    # Periodo non riconosciuto, chiedi all'utente
+                    return '<div class="wine-card"><div class="wine-card-body"><p>Per quale periodo vuoi vedere i movimenti?<br>Puoi chiedere per: oggi, ieri, ultimi 7 giorni, ultimi 30 giorni, o una data specifica (es: 01/01/2024)</p></div></div>'
+            else:
+                # Converti period in descrizione e date
+                period_map = {
+                    "yesterday": "ieri",
+                    "yesterday_replenished": "ieri (rifornimenti)",
+                    "today": "oggi",
+                    "week": "ultimi 7 giorni",
+                    "month": "ultimi 30 giorni"
+                }
+                period_desc = period_map.get(period, period)
+                start_date, end_date, _ = parse_period(period_desc)
+                
+                if start_date is None:
+                    # Fallback: usa ieri come default se period non mappato
+                    from datetime import datetime, timedelta, timezone
+                    now_utc = datetime.now(timezone.utc)
+                    now_italian = now_utc - timedelta(hours=1)
+                    today = now_italian.date()
+                    start_date = today - timedelta(days=1)
+                    end_date = start_date
+                    period_desc = "ieri"
+            
+            # Recupera movimenti
+            movements_data = await get_movements_for_period(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date,
+                period_description=period_desc
+            )
+            
+            # Genera card HTML
+            movements_html = MovementsCardHelper.generate_movements_period_card_html(
+                movements_data=movements_data,
+                badge="📊 Movimenti"
+            )
+            
+            return movements_html
+        
+        except Exception as e:
+            logger.error(f"[AI_SERVICE] Errore generazione movimenti card: {e}", exc_info=True)
+            return '<div class="wine-card"><div class="wine-card-body"><p>Errore durante il recupero dei movimenti.</p></div></div>'
     
     async def _build_report_card_response(self, user_id: int) -> str:
         """
