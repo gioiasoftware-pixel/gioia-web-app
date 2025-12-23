@@ -27,15 +27,21 @@ function initAudioHandler(layout) {
 
     console.log(`[ChatAudioHandler] Elementi trovati per ${layout}:`, {
         audioBtn: !!audioBtn,
+        audioBtnId: `chat-audio-btn${suffix}`,
         audioRecording: !!audioRecording,
         audioTimer: !!audioTimer,
         audioCancelBtn: !!audioCancelBtn,
         audioSendBtn: !!audioSendBtn
     });
 
-    if (!audioBtn || !audioRecording || !audioTimer || !audioCancelBtn || !audioSendBtn) {
-        console.warn(`[ChatAudioHandler] ⚠️ Elementi audio non trovati per layout ${layout}`);
+    if (!audioBtn) {
+        console.warn(`[ChatAudioHandler] ⚠️ Pulsante audio non trovato per layout ${layout} (ID: chat-audio-btn${suffix})`);
         return;
+    }
+    
+    if (!audioRecording || !audioTimer || !audioCancelBtn || !audioSendBtn) {
+        console.warn(`[ChatAudioHandler] ⚠️ Alcuni elementi audio non trovati per layout ${layout}`);
+        // Non ritornare, possiamo comunque attaccare il listener al pulsante
     }
 
     // Verifica supporto browser
@@ -66,9 +72,16 @@ function initAudioHandler(layout) {
     // Mobile: "premi e tieni premuto" (touchstart/touchend come WhatsApp)
     // Desktop: click normale
     if (layout === 'mobile') {
+        // Rimuovi eventuali listener esistenti clonando il pulsante
+        const newAudioBtn = audioBtn.cloneNode(true);
+        audioBtn.parentNode.replaceChild(newAudioBtn, audioBtn);
+        const cleanAudioBtn = newAudioBtn;
+        
         let isRecording = false;
         let touchStartTime = null;
         let currentRecorder = recorder; // Salva riferimento al recorder
+        
+        console.log(`[ChatAudioHandler] ✅ Pulsante mobile clonato e pronto per listener`);
         
         // Inizia registrazione al touchstart
         const handleTouchStart = async (e) => {
@@ -77,7 +90,9 @@ function initAudioHandler(layout) {
             
             console.log(`[ChatAudioHandler] 📍 Touchstart pulsante audio (mobile)`, {
                 isRecording,
-                hasRecorder: !!currentRecorder
+                hasRecorder: !!currentRecorder,
+                target: e.target,
+                currentTarget: e.currentTarget
             });
             
             if (isRecording) {
@@ -97,23 +112,26 @@ function initAudioHandler(layout) {
                     throw new Error('startRecording ha restituito false');
                 }
                 
-                showAudioRecording(layout, visualizerContainer);
+                if (audioRecording && visualizerContainer) {
+                    showAudioRecording(layout, visualizerContainer);
+                }
                 console.log(`[ChatAudioHandler] ✅ Registrazione iniziata (mobile - touchstart)`);
                 
                 // Aggiungi feedback visivo (pressione)
-                audioBtn.style.opacity = '0.7';
-                audioBtn.style.transform = 'scale(0.95)';
+                cleanAudioBtn.style.opacity = '0.7';
+                cleanAudioBtn.style.transform = 'scale(0.95)';
             } catch (error) {
                 console.error(`[ChatAudioHandler] ❌ Errore avvio registrazione:`, error);
                 console.error(`[ChatAudioHandler] Stack:`, error.stack);
                 isRecording = false;
-                audioBtn.style.opacity = '1';
-                audioBtn.style.transform = 'scale(1)';
+                cleanAudioBtn.style.opacity = '1';
+                cleanAudioBtn.style.transform = 'scale(1)';
                 alert(error.message || 'Errore avvio registrazione audio');
             }
         };
         
-        audioBtn.addEventListener('touchstart', handleTouchStart, { passive: false });
+        cleanAudioBtn.addEventListener('touchstart', handleTouchStart, { passive: false });
+        console.log(`[ChatAudioHandler] ✅ Listener touchstart attaccato al pulsante mobile`);
         
         // Ferma registrazione al touchend o touchcancel
         const stopRecordingOnTouchEnd = async (e) => {
@@ -122,7 +140,9 @@ function initAudioHandler(layout) {
             
             console.log(`[ChatAudioHandler] 📍 Touchend/touchcancel (mobile)`, {
                 isRecording,
-                hasRecorder: !!currentRecorder
+                hasRecorder: !!currentRecorder,
+                target: e.target,
+                currentTarget: e.currentTarget
             });
             
             if (!isRecording) {
@@ -140,10 +160,12 @@ function initAudioHandler(layout) {
                 } catch (err) {
                     console.error(`[ChatAudioHandler] Errore cancellazione:`, err);
                 }
-                hideAudioRecording(layout, visualizerContainer);
+                if (audioRecording && visualizerContainer) {
+                    hideAudioRecording(layout, visualizerContainer);
+                }
                 isRecording = false;
-                audioBtn.style.opacity = '1';
-                audioBtn.style.transform = 'scale(1)';
+                cleanAudioBtn.style.opacity = '1';
+                cleanAudioBtn.style.transform = 'scale(1)';
                 return;
             }
             
@@ -157,10 +179,12 @@ function initAudioHandler(layout) {
                     type: audioBlob.type
                 });
                 
-                hideAudioRecording(layout, visualizerContainer);
+                if (audioRecording && visualizerContainer) {
+                    hideAudioRecording(layout, visualizerContainer);
+                }
                 isRecording = false;
-                audioBtn.style.opacity = '1';
-                audioBtn.style.transform = 'scale(1)';
+                cleanAudioBtn.style.opacity = '1';
+                cleanAudioBtn.style.transform = 'scale(1)';
                 
                 // Ottieni conversation ID
                 const conversationId = window.currentConversationId || null;
@@ -220,11 +244,12 @@ function initAudioHandler(layout) {
             }
         };
         
-        audioBtn.addEventListener('touchend', stopRecordingOnTouchEnd, { passive: false });
-        audioBtn.addEventListener('touchcancel', stopRecordingOnTouchEnd, { passive: false });
+        cleanAudioBtn.addEventListener('touchend', stopRecordingOnTouchEnd, { passive: false });
+        cleanAudioBtn.addEventListener('touchcancel', stopRecordingOnTouchEnd, { passive: false });
+        console.log(`[ChatAudioHandler] ✅ Listener touchend/touchcancel attaccati al pulsante mobile`);
         
         // Previeni scroll durante la registrazione
-        audioBtn.addEventListener('touchmove', (e) => {
+        cleanAudioBtn.addEventListener('touchmove', (e) => {
             if (isRecording) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -232,13 +257,10 @@ function initAudioHandler(layout) {
         }, { passive: false });
         
         // Rimuovi eventuali listener click che potrebbero interferire su mobile
-        // (solo per sicurezza, non dovrebbe essere necessario)
-        audioBtn.addEventListener('click', (e) => {
-            if (layout === 'mobile') {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log(`[ChatAudioHandler] ⚠️ Click su mobile ignorato, usa touchstart/touchend`);
-            }
+        cleanAudioBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log(`[ChatAudioHandler] ⚠️ Click su mobile ignorato, usa touchstart/touchend`);
         }, { passive: false });
         
     } else {
