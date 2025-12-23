@@ -28,11 +28,15 @@
    ============================================ */
 .mobileRoot .mApp {
     height: 100dvh !important;
+    max-height: 100dvh !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
     display: grid !important;
     grid-template-rows: auto 1fr auto !important; /* Header, Main, Composer */
     overflow: hidden !important;
     position: relative !important;
     background-color: var(--color-off-white) !important;
+    box-sizing: border-box !important;
 }
 
 /* ============================================
@@ -44,13 +48,16 @@
     z-index: var(--z-header) !important;
     display: flex !important;
     align-items: center !important;
-    gap: 12px !important;
-    padding: 12px 16px !important;
+    gap: clamp(8px, 2vw, 12px) !important;
+    padding: clamp(8px, 2vw, 12px) clamp(12px, 3vw, 16px) !important;
     background-color: var(--color-white) !important;
     border-bottom: 1px solid var(--color-border) !important;
     flex-shrink: 0 !important;
     isolation: isolate !important;
     pointer-events: auto !important;
+    box-sizing: border-box !important;
+    max-width: 100vw !important;
+    overflow: hidden !important;
 }
 
 /* Logo e titolo NON devono intercettare tap */
@@ -265,7 +272,9 @@
     overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch !important;
     min-height: 0 !important;
-    padding: 16px !important;
+    padding: clamp(12px, 3vw, 16px) !important;
+    box-sizing: border-box !important;
+    max-width: 100vw !important;
 }
 
 .mobileRoot .mScroller .welcome-message {
@@ -290,24 +299,30 @@
     z-index: var(--z-composer) !important;
     background-color: var(--color-white) !important;
     border-top: 1px solid var(--color-border) !important;
-    padding: 12px 16px !important;
+    padding: clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px) !important;
     flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    max-width: 100vw !important;
 }
 
 .mobileRoot .mComposer .chat-form {
     display: flex;
-    gap: 12px;
+    gap: clamp(8px, 2vw, 12px);
     align-items: flex-end;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mComposer .chat-input {
     flex: 1;
-    padding: 12px 16px;
+    min-width: 0; /* Permette al contenuto di restringersi */
+    padding: clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px);
     border: 1px solid var(--color-border);
     border-radius: 24px;
-    font-size: 16px; /* Previene zoom su iOS */
+    font-size: clamp(14px, 3.5vw, 16px); /* Previene zoom su iOS, ma permette ridimensionamento */
     resize: none;
-    max-height: 120px;
+    max-height: clamp(80px, 25vw, 120px);
+    box-sizing: border-box;
 }
 
 .mobileRoot .mComposer .chat-send-btn {
@@ -349,7 +364,8 @@
     position: fixed !important;
     top: 0 !important;
     left: 0 !important;
-    width: 280px !important;
+    width: min(280px, 85vw) !important;
+    max-width: 280px !important;
     height: 100dvh !important;
     background-color: var(--color-white) !important;
     z-index: var(--z-sidebar) !important;
@@ -358,6 +374,7 @@
     pointer-events: none !important;
     display: flex !important;
     flex-direction: column !important;
+    box-sizing: border-box !important;
 }
 
 .mobileRoot .mSidebar.is-open {
@@ -446,46 +463,61 @@
 /* Header comune inventario */
 .mobileRoot .mViewer .inventory-header-mobile {
     flex-shrink: 0;
-    padding: 16px;
+    padding: clamp(12px, 3vw, 16px);
     border-bottom: 1px solid var(--color-border);
     display: flex;
     justify-content: space-between;
     align-items: center;
     background-color: var(--color-white);
     z-index: 10;
+    box-sizing: border-box;
+    max-width: 100vw;
+    overflow: hidden;
 }
 
 .mobileRoot .mViewer .inventory-header-left {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: clamp(8px, 2vw, 12px);
+    flex: 1;
+    min-width: 0; /* Permette al contenuto di restringersi se necessario */
+    overflow: hidden;
 }
 
 .mobileRoot .mViewer .inventory-header-logo-mobile {
-    height: 32px;
+    height: clamp(24px, 6vw, 32px);
     width: auto;
+    max-width: 100%;
     object-fit: contain;
+    flex-shrink: 0;
 }
 
 .mobileRoot .mViewer .inventory-title-mobile {
-    font-size: 24px;
+    font-size: clamp(16px, 4vw, 24px);
     font-weight: 700;
     color: var(--color-granaccia);
     margin: 0;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: clamp(0.5px, 0.2vw, 1px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .mobileRoot .mViewer .inventory-back-btn-mobile {
-    padding: 10px 20px;
+    padding: clamp(8px, 2vw, 10px) clamp(12px, 4vw, 20px);
     background-color: var(--color-granaccia);
     color: var(--color-white);
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: clamp(12px, 3vw, 14px);
     font-weight: 600;
     cursor: pointer;
     transition: opacity 0.2s;
+    flex-shrink: 0;
+    white-space: nowrap;
 }
 
 .mobileRoot .mViewer .inventory-back-btn-mobile:active {
@@ -508,16 +540,20 @@
    SCHERMATA 1: LISTA INVENTARIO
    ============================================ */
 .mobileRoot .mViewer .inventory-screen-list {
-    padding: 0 16px;
+    padding: 0 clamp(12px, 3vw, 16px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    max-width: 100vw;
 }
 
 /* Search Bar */
 .mobileRoot .mViewer .inventory-search-bar-mobile {
     position: relative;
-    margin: 16px 0;
+    margin: clamp(12px, 3vw, 16px) 0;
     flex-shrink: 0;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-search-icon {
@@ -531,12 +567,14 @@
 
 .mobileRoot .mViewer .inventory-search-input-mobile {
     width: 100%;
-    padding: 12px 12px 12px 40px;
+    max-width: 100%;
+    padding: clamp(10px, 2.5vw, 12px) clamp(10px, 2.5vw, 12px) clamp(10px, 2.5vw, 12px) clamp(36px, 8vw, 40px);
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    font-size: 16px;
+    font-size: clamp(14px, 3.5vw, 16px);
     background-color: var(--color-white);
     color: var(--color-text-primary);
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-search-input-mobile:focus {
@@ -546,22 +584,26 @@
 
 /* Filters Dropdown */
 .mobileRoot .mViewer .inventory-filters-dropdown-mobile {
-    margin-bottom: 16px;
+    margin-bottom: clamp(12px, 3vw, 16px);
     flex-shrink: 0;
     position: relative;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-filters-dropdown-btn {
     width: 100%;
-    padding: 12px 16px;
+    max-width: 100%;
+    padding: clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px);
     background-color: var(--color-white);
     border: 2px solid var(--color-granaccia);
     border-radius: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 14px;
+    font-size: clamp(12px, 3vw, 14px);
     font-weight: 600;
+    box-sizing: border-box;
     color: var(--color-granaccia);
     cursor: pointer;
     transition: background-color 0.2s;
@@ -576,13 +618,16 @@
     top: 100%;
     left: 0;
     right: 0;
-    margin-top: 8px;
+    margin-top: clamp(6px, 1.5vw, 8px);
     background-color: var(--color-white);
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    padding: 16px;
+    padding: clamp(12px, 3vw, 16px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     z-index: 20;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .mobileRoot .mViewer .inventory-filters-dropdown-menu.hidden {
@@ -590,7 +635,8 @@
 }
 
 .mobileRoot .mViewer .inventory-filter-item-mobile {
-    margin-bottom: 16px;
+    margin-bottom: clamp(12px, 3vw, 16px);
+    max-width: 100%;
 }
 
 .mobileRoot .mViewer .inventory-filter-item-mobile:last-child {
@@ -608,12 +654,14 @@
 
 .mobileRoot .mViewer .inventory-filter-select {
     width: 100%;
-    padding: 10px 12px;
+    max-width: 100%;
+    padding: clamp(8px, 2vw, 10px) clamp(10px, 2.5vw, 12px);
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    font-size: 14px;
+    font-size: clamp(12px, 3vw, 14px);
     background-color: var(--color-white);
     color: var(--color-text-primary);
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-filter-reset-btn {
@@ -643,15 +691,20 @@
 
 .mobileRoot .mViewer .inventory-wine-item-btn {
     width: 100%;
-    padding: 16px;
-    margin-bottom: 12px;
+    max-width: 100%;
+    padding: clamp(12px, 3vw, 16px);
+    margin-bottom: clamp(10px, 2.5vw, 12px);
     background-color: var(--color-granaccia);
     color: var(--color-white);
     border: none;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: clamp(14px, 3.5vw, 16px);
     font-weight: 600;
     text-align: left;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     cursor: pointer;
     transition: opacity 0.2s, transform 0.1s;
 }
@@ -679,47 +732,58 @@
 /* Wine Banner */
 .mobileRoot .mViewer .inventory-wine-banner-mobile {
     width: 100%;
-    padding: 16px;
+    max-width: 100vw;
+    padding: clamp(12px, 3vw, 16px);
     background-color: var(--color-granaccia);
     color: var(--color-white);
-    font-size: 18px;
+    font-size: clamp(14px, 3.5vw, 18px);
     font-weight: 600;
     text-align: center;
     flex-shrink: 0;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Content Layout */
 .mobileRoot .mViewer .inventory-details-content-mobile {
     display: flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 16px;
+    gap: clamp(12px, 3vw, 16px);
+    padding: clamp(12px, 3vw, 16px);
+    box-sizing: border-box;
+    max-width: 100vw;
 }
 
 /* Left Column */
 .mobileRoot .mViewer .inventory-details-left-mobile {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: clamp(12px, 3vw, 16px);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 /* Quantity Section */
 .mobileRoot .mViewer .inventory-quantity-section-mobile {
-    padding: 16px;
+    padding: clamp(12px, 3vw, 16px);
     background-color: var(--color-light-gray);
     border-radius: 8px;
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .mobileRoot .mViewer .inventory-quantity-label {
-    font-size: 12px;
+    font-size: clamp(10px, 2.5vw, 12px);
     font-weight: 600;
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    margin-bottom: 8px;
+    margin-bottom: clamp(6px, 1.5vw, 8px);
 }
 
 .mobileRoot .mViewer .inventory-quantity-value {
-    font-size: 32px;
+    font-size: clamp(24px, 6vw, 32px);
     font-weight: 700;
     color: var(--color-text-primary);
 }
@@ -727,12 +791,14 @@
 /* Graph Preview (Clickable) */
 .mobileRoot .mViewer .inventory-graph-preview-mobile {
     width: 100%;
-    height: 200px;
+    max-width: 100%;
+    height: clamp(150px, 40vw, 200px);
     background-color: var(--color-light-gray);
     border-radius: 8px;
-    padding: 12px;
+    padding: clamp(10px, 2.5vw, 12px);
     cursor: pointer;
     transition: background-color 0.2s;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-graph-preview-mobile:active {
@@ -747,16 +813,18 @@
 /* Save Button */
 .mobileRoot .mViewer .inventory-save-btn-mobile {
     width: 100%;
-    padding: 16px;
+    max-width: 100%;
+    padding: clamp(12px, 3vw, 16px);
     background-color: var(--color-granaccia);
     color: var(--color-white);
     border: none;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: clamp(14px, 3.5vw, 16px);
     font-weight: 600;
     text-transform: uppercase;
     cursor: pointer;
     transition: opacity 0.2s;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-save-btn-mobile:active {
@@ -767,17 +835,20 @@
 .mobileRoot .mViewer .inventory-wine-form-mobile {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: clamp(12px, 3vw, 16px);
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-form-field-mobile {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: clamp(4px, 1vw, 6px);
+    max-width: 100%;
 }
 
 .mobileRoot .mViewer .inventory-form-label-mobile {
-    font-size: 12px;
+    font-size: clamp(10px, 2.5vw, 12px);
     font-weight: 600;
     color: var(--color-text-secondary);
     text-transform: uppercase;
@@ -785,12 +856,14 @@
 
 .mobileRoot .mViewer .inventory-form-input-mobile {
     width: 100%;
-    padding: 12px;
+    max-width: 100%;
+    padding: clamp(10px, 2.5vw, 12px);
     border: 1px solid var(--color-border);
     border-radius: 6px;
-    font-size: 16px;
+    font-size: clamp(14px, 3.5vw, 16px);
     background-color: var(--color-white);
     color: var(--color-text-primary);
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .inventory-form-input-mobile:focus {
@@ -805,15 +878,17 @@
 }
 
 .mobileRoot .mViewer .inventory-movements-log-mobile {
-    max-height: 400px;
+    max-height: clamp(300px, 80vw, 400px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
+    gap: clamp(10px, 2.5vw, 12px);
+    padding: clamp(12px, 3vw, 16px);
     background-color: var(--color-light-gray);
     border-radius: 8px;
+    box-sizing: border-box;
+    max-width: 100%;
 }
 
 .mobileRoot .mViewer .inventory-movement-card-mobile {
@@ -888,24 +963,27 @@
 /* Period Filters */
 .mobileRoot .mViewer .inventory-period-filters-mobile {
     display: flex;
-    gap: 8px;
-    padding: 16px;
+    gap: clamp(6px, 1.5vw, 8px);
+    padding: clamp(12px, 3vw, 16px);
     flex-shrink: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    box-sizing: border-box;
+    max-width: 100vw;
 }
 
 .mobileRoot .mViewer .inventory-period-btn {
-    padding: 10px 16px;
+    padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 16px);
     background-color: var(--color-light-gray);
     color: var(--color-text-primary);
     border: 1px solid var(--color-border);
     border-radius: 8px;
-    font-size: 14px;
+    font-size: clamp(12px, 3vw, 14px);
     font-weight: 600;
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .mobileRoot .mViewer .inventory-period-btn.active {
@@ -921,17 +999,21 @@
 /* Chart Container */
 .mobileRoot .mViewer .inventory-chart-container-mobile {
     flex: 1;
-    padding: 16px;
-    min-height: 400px;
+    padding: clamp(12px, 3vw, 16px);
+    min-height: clamp(300px, 75vw, 400px);
     display: flex;
     align-items: center;
     justify-content: center;
+    box-sizing: border-box;
+    max-width: 100vw;
+    overflow: hidden;
 }
 
 .mobileRoot .mViewer .inventory-chart-canvas-mobile {
     width: 100%;
     max-width: 100%;
     height: auto;
+    box-sizing: border-box;
 }
 
 .mobileRoot .mViewer .viewer-content {
