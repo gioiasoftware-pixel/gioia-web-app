@@ -1798,11 +1798,28 @@ function renderWineGraphPreview(wine) {
             true // isPreview = true
         );
         
-        // Attacca listener click per aprire grafico fullscreen (solo una volta)
-        if (!previewContainer.dataset.listenerAttached) {
+        // Attacca listener click per aprire grafico fullscreen
+        // IMPORTANTE: rimuovi listener precedente se esiste e riattacca con il vino corrente
+        // Questo assicura che quando si cambia vino, il preview grafico passi sempre il vino corretto
+        if (previewContainer.dataset.listenerAttached) {
+            // Rimuovi listener precedente clonando il container
+            const newContainer = previewContainer.cloneNode(true);
+            previewContainer.parentNode.replaceChild(newContainer, previewContainer);
+            // Aggiorna riferimento
+            const updatedContainer = document.getElementById('inventory-graph-preview-mobile');
+            if (updatedContainer) {
+                updatedContainer.dataset.listenerAttached = 'true';
+                updatedContainer.style.cursor = 'pointer';
+                updatedContainer.addEventListener('click', () => {
+                    console.log('[INVENTORY] Click preview grafico per vino:', wine.name || wine.Nome);
+                    showWineChart(wine);
+                });
+            }
+        } else {
             previewContainer.dataset.listenerAttached = 'true';
             previewContainer.style.cursor = 'pointer';
             previewContainer.addEventListener('click', () => {
+                console.log('[INVENTORY] Click preview grafico per vino:', wine.name || wine.Nome);
                 showWineChart(wine);
             });
         }
