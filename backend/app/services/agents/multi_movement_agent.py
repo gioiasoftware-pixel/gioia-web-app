@@ -318,6 +318,8 @@ Rispondi SOLO con un JSON valido nel formato:
         errors: List[Dict[str, Any]]
     ) -> str:
         """Combina risultati dei movimenti in un messaggio unificato"""
+        import re
+        
         parts = []
         
         if results:
@@ -333,9 +335,72 @@ Rispondi SOLO con un JSON valido nel formato:
                 mov = err["movement"]
                 type_text = "Consumo" if mov["type"] == "consumo" else "Rifornimento"
                 error_msg = err.get("error", "Errore sconosciuto")
-                parts.append(f"{idx}. {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']}: {error_msg}")
+                
+                # Pulisci il messaggio di errore rimuovendo HTML grezzo
+                error_msg_clean = self._clean_error_message(error_msg)
+                
+                parts.append(f"{idx}. {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']}: {error_msg_clean}")
         
         return "\n".join(parts) if parts else "Nessun movimento processato."
+    
+    def _clean_error_message(self, error_msg: str) -> str:
+        """
+        Pulisce messaggio di errore rimuovendo HTML grezzo e estraendo solo il testo utile.
+        
+        Args:
+            error_msg: Messaggio di errore che potrebbe contenere HTML
+        
+        Returns:
+            Messaggio di errore pulito e leggibile
+        """
+        if not error_msg:
+            return "Errore sconosciuto"
+        
+        # Rimuovi HTML tags
+        import re
+        import html
+        
+        # Decodifica entità HTML come &#x27; -> '
+        error_msg = html.unescape(error_msg)
+        
+        # Rimuovi tag HTML
+        error_msg = re.sub(r'<[^>]+>', '', error_msg)
+        
+        # Rimuovi prefissi comuni tipo "register_replenishment:" o "register_consumption:"
+        error_msg = re.sub(r'^(register_replenishment|register_consumption|movement_agent):\s*', '', error_msg, flags=re.IGNORECASE)
+        
+        # Cerca pattern comuni di errore e estrai solo il messaggio utile
+        # Es: "Errore: Vino 'X' non trovato"
+        error_patterns = [
+            r"Errore:\s*(.+)",
+            r"error:\s*(.+)",
+            r"Vino\s+['\"](.+?)['\"]\s+non\s+trovato",
+            r"(.+?non\s+trovato)",
+            r"(.+?non\s+esiste)",
+            r"(.+?non\s+disponibile)",
+        ]
+        
+        for pattern in error_patterns:
+            match = re.search(pattern, error_msg, re.IGNORECASE)
+            if match:
+                extracted = match.group(1) if match.lastindex else match.group(0)
+                # Se contiene "Vino 'X' non trovato", formatta meglio
+                if "non trovato" in extracted or "non esiste" in extracted:
+                    # Cerca nome vino tra apici
+                    wine_match = re.search(r"['\"](.+?)['\"]", extracted)
+                    if wine_match:
+                        wine_name = wine_match.group(1)
+                        return f"Vino '{wine_name}' non trovato nell'inventario"
+                    return extracted.strip()
+        
+        # Rimuovi spazi multipli e pulisci
+        error_msg = re.sub(r'\s+', ' ', error_msg).strip()
+        
+        # Limita lunghezza
+        if len(error_msg) > 200:
+            error_msg = error_msg[:200] + "..."
+        
+        return error_msg if error_msg else "Errore sconosciuto"
 
     def _format_context(self, context: Dict[str, Any]) -> str:
         """Formatta contesto per l'agent"""
