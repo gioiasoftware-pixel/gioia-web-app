@@ -1822,37 +1822,89 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         
         // Aggiungi event listeners ai pulsanti - usa pointer events per mobile
         // Include sia .chat-button che .wines-list-item-button
-        // I pulsanti possono essere integrati nelle wine cards o separati
-        if (buttons && buttons.length > 0) {
-            const buttonElements = messageEl.querySelectorAll('.chat-button, .wines-list-item-button');
-            buttonElements.forEach(btn => {
-                btn.addEventListener('pointerup', async (e) => {
+        // I pulsanti possono essere integrati nelle wine cards (già nel DOM) o separati (da buttons array)
+        // IMPORTANTE: I listener devono essere aggiunti sempre, anche se i pulsanti sono già nell'HTML
+        const buttonElements = messageEl.querySelectorAll('.chat-button, .wines-list-item-button');
+        
+        if (buttonElements.length > 0) {
+            console.log(`[CHAT] Trovati ${buttonElements.length} pulsanti da collegare`);
+            buttonElements.forEach((btn, index) => {
+                // Rimuovi listener esistenti per evitare duplicati (se presenti)
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                
+                // Leggi data attributes dal pulsante
+                const wineId = newBtn.dataset.wineId || newBtn.getAttribute('data-wine-id');
+                const wineText = newBtn.dataset.wineText || newBtn.getAttribute('data-wine-text');
+                const movementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
+                const quantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
+                
+                console.log(`[CHAT] 🔗 Collegamento listener pulsante ${index + 1}:`, {
+                    wineId: wineId,
+                    wineText: wineText,
+                    movementType: movementType,
+                    quantity: quantity,
+                    hasMovementData: !!(movementType && quantity && wineId),
+                    allAttributes: Array.from(newBtn.attributes).map(attr => `${attr.name}="${attr.value}"`).join(', ')
+                });
+                
+                // Aggiungi listener con addUniversalEventListener per supporto mobile
+                addUniversalEventListener(newBtn, async (e) => {
                     e.stopPropagation();
-                    const wineId = btn.dataset.wineId;
-                    const wineText = btn.dataset.wineText;
-                    const movementType = btn.dataset.movementType;
-                    const quantity = btn.dataset.quantity;
+                    
+                    // Leggi data attributes al momento del click (in caso siano stati modificati)
+                    const clickWineId = newBtn.dataset.wineId || newBtn.getAttribute('data-wine-id');
+                    const clickWineText = newBtn.dataset.wineText || newBtn.getAttribute('data-wine-text');
+                    const clickMovementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
+                    const clickQuantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
+                    
+                    console.log('[CHAT] 🔘 Click pulsante wine card:', { 
+                        wineId: clickWineId, 
+                        wineText: clickWineText, 
+                        movementType: clickMovementType, 
+                        quantity: clickQuantity,
+                        isMovement: !!(clickMovementType && clickQuantity && clickWineId)
+                    });
                     
                     // Se è un pulsante di conferma movimento, processa direttamente senza mostrare messaggio
-                    if (movementType && quantity && wineId) {
+                    if (clickMovementType && clickQuantity && clickWineId) {
+                        console.log('[CHAT] ✅ Processando movimento:', { 
+                            movementType: clickMovementType, 
+                            quantity: clickQuantity, 
+                            wineId: clickWineId 
+                        });
                         // Invia direttamente all'API senza mostrare il messaggio nella chat
-                        const message = `[movement:${movementType}] [wine_id:${wineId}] [quantity:${quantity}]`;
+                        const message = `[movement:${clickMovementType}] [wine_id:${clickWineId}] [quantity:${clickQuantity}]`;
+                        console.log('[CHAT] 📤 Invio messaggio movimento:', message);
                         await sendChatMessage(message, false); // false = non mostrare messaggio utente
                         return;
                     }
                     
                     // Pulsante normale: ricerca vino con ID
-                    const input = document.getElementById('chat-input');
-                    if (wineId) {
-                        input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
+                    // Gestisci sia desktop che mobile
+                    const isMobile = window.innerWidth <= 768;
+                    const inputId = isMobile ? 'chat-input-mobile' : 'chat-input';
+                    const formId = isMobile ? 'chat-form-mobile' : 'chat-form';
+                    
+                    const input = document.getElementById(inputId);
+                    const form = document.getElementById(formId);
+                    
+                    if (input && form) {
+                        if (wineId) {
+                            input.value = `dimmi tutto su ${wineText} [wine_id:${wineId}]`;
+                        } else {
+                            // Fallback: solo testo
+                            input.value = `dimmi tutto su ${wineText}`;
+                        }
+                        input.dispatchEvent(new Event('input')); // Trigger resize
+                        form.dispatchEvent(new Event('submit'));
                     } else {
-                        // Fallback: solo testo
-                        input.value = `dimmi tutto su ${wineText}`;
+                        console.error('[CHAT] Input o form non trovati:', { inputId, formId });
                     }
-                    input.dispatchEvent(new Event('input')); // Trigger resize
-                    document.getElementById('chat-form').dispatchEvent(new Event('submit'));
                 });
             });
+        } else {
+            console.log('[CHAT] Nessun pulsante trovato da collegare');
         }
     }
 
