@@ -1808,8 +1808,11 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
             }
         }
         
-        // Aggiungi pulsanti se presenti
-        if (buttonsHtml) {
+        // Aggiungi pulsanti separati solo se NON ci sono già pulsanti integrati nelle wine cards
+        // Verifica se il contenuto contiene già wines-list-card con pulsanti integrati
+        const hasIntegratedButtons = contentDiv.querySelector('.wines-list-card .wines-list-item-button');
+        
+        if (buttonsHtml && !hasIntegratedButtons) {
             const buttonsDiv = document.createElement('div');
             buttonsDiv.innerHTML = buttonsHtml;
             contentDiv.appendChild(buttonsDiv);
@@ -1819,6 +1822,7 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
         
         // Aggiungi event listeners ai pulsanti - usa pointer events per mobile
         // Include sia .chat-button che .wines-list-item-button
+        // I pulsanti possono essere integrati nelle wine cards o separati
         if (buttons && buttons.length > 0) {
             const buttonElements = messageEl.querySelectorAll('.chat-button, .wines-list-item-button');
             buttonElements.forEach(btn => {
