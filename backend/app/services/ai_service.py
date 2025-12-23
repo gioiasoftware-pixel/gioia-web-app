@@ -923,6 +923,19 @@ INFORMAZIONI UTENTE:
     
     # ========== RILEVAMENTO RICHIESTE SPECIFICHE ==========
     
+    def _is_report_request(self, prompt: str) -> bool:
+        """
+        Riconosce richieste di report inventario.
+        Pattern: report, riepilogo, statistiche inventario, ecc.
+        """
+        p = prompt.lower().strip()
+        report_keywords = [
+            "report", "riepilogo", "statistiche inventario", "report inventario",
+            "report di oggi", "report oggi", "report completo", "report completo inventario",
+            "statistiche complete", "riepilogo inventario"
+        ]
+        return any(keyword in p for keyword in report_keywords)
+    
     def _is_inventory_list_request(self, prompt: str) -> bool:
         """
         Riconosce richieste tipo: che vini ho? elenco/lista inventario, mostra inventario, ecc.
