@@ -1419,23 +1419,29 @@ function handleInventoryBack() {
  * Mostra una specifica schermata inventario
  */
 function showInventoryScreen(screen) {
-    inventoryCurrentScreen = screen;
-    
-    // Nascondi tutte le schermate
-    document.querySelectorAll('.inventory-screen').forEach(el => {
-        el.classList.add('hidden');
-    });
-    
-    // Mostra schermata richiesta
-    const targetScreen = document.getElementById(`inventory-screen-${screen}`);
-    if (targetScreen) {
-        targetScreen.classList.remove('hidden');
-    }
-    
-    // Aggiorna visibilità bottone indietro (sempre visibile)
-    const backBtn = document.getElementById('inventory-back-btn-mobile');
-    if (backBtn) {
-        backBtn.style.display = 'flex';
+    try {
+        inventoryCurrentScreen = screen;
+        
+        // Nascondi tutte le schermate
+        document.querySelectorAll('.inventory-screen').forEach(el => {
+            el.classList.add('hidden');
+        });
+        
+        // Mostra schermata richiesta
+        const targetScreen = document.getElementById(`inventory-screen-${screen}`);
+        if (targetScreen) {
+            targetScreen.classList.remove('hidden');
+        } else {
+            console.error(`[INVENTORY] Schermata ${screen} non trovata: inventory-screen-${screen}`);
+        }
+        
+        // Aggiorna visibilità bottone indietro (sempre visibile)
+        const backBtn = document.getElementById('inventory-back-btn-mobile');
+        if (backBtn) {
+            backBtn.style.display = 'flex';
+        }
+    } catch (error) {
+        console.error('[INVENTORY] Errore in showInventoryScreen:', error);
     }
 }
 
@@ -1643,8 +1649,22 @@ function renderInventoryList(wines) {
     // Attacca listener click
     wineList.querySelectorAll('.inventory-wine-item-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const wineData = JSON.parse(btn.dataset.wineData.replace(/&apos;/g, "'"));
-            showWineDetails(wineData);
+            e.preventDefault();
+            e.stopPropagation();
+            
+            try {
+                const wineDataStr = btn.dataset.wineData;
+                if (!wineDataStr) {
+                    console.error('[INVENTORY] data-wine-data non trovato');
+                    return;
+                }
+                
+                const wineData = JSON.parse(wineDataStr.replace(/&apos;/g, "'"));
+                showWineDetails(wineData);
+            } catch (error) {
+                console.error('[INVENTORY] Errore parsing wine data:', error);
+                alert('Errore nel caricamento dettagli vino. Riprova.');
+            }
         });
     });
 }
@@ -1653,39 +1673,54 @@ function renderInventoryList(wines) {
  * Mostra dettagli vino (schermata 2)
  */
 function showWineDetails(wine) {
-    inventoryCurrentWine = wine;
-    
-    // Aggiorna banner
-    const wineName = wine.name || wine.Nome || 'Vino sconosciuto';
-    const vintage = wine.vintage || wine.Annata || '';
-    const displayName = vintage ? `${wineName} ${vintage}` : wineName;
-    
-    const banner = document.getElementById('inventory-wine-name-banner-mobile');
-    if (banner) {
-        banner.textContent = displayName;
+    try {
+        if (!wine) {
+            console.error('[INVENTORY] showWineDetails: wine è null o undefined');
+            return;
+        }
+        
+        inventoryCurrentWine = wine;
+        
+        // Aggiorna banner
+        const wineName = wine.name || wine.Nome || 'Vino sconosciuto';
+        const vintage = wine.vintage || wine.Annata || '';
+        const displayName = vintage ? `${wineName} ${vintage}` : wineName;
+        
+        const banner = document.getElementById('inventory-wine-name-banner-mobile');
+        if (banner) {
+            banner.textContent = displayName;
+        } else {
+            console.error('[INVENTORY] Banner non trovato: inventory-wine-name-banner-mobile');
+        }
+        
+        // Aggiorna quantità
+        const qty = wine.qty !== undefined ? wine.qty : (wine.quantity || 0);
+        const qtyValue = document.getElementById('inventory-quantity-value-mobile');
+        if (qtyValue) {
+            qtyValue.textContent = `${qty} bottiglie`;
+        } else {
+            console.error('[INVENTORY] Quantità value non trovato: inventory-quantity-value-mobile');
+        }
+        
+        // Renderizza form campi vino
+        renderWineForm(wine);
+        
+        // Setup salvataggio modifiche
+        setupWineSaveButton();
+        
+        // Renderizza grafico preview
+        renderWineGraphPreview(wine);
+        
+        // Carica e renderizza log movimenti
+        loadWineMovements(wine);
+        
+        // Mostra schermata dettagli (questa deve essere l'ultima operazione)
+        showInventoryScreen('details');
+        
+    } catch (error) {
+        console.error('[INVENTORY] Errore in showWineDetails:', error);
+        alert('Errore nel caricamento dettagli vino. Riprova.');
     }
-    
-    // Aggiorna quantità
-    const qty = wine.qty !== undefined ? wine.qty : (wine.quantity || 0);
-    const qtyValue = document.getElementById('inventory-quantity-value-mobile');
-    if (qtyValue) {
-        qtyValue.textContent = `${qty} bottiglie`;
-    }
-    
-    // Renderizza form campi vino
-    renderWineForm(wine);
-    
-    // Setup salvataggio modifiche
-    setupWineSaveButton();
-    
-    // Renderizza grafico preview
-    renderWineGraphPreview(wine);
-    
-    // Carica e renderizza log movimenti
-    loadWineMovements(wine);
-    
-    // Mostra schermata dettagli
-    showInventoryScreen('details');
 }
 
 /**
@@ -1729,42 +1764,46 @@ function renderWineForm(wine) {
  * Renderizza grafico preview (cliccabile)
  */
 function renderWineGraphPreview(wine) {
-    const canvas = document.getElementById('inventory-graph-preview-canvas-mobile');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-    
-    // Reset canvas
-    ctx.clearRect(0, 0, width, height);
-    
-    // TODO: Implementare disegno grafico reale con dati movimenti
-    // Per ora disegno placeholder
-    ctx.strokeStyle = '#9a182e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(0, height);
-    ctx.lineTo(width / 3, height / 2);
-    ctx.lineTo(2 * width / 3, height / 3);
-    ctx.lineTo(width, height / 4);
-    ctx.stroke();
-    
-    // Attacca listener click per aprire grafico fullscreen
-    const previewContainer = document.getElementById('inventory-graph-preview-mobile');
-    if (previewContainer) {
-        const newContainer = previewContainer.cloneNode(true);
-        previewContainer.parentNode.replaceChild(newContainer, previewContainer);
-        
-        newContainer.addEventListener('click', () => {
-            showWineChart(wine);
-        });
-        
-        // Ripristina canvas dopo clone
-        const newCanvas = newContainer.querySelector('#inventory-graph-preview-canvas-mobile');
-        if (newCanvas) {
-            renderWineGraphPreview(wine); // Re-render
+    try {
+        const canvas = document.getElementById('inventory-graph-preview-canvas-mobile');
+        if (!canvas) {
+            console.warn('[INVENTORY] Canvas grafico preview non trovato');
+            return;
         }
+        
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            console.error('[INVENTORY] Impossibile ottenere contesto canvas');
+            return;
+        }
+        
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Reset canvas
+        ctx.clearRect(0, 0, width, height);
+        
+        // TODO: Implementare disegno grafico reale con dati movimenti
+        // Per ora disegno placeholder
+        ctx.strokeStyle = '#9a182e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, height);
+        ctx.lineTo(width / 3, height / 2);
+        ctx.lineTo(2 * width / 3, height / 3);
+        ctx.lineTo(width, height / 4);
+        ctx.stroke();
+        
+        // Attacca listener click per aprire grafico fullscreen (solo una volta)
+        const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+        if (previewContainer && !previewContainer.dataset.listenerAttached) {
+            previewContainer.dataset.listenerAttached = 'true';
+            previewContainer.addEventListener('click', () => {
+                showWineChart(wine);
+            });
+        }
+    } catch (error) {
+        console.error('[INVENTORY] Errore in renderWineGraphPreview:', error);
     }
 }
 
