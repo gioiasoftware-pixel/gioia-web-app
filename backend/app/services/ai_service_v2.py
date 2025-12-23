@@ -145,4 +145,84 @@ class AIServiceV2:
                 "buttons": None,
                 "is_html": False
             }
+    
+    def _validate_and_normalize_agent(self, agent_name: str, user_message: str) -> str:
+        """
+        Valida e normalizza il nome agent, applicando logica di fallback intelligente.
+        
+        Args:
+            agent_name: Nome agent restituito dal router
+            user_message: Messaggio originale dell'utente per analisi aggiuntiva
+        
+        Returns:
+            Nome agent validato e normalizzato
+        """
+        agent_name = agent_name.strip().lower()
+        
+        # Rimuovi caratteri speciali
+        agent_name = agent_name.replace(".", "").replace("!", "").replace("?", "").strip()
+        
+        # Validazione agent disponibili
+        valid_agents = {
+            "extraction", "query", "movement", "multi_movement", 
+            "analytics", "wine_management", "report", "notification", "conversation"
+        }
+        
+        if agent_name in valid_agents:
+            return agent_name
+        
+        # Fallback intelligente basato sul messaggio
+        message_lower = user_message.lower()
+        logger.warning(f"[AI_SERVICE_V2] ⚠️ Agent '{agent_name}' non valido, applico fallback intelligente")
+        
+        # Logica di fallback basata su keywords
+        if any(kw in message_lower for kw in ["carica", "importa", "file", "csv", "excel"]):
+            return "extraction"
+        elif any(kw in message_lower for kw in ["consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "registra"]):
+            # Distingui tra singolo e multiplo
+            if any(kw in message_lower for kw in [" e ", ",", "più"]):
+                return "multi_movement"
+            return "movement"
+        elif any(kw in message_lower for kw in ["aggiungi vino", "crea vino", "modifica vino", "elimina vino", "nuovo vino"]):
+            return "wine_management"
+        elif any(kw in message_lower for kw in ["report", "riepilogo dettagliato"]):
+            return "report"
+        elif any(kw in message_lower for kw in ["statistiche", "analisi", "trend"]) and any(kw in message_lower for kw in [" del ", " della ", " di "]):
+            # Statistiche con nome vino specifico
+            return "notification"
+        elif any(kw in message_lower for kw in ["statistiche", "analisi", "trend", "quanti vini"]):
+            return "analytics"
+        elif any(kw in message_lower for kw in ["esauriti", "scorte basse", "alert"]):
+            return "notification"
+        elif any(kw in message_lower for kw in ["cerca", "trova", "quale", "info", "dettagli", "lista", "mostra", "dimmi"]):
+            return "query"
+        elif any(kw in message_lower for kw in ["cosa abbiamo detto", "di cosa stavamo parlando", "riassumi conversazione"]):
+            return "conversation"
+        else:
+            # Default: query agent (più generico)
+            logger.info(f"[AI_SERVICE_V2] 🔄 Fallback a query agent (default)")
+            return "query"
+    
+    def _get_agent_by_name(self, agent_name: str):
+        """
+        Ritorna istanza agent per nome.
+        
+        Args:
+            agent_name: Nome agent
+        
+        Returns:
+            Istanza agent o None se non trovato
+        """
+        agents_map = {
+            "extraction": None,  # Non implementato
+            "query": self.query,
+            "movement": self.movement,
+            "multi_movement": self.multi_movement,
+            "analytics": self.analytics,
+            "wine_management": self.wine_management,
+            "report": self.report,
+            "notification": self.notification,
+            "conversation": self.conversation
+        }
+        return agents_map.get(agent_name)
 
