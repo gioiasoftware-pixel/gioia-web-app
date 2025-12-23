@@ -1245,6 +1245,51 @@ INFORMAZIONI UTENTE:
             logger.error(f"[INVENTORY_LIST] Errore costruzione lista: {e}", exc_info=True)
             return self._generate_error_message_html("Errore nel recupero dell'inventario. Riprova.")
     
+    async def _build_report_card_response(self, user_id: int) -> str:
+        """
+        Genera report inventario completo come wine card HTML.
+        """
+        try:
+            from app.services.agents.wine_card_helper import WineCardHelper
+            wines = await db_manager.get_user_wines(user_id)
+            
+            if not wines:
+                return '<div class="wine-card"><div class="wine-card-body"><p>L\'inventario è vuoto.</p></div></div>'
+            
+            # Calcola statistiche
+            total_wines = len(wines)
+            total_bottles = sum(w.quantity or 0 for w in wines)
+            total_value = sum((w.selling_price or 0) * (w.quantity or 0) for w in wines)
+            
+            # Distribuzione per tipo
+            types_count = {}
+            for wine in wines:
+                wine_type = wine.wine_type or "Altro"
+                types_count[wine_type] = types_count.get(wine_type, 0) + 1
+            
+            # Vini a bassa scorta (< 5)
+            low_stock = [w for w in wines if (w.quantity or 0) < 5 and (w.quantity or 0) > 0]
+            
+            # Vini esauriti (0)
+            out_of_stock = [w for w in wines if (w.quantity or 0) == 0]
+            
+            # Genera report card HTML
+            report_html = WineCardHelper.generate_report_card_html(
+                total_wines=total_wines,
+                total_bottles=total_bottles,
+                total_value=total_value,
+                types_distribution=types_count,
+                low_stock_wines=low_stock,
+                out_of_stock_wines=out_of_stock,
+                badge="📊 Report"
+            )
+            
+            return report_html
+        
+        except Exception as e:
+            logger.error(f"[AI_SERVICE] Errore generazione report card: {e}", exc_info=True)
+            return '<div class="wine-card"><div class="wine-card-body"><p>Errore durante la generazione del report.</p></div></div>'
+    
     # ========== CASCADING RETRY SEARCH ==========
     
     async def _retry_level_1_normalize_local(self, query: str) -> List[str]:
