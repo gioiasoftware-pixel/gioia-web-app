@@ -208,4 +208,100 @@ class WineCardHelper:
             html += "<br>"  # Spazio tra cards
         
         return html
+    
+    @staticmethod
+    def generate_report_card_html(
+        total_wines: int,
+        total_bottles: int,
+        total_value: float,
+        types_distribution: Dict[str, int],
+        low_stock_wines: List,
+        out_of_stock_wines: List,
+        badge: Optional[str] = "📊 Report"
+    ) -> str:
+        """
+        Genera una wine card dedicata per report inventario.
+        
+        Args:
+            total_wines: Numero totale vini
+            total_bottles: Numero totale bottiglie
+            total_value: Valore totale inventario
+            types_distribution: Dict {tipo: quantità} per distribuzione per tipo
+            low_stock_wines: Lista vini a bassa scorta
+            out_of_stock_wines: Lista vini esauriti
+            badge: Badge opzionale
+        
+        Returns:
+            HTML string con report card
+        """
+        html = '<div class="wine-card report-card">'
+        
+        # Header
+        html += '<div class="wine-card-header">'
+        if badge:
+            html += f'<div class="wine-card-badge">{WineCardHelper.escape_html(badge)}</div>'
+        html += '<div><h3 class="wine-card-title">📦 Report Inventario Completo</h3>'
+        html += '<div class="wine-card-producer">Report generato automaticamente</div>'
+        html += '</div>'
+        html += '</div>'  # Chiude wine-card-header
+        
+        # Body con statistiche
+        html += '<div class="wine-card-body">'
+        
+        # Statistiche Generali
+        html += '<div class="wine-card-field report-statistics">'
+        html += '<span class="wine-card-field-label">Statistiche Generali</span>'
+        html += '<div class="report-stats-grid">'
+        html += f'<div class="report-stat-item"><span class="stat-label">Vini totali:</span><span class="stat-value">{total_wines}</span></div>'
+        html += f'<div class="report-stat-item"><span class="stat-label">Bottiglie totali:</span><span class="stat-value">{total_bottles}</span></div>'
+        html += f'<div class="report-stat-item"><span class="stat-label">Valore stimato:</span><span class="stat-value">€{total_value:,.2f}</span></div>'
+        html += '</div>'
+        html += '</div>'
+        
+        # Distribuzione per Tipo
+        if types_distribution:
+            html += '<div class="wine-card-field report-distribution">'
+            html += '<span class="wine-card-field-label">Distribuzione per Tipo</span>'
+            html += '<div class="report-types-list">'
+            for wine_type, count in sorted(types_distribution.items(), key=lambda x: x[1], reverse=True):
+                html += '<div class="report-type-item">'
+                html += f'<span class="type-name">{WineCardHelper.escape_html(wine_type)}</span>'
+                html += f'<span class="type-count">{count}</span>'
+                html += '</div>'
+            html += '</div>'
+            html += '</div>'
+        
+        # Vini a Bassa Scorta
+        if low_stock_wines:
+            html += '<div class="wine-card-field report-low-stock">'
+            html += f'<span class="wine-card-field-label">⚠️ Vini a Bassa Scorta ({len(low_stock_wines)})</span>'
+            html += '<div class="report-wines-list">'
+            for wine in low_stock_wines[:10]:  # Max 10
+                html += '<div class="report-wine-item">'
+                html += f'<span class="wine-name">{WineCardHelper.escape_html(wine.name)}</span>'
+                html += f'<span class="wine-quantity">{wine.quantity or 0}</span>'
+                html += '</div>'
+            if len(low_stock_wines) > 10:
+                html += f'<div class="report-more">... e altri {len(low_stock_wines) - 10} vini</div>'
+            html += '</div>'
+            html += '</div>'
+        
+        # Vini Esauriti
+        if out_of_stock_wines:
+            html += '<div class="wine-card-field report-out-of-stock">'
+            html += f'<span class="wine-card-field-label">❌ Vini Esauriti ({len(out_of_stock_wines)})</span>'
+            html += '<div class="report-wines-list">'
+            for wine in out_of_stock_wines[:10]:  # Max 10
+                html += '<div class="report-wine-item">'
+                html += f'<span class="wine-name">{WineCardHelper.escape_html(wine.name)}</span>'
+                html += '</div>'
+            if len(out_of_stock_wines) > 10:
+                html += f'<div class="report-more">... e altri {len(out_of_stock_wines) - 10} vini</div>'
+            html += '</div>'
+            html += '</div>'
+        
+        html += '</div>'  # Chiude wine-card-body
+        html += '</div>'  # Chiude wine-card
+        
+        return html
 
