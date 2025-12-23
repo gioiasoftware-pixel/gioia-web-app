@@ -397,9 +397,12 @@ class NotificationAgent(BaseAgent):
                 
                 current_stock = storico_row[0] or 0
                 opening_stock = movements[0]["quantity_before"] if movements else 0
+                actual_wine_name = storico_row[6] if len(storico_row) > 6 else wine_name  # Nome effettivo trovato nello storico
+                
+                logger.info(f"[NOTIFICATION] Storico trovato per '{actual_wine_name}': {len(movements)} movimenti, stock={current_stock}")
                 
                 return {
-                    "wine_name": wine_name,
+                    "wine_name": actual_wine_name,  # Usa il nome trovato nello storico
                     "current_stock": current_stock,
                     "opening_stock": opening_stock,
                     "movements": movements,
