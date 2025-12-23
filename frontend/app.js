@@ -492,11 +492,31 @@ document.addEventListener('DOMContentLoaded', () => {
         window.authToken = authToken; // Esponi su window
     }
     
-    // Inizializza tema (giorno/notte)
-    const savedTheme = localStorage.getItem('gioia_theme');
-    if (savedTheme === 'dark' || savedTheme === 'light') {
-        currentTheme = savedTheme;
+    // Inizializza tema (giorno/notte) - ora da settings se disponibili
+    let themeToApply = 'light';
+    if (typeof window.loadSettings === 'function') {
+        const settings = window.loadSettings();
+        if (settings.theme === 'auto') {
+            // Usa preferenza sistema se auto
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            themeToApply = prefersDark ? 'dark' : 'light';
+        } else if (settings.theme === 'dark' || settings.theme === 'light') {
+            themeToApply = settings.theme;
+        } else {
+            // Fallback a gioia_theme legacy
+            const savedTheme = localStorage.getItem('gioia_theme');
+            if (savedTheme === 'dark' || savedTheme === 'light') {
+                themeToApply = savedTheme;
+            }
+        }
+    } else {
+        // Fallback se settings non disponibili
+        const savedTheme = localStorage.getItem('gioia_theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') {
+            themeToApply = savedTheme;
+        }
     }
+    currentTheme = themeToApply;
     applyTheme(currentTheme, false);
 
     if (authToken) {
@@ -595,27 +615,43 @@ function applyTheme(theme, persist = true) {
 
     if (persist) {
         try {
-            localStorage.setItem('gioia_theme', currentTheme);
+            // Salva anche in settings se disponibili
+            if (typeof window.loadSettings === 'function' && typeof window.saveSettings === 'function') {
+                const settings = window.loadSettings();
+                // Mantieni il valore 'auto' se era impostato, altrimenti salva il tema effettivo
+                if (settings.theme !== 'auto') {
+                    settings.theme = currentTheme;
+                    window.saveSettings(settings);
+                }
+                // Salva anche in gioia_theme per retrocompatibilità
+                localStorage.setItem('gioia_theme', currentTheme);
+            } else {
+                // Fallback a salvataggio legacy
+                localStorage.setItem('gioia_theme', currentTheme);
+            }
         } catch (e) {
             console.warn('[THEME] Impossibile salvare tema in localStorage:', e);
         }
     }
 
-    // Aggiorna stato dei toggle switch (checked = dark mode) - ora nella sidebar
-    const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
-    if (themeCheckboxDesktop) {
-        themeCheckboxDesktop.checked = currentTheme === 'dark';
-        const themeLabelDesktop = themeCheckboxDesktop.nextElementSibling;
-        if (themeLabelDesktop && themeLabelDesktop.classList.contains('ui-themeToggle__track')) {
-            themeLabelDesktop.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
-        }
-    }
-    const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
-    if (themeCheckboxMobile) {
-        themeCheckboxMobile.checked = currentTheme === 'dark';
-        const themeLabelMobile = themeCheckboxMobile.nextElementSibling;
-        if (themeLabelMobile && themeLabelMobile.classList.contains('ui-themeToggle__track')) {
-            themeLabelMobile.title = currentTheme === 'dark' ? 'Passa alla modalità giorno' : 'Passa alla modalità notte';
+    // Aggiorna select tema nelle settings se presente
+    const themeSelect = document.getElementById('theme-select');
+    if (themeSelect) {
+        // Carica tema da localStorage o usa 'auto' di default
+        try {
+            const savedTheme = localStorage.getItem('gioia_theme');
+            const savedSettings = localStorage.getItem('gioia_settings');
+            let themeValue = 'auto';
+            if (savedSettings) {
+                const settings = JSON.parse(savedSettings);
+                themeValue = settings.theme || 'auto';
+            } else if (savedTheme) {
+                // Se c'è solo il tema salvato senza settings, usa quello
+                themeValue = savedTheme === 'dark' ? 'dark' : savedTheme === 'light' ? 'light' : 'auto';
+            }
+            themeSelect.value = themeValue;
+        } catch (e) {
+            console.warn('[THEME] Errore caricamento tema:', e);
         }
     }
 }
@@ -693,34 +729,24 @@ function setupEventListeners() {
         addUniversalEventListener(logoutBtnMobile, handleLogout);
     }
 
-    // Theme toggle switch (giorno/notte) - Desktop sidebar
-    const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
-    if (themeCheckboxDesktop) {
-        themeCheckboxDesktop.checked = currentTheme === 'dark';
-        themeCheckboxDesktop.addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            const nextTheme = isChecked ? 'dark' : 'light';
-            applyTheme(nextTheme, true);
-            // Sincronizza anche il toggle mobile se presente
-            const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
-            if (themeCheckboxMobile) {
-                themeCheckboxMobile.checked = isChecked;
+    // Settings button - Desktop
+    const settingsBtn = document.getElementById('settings-btn');
+    if (settingsBtn) {
+        addUniversalEventListener(settingsBtn, (e) => {
+            e.preventDefault();
+            if (typeof window.openSettingsPage === 'function') {
+                window.openSettingsPage();
             }
         });
     }
 
-    // Theme toggle switch mobile - ora nella sidebar
-    const themeCheckboxMobile = document.getElementById('themeToggle-sidebar-mobile');
-    if (themeCheckboxMobile) {
-        themeCheckboxMobile.checked = currentTheme === 'dark';
-        themeCheckboxMobile.addEventListener('change', (e) => {
-            const isChecked = e.target.checked;
-            const nextTheme = isChecked ? 'dark' : 'light';
-            applyTheme(nextTheme, true);
-            // Sincronizza anche il toggle desktop se presente
-            const themeCheckboxDesktop = document.getElementById('themeToggle-sidebar');
-            if (themeCheckboxDesktop) {
-                themeCheckboxDesktop.checked = isChecked;
+    // Settings button - Mobile
+    const settingsBtnMobile = document.getElementById('settings-btn-mobile');
+    if (settingsBtnMobile) {
+        addUniversalEventListener(settingsBtnMobile, (e) => {
+            e.preventDefault();
+            if (typeof window.openSettingsPage === 'function') {
+                window.openSettingsPage();
             }
         });
     }

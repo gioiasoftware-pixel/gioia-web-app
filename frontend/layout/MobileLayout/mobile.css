@@ -433,7 +433,8 @@
     box-sizing: border-box !important;
 }
 
-.mobileRoot .mSidebar .btn-place-order {
+.mobileRoot .mSidebar .btn-place-order,
+.mobileRoot .mSidebar .btn-settings {
     width: 100% !important;
     display: flex !important;
     align-items: center !important;
@@ -443,7 +444,8 @@
     font-size: clamp(14px, 3.5vw, 16px) !important;
 }
 
-.mobileRoot .mSidebar .btn-place-order svg {
+.mobileRoot .mSidebar .btn-place-order svg,
+.mobileRoot .mSidebar .btn-settings svg {
     width: clamp(16px, 4vw, 18px) !important;
     height: clamp(16px, 4vw, 18px) !important;
 }
