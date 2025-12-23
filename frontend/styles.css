@@ -1080,13 +1080,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         gap: 12px;
     }
     
-    .logo-container .logo {
-        width: 32px;
-        height: 32px;
-    }
-    
-    .chat-title {
-        font-size: 20px;
+    .chat-header .header-logo-center .logo-container {
+        width: 40px;
+        height: 40px;
     }
     
     .chat-header-right {
@@ -1662,6 +1658,26 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     display: flex;
     align-items: center;
     gap: 16px;
+    flex: 1;
+    position: relative;
+}
+
+.chat-header .header-logo-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+.chat-header .header-logo-center .logo-container {
+    width: 48px;
+    height: 48px;
 }
 
 .chat-title {
@@ -4130,9 +4146,9 @@ body.dark-theme .wine-card-error-message .error-text {
         font-size: 20px;
     }
 
-    .logo-container .logo {
-        width: 32px;
-        height: 32px;
+    .chat-header .header-logo-center .logo-container {
+        width: 40px;
+        height: 40px;
     }
 
     .sidebar-toggle-btn {
