@@ -3,13 +3,25 @@
  * Funziona sia per desktop che mobile
  */
 
+// Flag per evitare doppie inizializzazioni
+const audioHandlerInitialized = {
+    desktop: false,
+    mobile: false
+};
+
 // Inizializza handler audio per entrambi i layout
 function initChatAudioHandler() {
     // Handler per desktop
-    initAudioHandler('desktop');
+    if (!audioHandlerInitialized.desktop) {
+        initAudioHandler('desktop');
+        audioHandlerInitialized.desktop = true;
+    }
     
     // Handler per mobile
-    initAudioHandler('mobile');
+    if (!audioHandlerInitialized.mobile) {
+        initAudioHandler('mobile');
+        audioHandlerInitialized.mobile = true;
+    }
 }
 
 function initAudioHandler(layout) {
@@ -72,16 +84,34 @@ function initAudioHandler(layout) {
     // Mobile: "premi e tieni premuto" (touchstart/touchend come WhatsApp)
     // Desktop: click normale
     if (layout === 'mobile') {
+        // Verifica che il pulsante esista e sia nel DOM
+        if (!audioBtn || !audioBtn.parentNode) {
+            console.error(`[ChatAudioHandler] ❌ Pulsante mobile non valido o non nel DOM`);
+            return;
+        }
+        
         // Rimuovi eventuali listener esistenti clonando il pulsante
+        // Questo garantisce che non ci siano conflitti con listener precedenti
         const newAudioBtn = audioBtn.cloneNode(true);
-        audioBtn.parentNode.replaceChild(newAudioBtn, audioBtn);
+        const parent = audioBtn.parentNode;
+        parent.replaceChild(newAudioBtn, audioBtn);
         const cleanAudioBtn = newAudioBtn;
+        
+        // Verifica che il clone sia nel DOM
+        if (!cleanAudioBtn.parentNode) {
+            console.error(`[ChatAudioHandler] ❌ Pulsante clonato non nel DOM`);
+            return;
+        }
         
         let isRecording = false;
         let touchStartTime = null;
         let currentRecorder = recorder; // Salva riferimento al recorder
         
-        console.log(`[ChatAudioHandler] ✅ Pulsante mobile clonato e pronto per listener`);
+        console.log(`[ChatAudioHandler] ✅ Pulsante mobile clonato e pronto per listener`, {
+            id: cleanAudioBtn.id,
+            parentId: cleanAudioBtn.parentNode?.id || 'no parent id',
+            inDOM: document.body.contains(cleanAudioBtn)
+        });
         
         // Inizia registrazione al touchstart
         const handleTouchStart = async (e) => {
@@ -130,30 +160,22 @@ function initAudioHandler(layout) {
             }
         };
         
-        cleanAudioBtn.addEventListener('touchstart', handleTouchStart, { passive: false });
-        console.log(`[ChatAudioHandler] ✅ Listener touchstart attaccato al pulsante mobile`);
-        
-        // Test diretto: verifica che il listener sia attaccato
-        console.log(`[ChatAudioHandler] 🔍 Verifica listener:`, {
-            element: cleanAudioBtn,
-            id: cleanAudioBtn.id,
-            hasTouchStart: true, // Non possiamo verificare direttamente, ma sappiamo che l'abbiamo aggiunto
-            parent: cleanAudioBtn.parentNode?.id || 'no parent'
-        });
-        
-        // Test manuale: prova a triggerare un evento per verificare che funzioni
-        // (solo per debug, rimuovere in produzione se necessario)
-        if (window.DEBUG_AUDIO) {
-            setTimeout(() => {
-                console.log(`[ChatAudioHandler] 🧪 Test manuale: simulazione touchstart`);
-                const testEvent = new TouchEvent('touchstart', {
-                    bubbles: true,
-                    cancelable: true,
-                    touches: [new Touch({ identifier: 0, target: cleanAudioBtn, clientX: 0, clientY: 0 })]
-                });
-                cleanAudioBtn.dispatchEvent(testEvent);
-            }, 1000);
+        // Attacca listener touchstart
+        try {
+            cleanAudioBtn.addEventListener('touchstart', handleTouchStart, { passive: false });
+            console.log(`[ChatAudioHandler] ✅ Listener touchstart attaccato con successo`);
+        } catch (error) {
+            console.error(`[ChatAudioHandler] ❌ Errore attaccando listener touchstart:`, error);
+            return;
         }
+        
+        // Verifica che il listener sia stato attaccato
+        console.log(`[ChatAudioHandler] 🔍 Verifica finale listener:`, {
+            elementId: cleanAudioBtn.id,
+            elementInDOM: document.body.contains(cleanAudioBtn) || document.getElementById(cleanAudioBtn.id) !== null,
+            parentElement: cleanAudioBtn.parentElement?.tagName || 'no parent',
+            hasRecorder: !!currentRecorder
+        });
         
         // Ferma registrazione al touchend o touchcancel
         const stopRecordingOnTouchEnd = async (e) => {
