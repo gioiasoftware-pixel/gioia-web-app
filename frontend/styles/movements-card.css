@@ -1,119 +1,374 @@
 /* ============================================
-   MOVEMENTS CARD STYLES
+   MOVEMENTS CARD STYLES - Stile Gio.ia
    ============================================ */
 
 .movements-period-card {
-    /* Usa stile wine-card esistente */
+    background: var(--color-white);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    animation: fadeInUp 0.4s ease-out;
 }
 
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Header migliorato */
+.movements-header {
+    background: linear-gradient(135deg, rgba(154, 24, 46, 0.05) 0%, rgba(154, 24, 46, 0.02) 100%);
+    border-bottom: 2px solid var(--color-granaccia);
+    padding: 20px;
+}
+
+.movements-header-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 12px;
+}
+
+.movements-header-icon {
+    font-size: 32px;
+    line-height: 1;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.movements-header-title-section {
+    flex: 1;
+}
+
+.movements-title {
+    color: var(--color-text-primary);
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.movements-subtitle {
+    color: var(--color-text-secondary);
+    margin-top: 4px;
+    font-size: 13px;
+}
+
+.movements-badge {
+    background: linear-gradient(135deg, var(--color-granaccia) 0%, #b81f38 100%);
+    color: var(--color-white) !important;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 8px rgba(154, 24, 46, 0.3);
+    display: inline-block;
+}
+
+body.dark-theme .movements-badge {
+    background: linear-gradient(135deg, var(--color-granaccia) 0%, #ffed4e 100%);
+    color: var(--color-black) !important;
+}
+
+/* Body */
+.movements-body {
+    padding: 24px 20px;
+}
+
+/* Statistiche principali */
 .movements-statistics {
-    margin-bottom: 20px;
+    margin-bottom: 32px;
 }
 
 .movements-stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     gap: 16px;
-    margin-top: 12px;
+    margin-top: 16px;
 }
 
-.movement-stat-item {
+.movement-stat-card {
+    background: var(--color-white);
+    border: 2px solid var(--color-border);
+    border-radius: 12px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.movement-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: var(--color-granaccia);
+    transform: scaleY(0);
+    transition: transform 0.3s ease;
+}
+
+.movement-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-granaccia);
+}
+
+.movement-stat-card:hover::before {
+    transform: scaleY(1);
+}
+
+.stat-card-wines {
+    border-color: rgba(154, 24, 46, 0.3);
+}
+
+.stat-card-wines::before {
+    background: var(--color-granaccia);
+}
+
+.stat-card-consumi {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.stat-card-consumi::before {
+    background: #ef4444;
+}
+
+.stat-card-rifornimenti {
+    border-color: rgba(34, 197, 94, 0.3);
+}
+
+.stat-card-rifornimenti::before {
+    background: #22c55e;
+}
+
+.stat-card-icon {
+    font-size: 32px;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.stat-card-content {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
 }
 
-.movement-stat-item .stat-label {
+.stat-card-content .stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    line-height: 1.2;
+}
+
+.stat-card-content .stat-label {
     font-size: 13px;
     color: var(--color-text-secondary);
     font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-.movement-stat-item .stat-value {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-text-primary);
+body.dark-theme .movement-stat-card {
+    background: #2a2a2a;
+    border-color: var(--color-border);
 }
 
+body.dark-theme .stat-card-wines:hover,
+body.dark-theme .stat-card-consumi:hover,
+body.dark-theme .stat-card-rifornimenti:hover {
+    border-color: var(--color-granaccia);
+}
+
+/* Sezione dettaglio vini */
 .movements-wines-list {
-    margin-top: 20px;
+    margin-top: 32px;
+}
+
+.movements-section-header {
+    margin-bottom: 20px;
+}
+
+.movements-section-title {
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .movements-wines-container {
     display: flex;
     flex-direction: column;
     gap: 16px;
-    margin-top: 12px;
 }
 
 .movement-wine-item {
-    background-color: var(--color-light-gray);
+    background: var(--color-white);
     border: 1px solid var(--color-border);
-    border-radius: 8px;
-    padding: 16px;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.movement-wine-item:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: var(--color-granaccia);
+    transform: translateY(-1px);
 }
 
 .movement-wine-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    gap: 16px;
+}
+
+.movement-wine-name-section {
+    display: flex;
+    align-items: center;
     gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.movement-wine-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+    line-height: 1;
 }
 
 .movement-wine-name {
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 18px;
+    font-weight: 700;
     color: var(--color-text-primary);
-    flex: 1;
-}
-
-.movement-wine-stock {
-    font-size: 14px;
-    color: var(--color-text-secondary);
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.movement-wine-stock-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.stock-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-text-light);
+}
+
+.stock-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-granaccia);
+    line-height: 1;
+}
+
+/* Statistiche movimento per vino */
 .movement-wine-stats {
     display: flex;
-    gap: 16px;
-    margin-bottom: 12px;
+    gap: 12px;
+    margin-bottom: 16px;
     flex-wrap: wrap;
 }
 
-.movement-stat {
+.movement-stat-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
     font-size: 14px;
-    padding: 4px 12px;
-    border-radius: 4px;
     font-weight: 500;
+    transition: all 0.2s ease;
 }
 
-.movement-stat.consumption {
-    background-color: #fee2e2;
+.movement-stat-badge.consumption {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
     color: #991b1b;
+    border: 1px solid #fecaca;
 }
 
-body.dark-theme .movement-stat.consumption {
-    background-color: #7f1d1d;
-    color: #fca5a5;
-}
-
-.movement-stat.replenishment {
-    background-color: #dcfce7;
+.movement-stat-badge.replenishment {
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
     color: #166534;
+    border: 1px solid #bbf7d0;
 }
 
-body.dark-theme .movement-stat.replenishment {
-    background-color: #14532d;
+.movement-stat-badge:hover {
+    transform: scale(1.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.movement-stat-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.movement-stat-text {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.movement-stat-text strong {
+    font-weight: 700;
+    font-size: 16px;
+}
+
+body.dark-theme .movement-stat-badge.consumption {
+    background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 100%);
+    color: #fca5a5;
+    border-color: #991b1b;
+}
+
+body.dark-theme .movement-stat-badge.replenishment {
+    background: linear-gradient(135deg, #14532d 0%, #166534 100%);
     color: #86efac;
+    border-color: #166534;
 }
 
+/* Dettagli movimenti */
 .movement-wine-details {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
+    gap: 10px;
+    margin-top: 16px;
+    padding-top: 16px;
     border-top: 1px solid var(--color-border);
 }
 
@@ -121,66 +376,165 @@ body.dark-theme .movement-stat.replenishment {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    font-size: 13px;
-    padding: 6px 8px;
-    border-radius: 4px;
+    gap: 16px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.movement-detail:hover {
+    transform: translateX(4px);
 }
 
 .movement-detail.consumption {
-    background-color: #fef2f2;
-}
-
-body.dark-theme .movement-detail.consumption {
-    background-color: #1f1f1f;
+    background: linear-gradient(90deg, #fef2f2 0%, #fee2e2 100%);
+    border-left: 3px solid #ef4444;
 }
 
 .movement-detail.replenishment {
-    background-color: #f0fdf4;
+    background: linear-gradient(90deg, #f0fdf4 0%, #dcfce7 100%);
+    border-left: 3px solid #22c55e;
 }
 
-body.dark-theme .movement-detail.replenishment {
-    background-color: #1f1f1f;
+.movement-detail-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.movement-detail-icon {
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .movement-type {
-    font-weight: 500;
+    font-weight: 600;
     color: var(--color-text-primary);
-    flex: 1;
+    font-size: 14px;
+}
+
+.movement-detail-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .movement-quantity {
-    font-weight: 600;
+    font-weight: 700;
     color: var(--color-text-primary);
+    font-size: 14px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+    min-width: 60px;
+    text-align: center;
 }
 
 .movement-date {
     font-size: 12px;
     color: var(--color-text-light);
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+body.dark-theme .movement-detail.consumption {
+    background: linear-gradient(90deg, #1f1f1f 0%, #2a1f1f 100%);
+    border-left-color: #ef4444;
+}
+
+body.dark-theme .movement-detail.replenishment {
+    background: linear-gradient(90deg, #1f1f1f 0%, #1f2a1f 100%);
+    border-left-color: #22c55e;
+}
+
+body.dark-theme .movement-quantity {
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--color-text-primary);
 }
 
 .movement-more {
-    font-size: 12px;
-    color: var(--color-text-light);
+    text-align: center;
+    font-size: 13px;
+    color: var(--color-text-secondary);
     font-style: italic;
+    padding: 8px;
     margin-top: 4px;
 }
 
 .movements-more {
     text-align: center;
-    padding: 16px;
+    padding: 20px;
     color: var(--color-text-secondary);
     font-size: 14px;
     font-style: italic;
+    background: var(--color-light-gray);
+    border-radius: 8px;
+    margin-top: 16px;
 }
 
-/* Dark theme */
+body.dark-theme .movements-more {
+    background: #2a2a2a;
+}
+
 body.dark-theme .movement-wine-item {
-    background-color: #2a2a2a;
+    background: #2a2a2a;
     border-color: var(--color-border);
 }
 
-body.dark-theme .movement-detail {
-    border-color: var(--color-border);
-}
+/* Responsive */
+@media (max-width: 768px) {
+    .movements-header {
+        padding: 16px;
+    }
 
+    .movements-header-icon {
+        font-size: 28px;
+    }
+
+    .movements-title {
+        font-size: 20px;
+    }
+
+    .movements-body {
+        padding: 20px 16px;
+    }
+
+    .movements-stats-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .movement-stat-card {
+        padding: 16px;
+    }
+
+    .stat-card-icon {
+        font-size: 28px;
+    }
+
+    .stat-card-content .stat-value {
+        font-size: 24px;
+    }
+
+    .movement-wine-item {
+        padding: 16px;
+    }
+
+    .movement-wine-name {
+        font-size: 16px;
+    }
+
+    .movement-wine-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .movement-stat-badge {
+        width: 100%;
+        justify-content: center;
+    }
+}
