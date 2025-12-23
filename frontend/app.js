@@ -702,7 +702,7 @@ function setupEventListeners() {
     }
     
     // Logout button mobile
-    const logoutBtnMobile = document.getElementById('logout-btn-mobile');
+    const logoutBtnMobile = document.getElementById('logout-btn-sidebar-mobile');
     if (logoutBtnMobile) {
         addUniversalEventListener(logoutBtnMobile, handleLogout);
     }

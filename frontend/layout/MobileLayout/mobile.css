@@ -419,6 +419,50 @@
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     padding: 8px;
+    min-height: 0 !important; /* Permette alla lista di restringersi quando il footer è presente */
+}
+
+.mobileRoot .mSidebar .chat-sidebar-footer {
+    flex-shrink: 0 !important;
+    padding: clamp(12px, 3vw, 16px) !important;
+    border-top: 1px solid var(--color-border) !important;
+    background-color: var(--color-white) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: clamp(10px, 2.5vw, 12px) !important;
+    box-sizing: border-box !important;
+}
+
+.mobileRoot .mSidebar .btn-place-order {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: clamp(6px, 1.5vw, 8px) !important;
+    padding: clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px) !important;
+    font-size: clamp(14px, 3.5vw, 16px) !important;
+}
+
+.mobileRoot .mSidebar .btn-place-order svg {
+    width: clamp(16px, 4vw, 18px) !important;
+    height: clamp(16px, 4vw, 18px) !important;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-footer-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: clamp(10px, 2.5vw, 12px) !important;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-footer-actions .ui-themeToggle {
+    flex-shrink: 0 !important;
+}
+
+.mobileRoot .mSidebar .chat-sidebar-footer-actions .btn {
+    flex: 1 !important;
+    padding: clamp(10px, 2.5vw, 12px) clamp(12px, 3vw, 16px) !important;
+    font-size: clamp(14px, 3.5vw, 16px) !important;
 }
 
 .mobileRoot .mSidebar .chat-sidebar-item {
