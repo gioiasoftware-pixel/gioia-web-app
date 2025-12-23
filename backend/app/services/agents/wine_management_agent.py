@@ -106,12 +106,15 @@ class WineManagementAgent(BaseAgent):
                     
                     return result
             
-            # Se è creazione e non ci sono vini menzionati, è un nuovo vino da zero
+            # Se è creazione, estrai dati e crea vino
             if intention == "create":
-                # Aggiungi nota specifica per creazione nuovo vino
-                enhanced_message += "\n\nNOTA IMPORTANTE: Questa è una richiesta di CREAZIONE di un nuovo vino da zero. Estrai tutti i dati dal messaggio (nome, produttore, annata, quantità, prezzi, tipo, regione, paese, ecc.) e fornisci un riepilogo chiaro e completo dei dati estratti."
+                return await self._handle_create_wine(message, user_id, thread_id, context)
             
-            # Processa con AI per estrazione dati e validazione
+            # Se è modifica, estrai dati e modifica vino
+            if intention == "update":
+                return await self._handle_update_wine(message, user_id, thread_id, context)
+            
+            # Per eliminazione o altre intenzioni, usa AI normale
             result = await self.process(
                 message=enhanced_message,
                 thread_id=thread_id,
@@ -264,4 +267,295 @@ Contesto gestione vino:
 
 Fornisci sempre un feedback chiaro e dettagliato all'utente.
 """
+    
+    async def _handle_create_wine(
+        self,
+        message: str,
+        user_id: int,
+        thread_id: Optional[str],
+        context: str
+    ) -> Dict[str, Any]:
+        """
+        Gestisce creazione nuovo vino estraendo dati e chiamando processor_client.add_wine.
+        """
+        try:
+            # Estrai dati vino dal messaggio usando AI
+            enhanced_message = f"""{message}
+
+Contesto inventario:
+{context}
+
+Estrai TUTTI i dati del nuovo vino dal messaggio e rispondi SOLO con un JSON nel formato:
+{{
+    "name": "Nome vino",
+    "producer": "Produttore (opzionale)",
+    "vintage": anno (numero o null),
+    "quantity": quantità bottiglie (numero),
+    "selling_price": prezzo vendita (numero o null),
+    "cost_price": prezzo acquisto (numero o null),
+    "wine_type": "Rosso/Bianco/Rosato/Spumante/Altro",
+    "region": "Regione (opzionale)",
+    "country": "Paese (opzionale)"
+}}
+
+IMPORTANTE: Rispondi SOLO con il JSON, senza testo aggiuntivo."""
+            
+            result = await self.process(
+                message=enhanced_message,
+                thread_id=thread_id,
+                user_id=user_id
+            )
+            
+            if not result.get("success"):
+                return result
+            
+            # Parse JSON dalla risposta
+            import json
+            response_text = result.get("message", "").strip()
+            json_text = self._extract_json_from_response(response_text)
+            
+            if not json_text:
+                return {
+                    "success": False,
+                    "error": "Non sono riuscito a estrarre i dati del vino dal messaggio. Prova a essere più specifico.",
+                    "agent": self.name
+                }
+            
+            wine_data = json.loads(json_text)
+            
+            # Valida dati minimi
+            if not wine_data.get("name"):
+                return {
+                    "success": False,
+                    "error": "Il nome del vino è obbligatorio per creare un nuovo vino.",
+                    "agent": self.name
+                }
+            
+            # Ottieni user e business_name
+            user = await db_manager.get_user_by_id(user_id)
+            if not user or not user.business_name:
+                return {
+                    "success": False,
+                    "error": "Utente non trovato o business name mancante.",
+                    "agent": self.name
+                }
+            
+            # Chiama processor_client.add_wine per creare il vino
+            logger.info(f"[WINE_MANAGEMENT] Creazione vino: {wine_data.get('name')}")
+            add_result = await processor_client.add_wine(
+                user_id=user.id,
+                business_name=user.business_name,
+                wine_data=wine_data
+            )
+            
+            if add_result.get("status") == "error":
+                return {
+                    "success": False,
+                    "error": f"Errore durante la creazione del vino: {add_result.get('error', 'Errore sconosciuto')}",
+                    "agent": self.name
+                }
+            
+            # Recupera vino creato per mostrare wine card
+            wine_id = add_result.get("wine_id")
+            if wine_id:
+                wine = await db_manager.get_wine_by_id(user_id, wine_id)
+                if wine:
+                    wine_card_html = WineCardHelper.generate_wine_card_html(wine, is_new=True, badge="✅ Vino creato")
+                    return {
+                        "success": True,
+                        "message": wine_card_html,
+                        "agent": self.name,
+                        "is_html": True,
+                        "metadata": {"type": "wine_created", "wine_id": wine_id}
+                    }
+            
+            # Fallback se non riesco a recuperare il vino
+            return {
+                "success": True,
+                "message": f"✅ Vino '{wine_data.get('name')}' creato con successo!",
+                "agent": self.name
+            }
+        
+        except json.JSONDecodeError as e:
+            logger.error(f"[WINE_MANAGEMENT] Errore parsing JSON: {e}")
+            return {
+                "success": False,
+                "error": "Errore nell'estrazione dei dati del vino. Prova a essere più specifico.",
+                "agent": self.name
+            }
+        except Exception as e:
+            logger.error(f"[WINE_MANAGEMENT] Errore creazione vino: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Errore durante la creazione del vino: {str(e)}",
+                "agent": self.name
+            }
+    
+    async def _handle_update_wine(
+        self,
+        message: str,
+        user_id: int,
+        thread_id: Optional[str],
+        context: str
+    ) -> Dict[str, Any]:
+        """
+        Gestisce modifica vino esistente estraendo dati e chiamando processor_client.update_wine_field.
+        """
+        try:
+            # Cerca vino menzionato nel messaggio
+            mentioned_wines = await self._extract_wine_references(message, user_id)
+            
+            if not mentioned_wines:
+                return {
+                    "success": False,
+                    "error": "Non ho trovato il vino da modificare nel messaggio. Specifica il nome del vino.",
+                    "agent": self.name
+                }
+            
+            # Prendi il primo vino menzionato (o chiedi selezione se multipli)
+            if len(mentioned_wines) > 1:
+                # Più vini trovati, mostra wine cards per selezione
+                wine_cards_html = WineCardHelper.generate_wines_list_html(
+                    wines=mentioned_wines,
+                    title="Quale vino vuoi modificare?",
+                    show_buttons=False
+                )
+                return {
+                    "success": False,
+                    "message": wine_cards_html + "<br><p>Specifica quale vino vuoi modificare.</p>",
+                    "agent": self.name,
+                    "is_html": True
+                }
+            
+            wine_to_update = mentioned_wines[0]
+            
+            # Estrai campo e valore da modificare usando AI
+            enhanced_message = f"""{message}
+
+Vino da modificare: {wine_to_update.name} (ID: {wine_to_update.id})
+
+Estrai dal messaggio quale campo modificare e il nuovo valore.
+Rispondi SOLO con un JSON nel formato:
+{{
+    "field": "nome_campo (es: selling_price, quantity, producer, vintage, ecc.)",
+    "value": "nuovo valore (come stringa, il sistema convertirà automaticamente)"
+}}
+
+IMPORTANTE: Rispondi SOLO con il JSON, senza testo aggiuntivo."""
+            
+            result = await self.process(
+                message=enhanced_message,
+                thread_id=thread_id,
+                user_id=user_id
+            )
+            
+            if not result.get("success"):
+                return result
+            
+            # Parse JSON dalla risposta
+            import json
+            response_text = result.get("message", "").strip()
+            json_text = self._extract_json_from_response(response_text)
+            
+            if not json_text:
+                return {
+                    "success": False,
+                    "error": "Non sono riuscito a capire quale campo modificare. Prova a essere più specifico (es: 'modifica il prezzo a 50€').",
+                    "agent": self.name
+                }
+            
+            update_data = json.loads(json_text)
+            field = update_data.get("field")
+            value = update_data.get("value")
+            
+            if not field or value is None:
+                return {
+                    "success": False,
+                    "error": "Devi specificare quale campo modificare e il nuovo valore.",
+                    "agent": self.name
+                }
+            
+            # Ottieni user e business_name
+            user = await db_manager.get_user_by_id(user_id)
+            if not user or not user.business_name:
+                return {
+                    "success": False,
+                    "error": "Utente non trovato o business name mancante.",
+                    "agent": self.name
+                }
+            
+            # Chiama processor_client.update_wine_field per modificare il vino
+            logger.info(f"[WINE_MANAGEMENT] Modifica vino {wine_to_update.id}: {field} = {value}")
+            update_result = await processor_client.update_wine_field(
+                user_id=user.id,
+                business_name=user.business_name,
+                wine_id=wine_to_update.id,
+                field=field,
+                value=str(value)
+            )
+            
+            if update_result.get("status") == "error":
+                return {
+                    "success": False,
+                    "error": f"Errore durante la modifica: {update_result.get('error', 'Errore sconosciuto')}",
+                    "agent": self.name
+                }
+            
+            # Recupera vino aggiornato per mostrare wine card
+            wine = await db_manager.get_wine_by_id(user_id, wine_to_update.id)
+            if wine:
+                wine_card_html = WineCardHelper.generate_wine_card_html(wine, badge="✅ Vino modificato")
+                return {
+                    "success": True,
+                    "message": wine_card_html,
+                    "agent": self.name,
+                    "is_html": True,
+                    "metadata": {"type": "wine_updated", "wine_id": wine.id, "field": field}
+                }
+            
+            # Fallback
+            return {
+                "success": True,
+                "message": f"✅ Vino '{wine_to_update.name}' modificato con successo!",
+                "agent": self.name
+            }
+        
+        except json.JSONDecodeError as e:
+            logger.error(f"[WINE_MANAGEMENT] Errore parsing JSON: {e}")
+            return {
+                "success": False,
+                "error": "Errore nell'estrazione dei dati di modifica. Prova a essere più specifico.",
+                "agent": self.name
+            }
+        except Exception as e:
+            logger.error(f"[WINE_MANAGEMENT] Errore modifica vino: {e}", exc_info=True)
+            return {
+                "success": False,
+                "error": f"Errore durante la modifica del vino: {str(e)}",
+                "agent": self.name
+            }
+    
+    def _extract_json_from_response(self, response: str) -> Optional[str]:
+        """Estrae JSON da risposta che potrebbe contenere markdown code blocks"""
+        response = response.strip()
+        
+        # Cerca JSON in code block
+        if "```json" in response:
+            start = response.find("```json") + 7
+            end = response.find("```", start)
+            if end > start:
+                return response[start:end].strip()
+        elif "```" in response:
+            start = response.find("```") + 3
+            end = response.find("```", start)
+            if end > start:
+                return response[start:end].strip()
+        
+        # Cerca JSON object diretto
+        start = response.find("{")
+        end = response.rfind("}") + 1
+        if start >= 0 and end > start:
+            return response[start:end].strip()
+        
+        return None
 

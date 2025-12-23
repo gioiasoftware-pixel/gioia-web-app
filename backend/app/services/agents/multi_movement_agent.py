@@ -146,16 +146,28 @@ class MultiMovementAgent(BaseAgent):
                         # Estrai messaggio di errore (potrebbe essere in 'error' o 'message')
                         error_msg = movement_result.get("error") or movement_result.get("message", "Errore sconosciuto")
                         
-                        # Pulisci il messaggio di errore se contiene HTML
-                        error_msg_clean = self._clean_error_message(str(error_msg))
-                        
-                        errors.append({
-                            "movement": movement,
-                            "error": error_msg_clean,
-                            "status": "error",
-                            "raw_error": error_msg  # Mantieni errore originale per logging
-                        })
-                        logger.warning(f"[MULTI_MOVEMENT] ❌ Movimento {idx} fallito: {error_msg_clean} (raw: {error_msg})")
+                        # Controlla se l'errore contiene HTML con wine cards (ambiguità vino)
+                        if movement_result.get("is_html") or "<div class=\"wines-list-card\">" in str(error_msg):
+                            # È un errore con wine cards HTML (ambiguità vino)
+                            errors.append({
+                                "movement": movement,
+                                "error": str(error_msg),  # Mantieni HTML originale
+                                "status": "error",
+                                "is_html": True,  # Marca come HTML
+                                "raw_error": error_msg
+                            })
+                            logger.info(f"[MULTI_MOVEMENT] ⚠️ Movimento {idx} richiede selezione vino (HTML con wine cards)")
+                        else:
+                            # Errore normale, pulisci HTML
+                            error_msg_clean = self._clean_error_message(str(error_msg))
+                            errors.append({
+                                "movement": movement,
+                                "error": error_msg_clean,
+                                "status": "error",
+                                "is_html": False,
+                                "raw_error": error_msg
+                            })
+                            logger.warning(f"[MULTI_MOVEMENT] ❌ Movimento {idx} fallito: {error_msg_clean}")
                 
                 except Exception as e:
                     error_msg = str(e)
@@ -169,10 +181,10 @@ class MultiMovementAgent(BaseAgent):
                     logger.error(f"[MULTI_MOVEMENT] ❌ Errore processamento movimento {idx}: {error_msg_clean} (raw: {error_msg})", exc_info=True)
             
             # Step 3: Combina risultati
-            combined_message = self._combine_results(results, errors)
+            combined_message, has_html = self._combine_results(results, errors)
             
             return {
-                "success": len(errors) == 0,
+                "success": len(errors) == 0 and len(results) > 0,  # Success solo se almeno un movimento è riuscito e nessun errore
                 "message": combined_message,
                 "metadata": {
                     "type": "multi_movement",
@@ -183,7 +195,7 @@ class MultiMovementAgent(BaseAgent):
                     "errors": errors
                 },
                 "agent": self.name,
-                "is_html": False
+                "is_html": has_html  # Marca come HTML se ci sono wine cards
             }
         
         except Exception as e:
@@ -326,32 +338,65 @@ Rispondi SOLO con un JSON valido nel formato:
         self,
         results: List[Dict[str, Any]],
         errors: List[Dict[str, Any]]
-    ) -> str:
-        """Combina risultati dei movimenti in un messaggio unificato"""
+    ) -> tuple[str, bool]:
+        """
+        Combina risultati dei movimenti in un messaggio unificato.
+        
+        Returns:
+            Tuple (messaggio, has_html): Messaggio combinato e flag se contiene HTML
+        """
         import re
         
         parts = []
+        has_html = False
         
         if results:
-            parts.append(f"✅ **Movimenti registrati con successo ({len(results)}):**\n")
-            for idx, res in enumerate(results, 1):
-                mov = res["movement"]
-                type_text = "Consumo" if mov["type"] == "consumo" else "Rifornimento"
-                parts.append(f"{idx}. {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']}")
+            # Aggiungi risultati di successo (potrebbero essere HTML se MovementAgent ha ritornato wine cards)
+            for res in results:
+                mov_result = res.get("result", {})
+                if mov_result.get("is_html"):
+                    # Risultato contiene HTML (es. wine card movimento)
+                    parts.append(mov_result.get("message", ""))
+                    has_html = True
+                else:
+                    # Risultato testo normale
+                    mov = res["movement"]
+                    type_text = "Consumo" if mov["type"] == "consumo" else "Rifornimento"
+                    parts.append(f"✅ {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']} registrato con successo")
         
         if errors:
-            parts.append(f"\n❌ **Movimenti non registrati ({len(errors)}):**\n")
-            for idx, err in enumerate(errors, 1):
-                mov = err["movement"]
-                type_text = "Consumo" if mov["type"] == "consumo" else "Rifornimento"
-                error_msg = err.get("error", "Errore sconosciuto")
-                
-                # Pulisci il messaggio di errore rimuovendo HTML grezzo
-                error_msg_clean = self._clean_error_message(error_msg)
-                
-                parts.append(f"{idx}. {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']}: {error_msg_clean}")
+            # Aggiungi errori (alcuni potrebbero essere HTML con wine cards per selezione)
+            html_errors = []
+            text_errors = []
+            
+            for err in errors:
+                if err.get("is_html"):
+                    # Errore con HTML (wine cards per selezione vino)
+                    html_errors.append(err.get("error", ""))
+                    has_html = True
+                else:
+                    # Errore testo normale
+                    mov = err["movement"]
+                    type_text = "Consumo" if mov["type"] == "consumo" else "Rifornimento"
+                    error_msg = err.get("error", "Errore sconosciuto")
+                    text_errors.append(f"❌ {type_text} di {mov['quantity']} bottiglie di {mov['wine_name']}: {error_msg}")
+            
+            # Aggiungi errori HTML (wine cards) prima degli errori testo
+            if html_errors:
+                parts.extend(html_errors)
+            
+            if text_errors:
+                parts.append(f"\n**Errori ({len(text_errors)}):**")
+                parts.extend(text_errors)
         
-        return "\n".join(parts) if parts else "Nessun movimento processato."
+        if has_html:
+            # Se c'è HTML, unisci tutto (HTML può contenere già <br> tra le parti)
+            combined = "<br>".join(parts) if parts else "Nessun movimento processato."
+        else:
+            # Se è tutto testo, unisci con newline
+            combined = "\n".join(parts) if parts else "Nessun movimento processato."
+        
+        return combined, has_html
     
     def _clean_error_message(self, error_msg: str) -> str:
         """

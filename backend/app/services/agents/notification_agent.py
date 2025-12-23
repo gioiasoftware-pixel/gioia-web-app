@@ -528,6 +528,12 @@ class NotificationAgent(BaseAgent):
                 # Richiesta specifica per vini esauriti
                 alerts = await self.generate_out_of_stock_alerts(user_id)
                 if alerts:
+                    # IMPORTANTE: Usa solo i vini esauriti (quantità = 0), non tutti i vini
+                    wines_for_cards = []
+                    for alert in alerts:
+                        wine = await db_manager.get_wine_by_id(user_id, alert["wine_id"])
+                        if wine and (wine.quantity or 0) == 0:  # Verifica esplicita quantità = 0
+                            wines_for_cards.append(wine)
                     # Genera wine cards per i vini esauriti
                     wine_cards_html = ""
                     wines_for_cards = []

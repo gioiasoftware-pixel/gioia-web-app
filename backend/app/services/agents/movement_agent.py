@@ -48,10 +48,29 @@ class MovementAgent(BaseAgent):
         user_id: int,
         thread_id: Optional[str] = None
     ) -> Dict[str, Any]:
-        """Processa movimento con validazione"""
+        """
+        Processa movimento con validazione.
+        
+        IMPORTANTE: MovementAgent usa il sistema legacy (AIService) che gestisce 
+        effettivamente la registrazione dei movimenti tramite function calling.
+        Questo agent serve solo per routing e contesto.
+        """
+        # Valida quantità negativa nel messaggio (prevenzione base)
+        import re
+        quantity_matches = re.findall(r'-?\d+', message)
+        for qty_str in quantity_matches:
+            qty = int(qty_str)
+            if qty < 0:
+                # Quantità negativa trovata
+                return {
+                    "success": False,
+                    "error": f"❌ Errore: La quantità non può essere negativa ({qty}). Per registrare un consumo, usa una quantità positiva (es: 'consumato 5 Barolo').",
+                    "agent": self.name
+                }
+        
         # Aggiungi contesto inventario
         context = await self._get_movement_context(user_id)
-        enhanced_message = f"{message}\n\nContesto inventario:\n{context}"
+        enhanced_message = f"{message}\n\nContesto inventario:\n{context}\n\nIMPORTANTE: Quando identifichi un movimento, assicurati che la quantità sia positiva (maggiore di zero)."
         
         result = await self.process(
             message=enhanced_message,

@@ -51,13 +51,50 @@ class QueryAgent(BaseAgent):
     ) -> Dict[str, Any]:
         """
         Processa query con contesto inventario.
-        
-        Per ora usa il sistema esistente per le ricerche,
-        poi può essere migliorato con tools integrati.
         """
-        # Aggiungi contesto inventario al messaggio
-        context = await self._get_inventory_context(user_id)
-        enhanced_message = f"{message}\n\nContesto inventario:\n{context}"
+        # Controlla se è una richiesta di filtraggio per tipo vino
+        message_lower = message.lower()
+        wine_type_filters = {
+            "rossi": "Rosso", "rosso": "Rosso", "red": "Rosso",
+            "bianchi": "Bianco", "bianco": "Bianco", "white": "Bianco",
+            "rosati": "Rosato", "rosato": "Rosato", "rosé": "Rosato",
+            "spumanti": "Spumante", "spumante": "Spumante", "sparkling": "Spumante"
+        }
+        
+        filtered_wines = None
+        for keyword, wine_type in wine_type_filters.items():
+            if keyword in message_lower:
+                # Filtra vini per tipo
+                all_wines = await db_manager.get_user_wines(user_id)
+                filtered_wines = [w for w in all_wines if w.wine_type and wine_type.lower() in w.wine_type.lower()]
+                logger.info(f"[QUERY] Filtro tipo '{wine_type}' applicato: {len(filtered_wines)} vini trovati")
+                break
+        
+        if filtered_wines is not None:
+            # Mostra vini filtrati con wine cards
+            if filtered_wines:
+                wine_cards_html = WineCardHelper.generate_wines_list_html(
+                    wines=filtered_wines,
+                    title=f"Vini trovati ({len(filtered_wines)})",
+                    show_buttons=True
+                )
+                return {
+                    "success": True,
+                    "message": wine_cards_html,
+                    "agent": self.name,
+                    "is_html": True
+                }
+            else:
+                return {
+                    "success": True,
+                    "message": "Nessun vino trovato con i filtri specificati.",
+                    "agent": self.name
+                }
+        
+        # Per altre query, usa il sistema normale
+        # Aggiungi contesto inventario al messaggio (limitato a non mostrare tutto)
+        context = await self._get_inventory_context(user_id, limit=10)
+        enhanced_message = f"{message}\n\nContesto inventario (esempi):\n{context}\n\nIMPORTANTE: Se l'utente chiede di mostrare/filtrare vini, usa i dati forniti per rispondere con precisione. Non mostrare tutti i vini se non richiesto esplicitamente."
         
         result = await self.process(
             message=enhanced_message,
@@ -68,28 +105,30 @@ class QueryAgent(BaseAgent):
         
         return result
     
-    async def _get_inventory_context(self, user_id: int) -> str:
-        """Ottiene contesto inventario per l'agent"""
+    async def _get_inventory_context(self, user_id: int, limit: int = 5) -> str:
+        """Ottiene contesto inventario per l'agent (limitato per non mostrare tutto)"""
         try:
             wines = await db_manager.get_user_wines(user_id)
             if not wines:
                 return "L'inventario è vuoto."
             
-            # Crea summary inventario
-            context = f"Inventario contiene {len(wines)} vini.\n"
-            context += "Esempi di vini:\n"
-            for wine in wines[:5]:  # Primi 5 come esempio
+            # Crea summary inventario limitato
+            context = f"Inventario contiene {len(wines)} vini totali.\n"
+            context += f"Esempi di vini (primi {limit}):\n"
+            for wine in wines[:limit]:
                 wine_info = f"- {wine.name}"
                 if wine.producer:
                     wine_info += f" ({wine.producer})"
                 if wine.vintage:
                     wine_info += f" {wine.vintage}"
+                if wine.wine_type:
+                    wine_info += f" [{wine.wine_type}]"
                 if wine.quantity is not None:
                     wine_info += f" - {wine.quantity} bottiglie"
                 context += wine_info + "\n"
             
-            if len(wines) > 5:
-                context += f"... e altri {len(wines) - 5} vini.\n"
+            if len(wines) > limit:
+                context += f"... e altri {len(wines) - limit} vini.\n"
             
             return context
         except Exception as e:

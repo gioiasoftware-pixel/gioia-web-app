@@ -244,21 +244,12 @@ class ReportAgent(BaseAgent):
             
             if "vendite" in message_lower or "sales" in message_lower:
                 return await self.generate_sales_report(user_id)
-            elif "inventario" in message_lower or "inventory" in message_lower or "scorte" in message_lower:
+            elif "inventario" in message_lower or "inventory" in message_lower or "scorte" in message_lower or "completo" in message_lower:
                 return await self.generate_inventory_report(user_id)
             else:
-                # Report generico con AI
-                context = await self._get_report_context(user_id)
-                enhanced_message = f"{message}\n\nDati inventario:\n{context}"
-                
-                result = await self.process(
-                    message=enhanced_message,
-                    thread_id=thread_id,
-                    user_id=user_id,
-                    context={"user_id": user_id, "report_context": context}
-                )
-                
-                return result
+                # Report generico - usa generate_inventory_report come default invece di AI
+                logger.info(f"[REPORT] Report generico richiesto, uso generate_inventory_report")
+                return await self.generate_inventory_report(user_id)
         
         except Exception as e:
             logger.error(f"[REPORT] Errore processamento: {e}", exc_info=True)
@@ -269,7 +260,9 @@ class ReportAgent(BaseAgent):
             }
     
     async def _get_report_context(self, user_id: int) -> str:
-        """Ottiene dati inventario per report"""
+        """
+        Ottiene dati inventario per report (metodo deprecato, usa generate_inventory_report invece).
+        """
         try:
             wines = await db_manager.get_user_wines(user_id)
             if not wines:
