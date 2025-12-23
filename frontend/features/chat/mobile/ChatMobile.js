@@ -854,26 +854,13 @@ function showWelcomeMessageMobile() {
 }
 
 /**
- * Gestisce il submit del form chat mobile
+ * Invia un messaggio alla chat mobile (helper per invio programmatico)
  */
-async function handleChatSubmitMobile(e) {
-    e.preventDefault();
-    
+async function sendChatMessageMobile(message, showUserMessage = true) {
     // Verifica che siamo in stato CHAT
     if (currentMobileState !== MOBILE_STATES.CHAT) {
         return;
     }
-    
-    const selectors = window.ChatSelectors?.get();
-    const input = selectors?.input();
-    const form = selectors?.form();
-    
-    if (!input || !form) {
-        return;
-    }
-    
-    const message = input.value.trim();
-    if (!message) return;
     
     // Verifica token disponibile
     const token = window.authToken || (typeof authToken !== 'undefined' ? authToken : null);
@@ -892,11 +879,10 @@ async function handleChatSubmitMobile(e) {
         }
     }
     
-    // Pulisci input
-    input.value = '';
-    
-    // Aggiungi messaggio utente
-    addChatMessageMobile('user', message);
+    // Aggiungi messaggio utente solo se richiesto
+    if (showUserMessage) {
+        addChatMessageMobile('user', message);
+    }
     
     // Aggiungi messaggio loading AI
     const loadingMessage = addChatMessageMobile('ai', '', true, false);
@@ -959,6 +945,35 @@ async function handleChatSubmitMobile(e) {
         addChatMessageMobile('ai', `Errore invio messaggio: ${error.message || 'Errore sconosciuto'}`, false, true);
     }
 }
+
+/**
+ * Gestisce il submit del form chat mobile
+ */
+async function handleChatSubmitMobile(e) {
+    e.preventDefault();
+    
+    // Verifica che siamo in stato CHAT
+    if (currentMobileState !== MOBILE_STATES.CHAT) {
+        return;
+    }
+    
+    const selectors = window.ChatSelectors?.get();
+    const input = selectors?.input();
+    const form = selectors?.form();
+    
+    if (!input || !form) {
+        return;
+    }
+    
+    const message = input.value.trim();
+    if (!message) return;
+    
+    // Pulisci input
+    input.value = '';
+    
+    // Usa la funzione helper per inviare il messaggio
+    await sendChatMessageMobile(message, true);
+    
 
 /**
  * Aggiunge un messaggio alla chat mobile
@@ -1177,21 +1192,23 @@ function setupWineCardMovementButtons(messageElement) {
                         wineId: clickWineId 
                     });
                     
-                    // Invia direttamente all'API usando sendChatMessage se disponibile
+                    // Invia direttamente all'API usando handleChatSubmitMobile
                     const message = `[movement:${clickMovementType}] [wine_id:${clickWineId}] [quantity:${clickQuantity}]`;
                     
-                    if (typeof sendChatMessage !== 'undefined') {
-                        await sendChatMessage(message, false); // false = non mostrare messaggio utente
-                    } else {
-                        // Fallback: chiama direttamente handleChatSubmitMobile
-                        console.warn('[MOBILE] sendChatMessage non disponibile, uso fallback');
-                        // Il movimento verrà gestito dal backend quando riceve il messaggio
+                    // Usa sendChatMessageMobile per inviare il messaggio
+                    // Non mostra il messaggio utente perché è un'azione automatica
+                    try {
+                        await sendChatMessageMobile(message, false); // false = non mostrare messaggio utente
+                    } catch (error) {
+                        console.error('[MOBILE] Errore invio movimento:', error);
                     }
                 } else if (clickWineId) {
                     // Pulsante normale (ricerca vino)
                     console.log('[MOBILE] Click pulsante ricerca vino:', clickWineText);
-                    if (typeof sendChatMessage !== 'undefined') {
-                        await sendChatMessage(clickWineText, true);
+                    try {
+                        await sendChatMessageMobile(clickWineText, true); // true = mostra messaggio utente
+                    } catch (error) {
+                        console.error('[MOBILE] Errore invio ricerca vino:', error);
                     }
                 }
             });
