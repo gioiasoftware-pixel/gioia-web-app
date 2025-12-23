@@ -385,12 +385,33 @@ async def send_audio_message(
         except Exception as e:
             logger.warning(f"[CHAT_AUDIO] Errore recupero storia: {e}")
         
-        # Step 5: Passa testo all'AI service (come messaggio normale)
-        result = await ai_service.process_message(
-            user_message=transcribed_text,
-            user_id=user_id,
-            conversation_history=conversation_history
-        )
+        # Step 5: Sistema ibrido - analizza complessità e scegli servizio
+        complexity = RequestComplexityAnalyzer.analyze(transcribed_text)
+        
+        if complexity == "simple" and ai_service_v2 is not None:
+            # Richiesta semplice: usa V1
+            logger.info(f"[CHAT/AUDIO] 📊 Richiesta semplice -> AIServiceV1")
+            result = await ai_service_v1.process_message(
+                user_message=transcribed_text,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
+        elif ai_service_v2 is not None:
+            # Richiesta complessa: usa V2
+            logger.info(f"[CHAT/AUDIO] 📊 Richiesta complessa -> AIServiceV2")
+            result = await ai_service_v2.process_message(
+                user_message=transcribed_text,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
+        else:
+            # Fallback: V2 non disponibile
+            logger.info(f"[CHAT/AUDIO] 📊 Fallback -> AIServiceV1")
+            result = await ai_service_v1.process_message(
+                user_message=transcribed_text,
+                user_id=user_id,
+                conversation_history=conversation_history
+            )
         
         # Step 6: Salva risposta AI
         try:
@@ -435,11 +456,12 @@ async def chat_health():
     """Health check per servizio chat"""
     ai_configured = False
     try:
-        # Check se è AIServiceV1 (ha client) o AIServiceV2 (ha router)
-        if hasattr(ai_service, 'client'):
-            ai_configured = ai_service.client is not None
-        elif hasattr(ai_service, 'router'):
-            ai_configured = ai_service.router is not None
+        # Check se servizi sono configurati
+        ai_configured = False
+        if ai_service_v1 and hasattr(ai_service_v1, 'client'):
+            ai_configured = ai_service_v1.client is not None
+        if ai_service_v2 and hasattr(ai_service_v2, 'router'):
+            ai_configured = ai_configured or (ai_service_v2.router is not None)
     except:
         pass
     
