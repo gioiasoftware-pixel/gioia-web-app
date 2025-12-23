@@ -1970,7 +1970,9 @@ function initializeWineCharts(container) {
     
     // Formato integrato: grafico dentro la wine card
     chartWrappers.forEach(wrapper => {
-        const dataScript = wrapper.parentElement?.querySelector('script.wine-chart-data');
+        // Lo script è un fratello del wrapper dentro wine-card-chart-section
+        const chartSection = wrapper.parentElement; // wine-card-chart-section
+        const dataScript = chartSection?.querySelector('script.wine-chart-data');
         if (dataScript) {
             allCharts.push({ wrapper, dataScript, isIntegrated: true });
         }

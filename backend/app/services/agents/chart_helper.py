@@ -205,8 +205,8 @@ class ChartHelper:
             html += '</div>'
             html += f'<div class="wine-card-chart-wrapper" data-chart-id="{chart_id}">'
             html += '<canvas class="wine-card-chart-canvas" width="800" height="400"></canvas>'
-            html += '</div>'
             html += f'<script type="application/json" class="wine-chart-data">{json.dumps(chart_data, default=str)}</script>'
+            html += '</div>'
             html += '</div>'  # Chiude wine-card-chart-section
         
         html += '</div>'  # Chiude wine-card
