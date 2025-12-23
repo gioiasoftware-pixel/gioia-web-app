@@ -1891,37 +1891,32 @@ function renderWineGraphPreview(wine) {
         // Attacca listener click per aprire grafico fullscreen
         // IMPORTANTE: usa sempre inventoryCurrentWine invece di wine catturato nella closure
         // Questo garantisce che quando si clicca, viene sempre usato il vino corretto (più recente)
-        // Rimuovi listener precedente se esiste clonando il container
-        if (previewContainer.dataset.listenerAttached) {
-            const newContainer = previewContainer.cloneNode(true);
-            previewContainer.parentNode.replaceChild(newContainer, previewContainer);
-            const updatedContainer = document.getElementById('inventory-graph-preview-mobile');
-            if (updatedContainer) {
-                updatedContainer.dataset.listenerAttached = 'true';
-                updatedContainer.style.cursor = 'pointer';
-                // IMPORTANTE: non catturare wine nella closure, usa inventoryCurrentWine al momento del click
-                updatedContainer.addEventListener('click', () => {
-                    if (inventoryCurrentWine) {
-                        console.log('[INVENTORY] Click preview grafico, usando inventoryCurrentWine:', inventoryCurrentWine.name || inventoryCurrentWine.Nome);
-                        showWineChart(inventoryCurrentWine);
-                    } else {
-                        console.warn('[INVENTORY] inventoryCurrentWine non disponibile al click preview');
-                    }
-                });
-            }
-        } else {
-            previewContainer.dataset.listenerAttached = 'true';
-            previewContainer.style.cursor = 'pointer';
-            // IMPORTANTE: non catturare wine nella closure, usa inventoryCurrentWine al momento del click
-            previewContainer.addEventListener('click', () => {
-                if (inventoryCurrentWine) {
-                    console.log('[INVENTORY] Click preview grafico, usando inventoryCurrentWine:', inventoryCurrentWine.name || inventoryCurrentWine.Nome);
-                    showWineChart(inventoryCurrentWine);
-                } else {
-                    console.warn('[INVENTORY] inventoryCurrentWine non disponibile al click preview');
-                }
-            });
+        // NON clonare il container perché perderemmo il canvas del grafico renderizzato
+        // Invece, rimuovi solo il listener precedente se esiste e riattacca
+        
+        // Rimuovi listener precedente se esiste (usa AbortController o salva riferimento)
+        if (previewContainer._clickHandler) {
+            previewContainer.removeEventListener('click', previewContainer._clickHandler);
         }
+        
+        // Crea nuovo handler che usa inventoryCurrentWine al momento del click (non nella closure)
+        const clickHandler = () => {
+            // IMPORTANTE: leggi inventoryCurrentWine al momento del click, non nella closure
+            const currentWine = inventoryCurrentWine;
+            if (currentWine) {
+                const wineName = currentWine.name || currentWine.Nome || '';
+                console.log('[INVENTORY] Click preview grafico, usando inventoryCurrentWine:', wineName);
+                showWineChart(currentWine);
+            } else {
+                console.warn('[INVENTORY] inventoryCurrentWine non disponibile al click preview');
+            }
+        };
+        
+        // Salva riferimento al handler per poterlo rimuovere in futuro
+        previewContainer._clickHandler = clickHandler;
+        previewContainer.dataset.listenerAttached = 'true';
+        previewContainer.style.cursor = 'pointer';
+        previewContainer.addEventListener('click', clickHandler);
     } catch (error) {
         console.error('[INVENTORY] Errore in renderWineGraphPreview:', error);
     }
