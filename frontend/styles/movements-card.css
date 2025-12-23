@@ -7,8 +7,14 @@
     border: 1px solid var(--color-border);
     border-radius: 12px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: visible;
     animation: fadeInUp 0.4s ease-out;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Header migliorato */
@@ -79,6 +85,9 @@ body.dark-theme .movements-badge {
 /* Body */
 .movements-body {
     padding: 24px 20px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Statistiche principali */
@@ -215,6 +224,9 @@ body.dark-theme .stat-card-rifornimenti:hover {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .movement-wine-item {
@@ -224,6 +236,9 @@ body.dark-theme .stat-card-rifornimenti:hover {
     padding: 20px;
     transition: all 0.3s ease;
     position: relative;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .movement-wine-item:hover {
@@ -238,6 +253,9 @@ body.dark-theme .stat-card-rifornimenti:hover {
     align-items: center;
     margin-bottom: 16px;
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .movement-wine-name-section {
@@ -246,6 +264,8 @@ body.dark-theme .stat-card-rifornimenti:hover {
     gap: 12px;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .movement-wine-icon {
@@ -262,6 +282,8 @@ body.dark-theme .stat-card-rifornimenti:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .movement-wine-stock-badge {
@@ -359,6 +381,9 @@ body.dark-theme .movement-stat-badge.replenishment {
     margin-top: 16px;
     padding-top: 16px;
     border-top: 1px solid var(--color-border);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .movement-detail {
@@ -369,6 +394,9 @@ body.dark-theme .movement-stat-badge.replenishment {
     padding: 12px 16px;
     border-radius: 8px;
     transition: all 0.2s ease;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .movement-detail:hover {
@@ -391,6 +419,8 @@ body.dark-theme .movement-stat-badge.replenishment {
     gap: 12px;
     flex: 1;
     min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
 }
 
 .movement-detail-icon {
@@ -403,13 +433,18 @@ body.dark-theme .movement-stat-badge.replenishment {
     font-weight: 600;
     color: var(--color-text-primary);
     font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .movement-detail-right {
     display: flex;
     align-items: center;
     gap: 12px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .movement-quantity {
