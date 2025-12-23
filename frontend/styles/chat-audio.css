@@ -17,8 +17,11 @@
     color: white;
     border-radius: 50%;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: opacity 0.2s, transform 0.2s;
     flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .chat-audio-btn:hover {

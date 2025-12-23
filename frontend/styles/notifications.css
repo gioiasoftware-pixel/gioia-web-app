@@ -57,6 +57,60 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.notifications-panel-header-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-white);
+    flex-shrink: 0;
+}
+
+.notifications-panel-header-mobile h2 {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    margin: 0;
+}
+
+.notifications-close-btn-mobile {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 24px;
+    color: var(--color-text-primary);
+    padding: 8px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+}
+
+.notifications-close-btn-mobile:hover {
+    background-color: var(--color-light-gray);
+    border-radius: 8px;
+}
+
+.notifications-panel-body-mobile {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .notifications-panel-header {

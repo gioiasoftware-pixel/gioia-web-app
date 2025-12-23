@@ -193,6 +193,17 @@ function openSettingsPage() {
         if (viewerPanel) {
             viewerPanel.hidden = true;
         }
+        
+        // Chiudi sidebar se aperta (mobile)
+        if (typeof window.ChatMobile !== 'undefined' && typeof window.ChatMobile.closeSidebar === 'function') {
+            window.ChatMobile.closeSidebar();
+        }
+        
+        // Chiudi pannello notifiche se aperto
+        if (typeof window.NotificationsManager !== 'undefined') {
+            window.NotificationsManager.closePanel('mobile');
+            window.NotificationsManager.closePanel('desktop');
+        }
     }
 }
 
