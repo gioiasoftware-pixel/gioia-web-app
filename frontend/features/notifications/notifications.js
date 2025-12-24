@@ -10,6 +10,8 @@ const NotificationsManager = {
      * Inizializza il sistema notifiche
      */
     async init() {
+        console.log('[NOTIFICATIONS] Inizializzazione sistema notifiche...');
+        
         // Attach event listeners
         this.attachEventListeners();
         
@@ -23,6 +25,8 @@ const NotificationsManager = {
         setInterval(() => {
             this.loadNotifications();
         }, 5 * 60 * 1000);
+        
+        console.log('[NOTIFICATIONS] ✅ Sistema notifiche inizializzato');
     },
     
     /**
@@ -158,13 +162,19 @@ const NotificationsManager = {
             return;
         }
         
-        console.log(`[NOTIFICATIONS] Renderizzazione ${this.notifications?.length || 0} notifiche in container`);
+        console.log(`[NOTIFICATIONS] Renderizzazione ${this.notifications?.length || 0} notifiche in container:`, container.id);
+        
+        // Rimuovi eventuali placeholder/loading
+        const loadingElements = container.querySelectorAll('.notifications-loading');
+        loadingElements.forEach(el => el.remove());
         
         if (!this.notifications || this.notifications.length === 0) {
             container.innerHTML = '<div class="notifications-empty">Nessuna notifica</div>';
+            console.log('[NOTIFICATIONS] Nessuna notifica da visualizzare, mostrato messaggio vuoto');
             return;
         }
         
+        console.log('[NOTIFICATIONS] Creazione HTML per notifiche...');
         container.innerHTML = this.notifications.map(notification => {
             const isRead = notification.read_at !== null;
             const readClass = isRead ? 'notification-read' : '';
