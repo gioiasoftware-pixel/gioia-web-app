@@ -194,13 +194,20 @@ const NotificationsManager = {
             let contentHtml = '';
             if (isPdfReport && metadata.pdf_base64) {
                 // Notifica PDF
+                // Salva pdf_base64 in un oggetto globale invece di data attribute (può essere troppo lungo)
+                const pdfKey = `pdf_${notification.id}`;
+                if (!window._notificationPdfs) {
+                    window._notificationPdfs = {};
+                }
+                window._notificationPdfs[pdfKey] = metadata.pdf_base64;
+                
                 contentHtml = `
                     <div class="notification-pdf-container">
                         <p class="notification-pdf-info">📄 Report PDF disponibile</p>
-                        <button class="notification-view-pdf" data-notification-id="${notification.id}" data-pdf-base64="${metadata.pdf_base64}">
+                        <button class="notification-view-pdf" data-notification-id="${notification.id}" data-pdf-key="${pdfKey}">
                             Visualizza PDF
                         </button>
-                        <button class="notification-download-pdf" data-notification-id="${notification.id}" data-pdf-base64="${metadata.pdf_base64}" data-filename="report_${metadata.report_date || 'report'}.pdf">
+                        <button class="notification-download-pdf" data-notification-id="${notification.id}" data-pdf-key="${pdfKey}" data-filename="report_${metadata.report_date || 'report'}.pdf">
                             Scarica PDF
                         </button>
                     </div>
@@ -233,7 +240,13 @@ const NotificationsManager = {
         // Attach event listeners per "Visualizza PDF"
         container.querySelectorAll('.notification-view-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const pdfBase64 = e.target.dataset.pdfBase64;
+                const pdfKey = e.target.dataset.pdfKey;
+                const pdfBase64 = window._notificationPdfs?.[pdfKey];
+                if (!pdfBase64) {
+                    console.error('[NOTIFICATIONS] PDF non trovato per key:', pdfKey);
+                    alert('Errore: PDF non disponibile');
+                    return;
+                }
                 this.viewPdf(pdfBase64);
             });
         });
@@ -241,7 +254,13 @@ const NotificationsManager = {
         // Attach event listeners per "Scarica PDF"
         container.querySelectorAll('.notification-download-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const pdfBase64 = e.target.dataset.pdfBase64;
+                const pdfKey = e.target.dataset.pdfKey;
+                const pdfBase64 = window._notificationPdfs?.[pdfKey];
+                if (!pdfBase64) {
+                    console.error('[NOTIFICATIONS] PDF non trovato per key:', pdfKey);
+                    alert('Errore: PDF non disponibile');
+                    return;
+                }
                 const filename = e.target.dataset.filename || 'report.pdf';
                 this.downloadPdf(pdfBase64, filename);
             });
