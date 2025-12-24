@@ -278,7 +278,8 @@ async def save_notification(user_id: int, title: str, content: str, report_date:
     """
     try:
         # La notifica scade dopo 3 giorni
-        expires_at = datetime.now(timezone.utc) + timedelta(days=3)
+        # Rimuovi timezone per compatibilità con asyncpg (il database gestisce il timezone)
+        expires_at = (datetime.now(timezone.utc) + timedelta(days=3)).replace(tzinfo=None)
         
         async with AsyncSessionLocal() as session:
             # Prepara metadata come JSON string
