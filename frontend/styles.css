@@ -702,21 +702,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         pointer-events: auto;
     }
     
-    /* Header logo centrato mobile */
-    .mHeader .header-logo-center {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-        user-select: none;
-        -webkit-user-select: none;
-        cursor: default;
-    }
-    
-    /* Logo e titolo NON devono intercettare tap */
+    /* Logo NON deve intercettare tap */
     .mHeader .logo-container {
         pointer-events: none;
         user-select: none;
