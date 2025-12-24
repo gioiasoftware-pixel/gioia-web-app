@@ -1050,10 +1050,15 @@ async function loadUserInfo() {
             },
         });
 
-        // Se il token è scaduto o invalido
-        if (response.status === 401 || response.status === 403) {
+        // Se il token è scaduto, invalido, o utente non trovato (account cancellato)
+        if (response.status === 401 || response.status === 403 || response.status === 404) {
             const isSpectator = localStorage.getItem('is_spectator_mode') === 'true';
-            console.warn('[AUTH] Token scaduto o invalido', isSpectator ? '(spectator mode)' : '');
+            const errorData = await response.json().catch(() => ({}));
+            console.warn('[AUTH] Token scaduto/invalido o utente non trovato', {
+                status: response.status,
+                detail: errorData.detail,
+                isSpectator
+            });
             
             // Se siamo in spectator mode, non mostrare errore di sessione scaduta
             // ma torna al control panel
@@ -1071,7 +1076,10 @@ async function loadUserInfo() {
             // Mostra messaggio all'utente
             const errorEl = document.getElementById('login-error');
             if (errorEl) {
-                errorEl.textContent = 'La sessione è scaduta. Effettua nuovamente il login.';
+                const errorMessage = errorData.detail || 
+                    (response.status === 404 ? 'Account non trovato o cancellato. Effettua nuovamente il login.' : 
+                     'La sessione è scaduta. Effettua nuovamente il login.');
+                errorEl.textContent = errorMessage;
                 errorEl.classList.remove('hidden');
             }
             return;
@@ -1080,18 +1088,8 @@ async function loadUserInfo() {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('[AUTH] Errore caricamento info utente:', response.status, errorData);
-            // Se c'è un errore 401/403/404 (autenticazione/autorizzazione/utente non trovato), fai logout
-            if (response.status === 401 || response.status === 403 || response.status === 404) {
-                console.warn('[AUTH] Utente non autorizzato o account cancellato, logout automatico');
-                handleLogout();
-                // Mostra messaggio all'utente
-                const errorEl = document.getElementById('login-error');
-                if (errorEl) {
-                    errorEl.textContent = errorData.detail || 'Account non trovato o sessione scaduta. Effettua nuovamente il login.';
-                    errorEl.classList.remove('hidden');
-                }
-            } else if (response.status >= 500) {
-                // Se c'è un errore grave del server, fai logout
+            // Se c'è un errore grave del server, fai logout
+            if (response.status >= 500) {
                 handleLogout();
             }
             return;
