@@ -1506,7 +1506,9 @@ function attachSidebarToggleListeners() {
             console.log('[SIDEBAR] attachSidebarToggleListeners: Fallback getElementById:', sidebarToggle);
         }
     } else {
-        sidebarToggle = document.getElementById('sidebar-toggle');
+        // Desktop/Tablet: cerca sidebar-toggle-desktop o sidebar-toggle
+        sidebarToggle = document.getElementById('sidebar-toggle-desktop') || document.getElementById('sidebar-toggle');
+        console.log('[SIDEBAR] attachSidebarToggleListeners: Desktop/Tablet, trovato:', sidebarToggle);
     }
     
     if (!sidebarToggle) {
