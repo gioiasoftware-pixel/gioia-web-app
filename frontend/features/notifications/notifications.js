@@ -67,9 +67,11 @@ const NotificationsManager = {
         try {
             const token = localStorage.getItem('authToken');
             if (!token) {
+                console.log('[NOTIFICATIONS] Nessun token trovato, skip caricamento');
                 return;
             }
             
+            console.log('[NOTIFICATIONS] Caricamento notifiche...');
             const response = await fetch(`${window.API_BASE_URL}/api/notifications`, {
                 headers: {
                     'Authorization': `Bearer ${token}`
@@ -81,8 +83,11 @@ const NotificationsManager = {
             }
             
             const data = await response.json();
+            console.log('[NOTIFICATIONS] Dati ricevuti:', data);
             this.notifications = data.notifications || [];
             this.unreadCount = data.unread_count || 0;
+            
+            console.log(`[NOTIFICATIONS] ${this.notifications.length} notifiche caricate, ${this.unreadCount} non lette`);
             
             // Aggiorna UI
             this.updateBadge();
@@ -123,16 +128,24 @@ const NotificationsManager = {
      * Renderizza notifiche nel pannello
      */
     renderNotifications() {
+        console.log('[NOTIFICATIONS] Renderizzazione notifiche...');
+        
         // Mobile
         const listMobile = document.getElementById('notifications-list-mobile');
         if (listMobile) {
+            console.log('[NOTIFICATIONS] Container mobile trovato');
             this.renderNotificationsList(listMobile);
+        } else {
+            console.warn('[NOTIFICATIONS] Container mobile non trovato (notifications-list-mobile)');
         }
         
         // Desktop
         const listDesktop = document.getElementById('notifications-list-desktop');
         if (listDesktop) {
+            console.log('[NOTIFICATIONS] Container desktop trovato');
             this.renderNotificationsList(listDesktop);
+        } else {
+            console.warn('[NOTIFICATIONS] Container desktop non trovato (notifications-list-desktop)');
         }
     },
     
@@ -140,6 +153,13 @@ const NotificationsManager = {
      * Renderizza lista notifiche in un container
      */
     renderNotificationsList(container) {
+        if (!container) {
+            console.warn('[NOTIFICATIONS] Container non trovato per renderizzazione');
+            return;
+        }
+        
+        console.log(`[NOTIFICATIONS] Renderizzazione ${this.notifications?.length || 0} notifiche in container`);
+        
         if (!this.notifications || this.notifications.length === 0) {
             container.innerHTML = '<div class="notifications-empty">Nessuna notifica</div>';
             return;
