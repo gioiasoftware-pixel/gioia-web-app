@@ -244,9 +244,10 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
             result = await session.execute(query_wines, {"user_id": user_id})
             wines_rows = result.fetchall()
 
-            # Crea CSV
+            # Crea CSV con delimiter punto e virgola (standard italiano)
+            # Questo permette di usare la virgola come separatore decimale nei numeri
             output = io.StringIO()
-            writer = csv.writer(output)
+            writer = csv.writer(output, delimiter=';')
             
             # Header
             writer.writerow([
@@ -262,7 +263,7 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
             # Rows
             for wine in wines_rows:
                 # Formatta il prezzo con virgola come separatore decimale (formato italiano)
-                # per evitare che Excel lo interpreti come orario
+                # per evitare che Excel lo interpreti come orario (30.00 -> 30:00:00)
                 if wine.selling_price:
                     price_str = f"{float(wine.selling_price):.2f}".replace('.', ',')
                 else:
