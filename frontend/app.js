@@ -394,7 +394,8 @@ document.addEventListener("pointerup", (e) => {
     // Log stack completo (primi 6 elementi)
     const stackInfo = els.slice(0, 6).map((el, idx) => {
         const id = el.id || 'no-id';
-        const className = el.className || 'no-class';
+        // className può essere stringa o DOMTokenList, converti sempre in stringa
+        const className = el.className ? String(el.className) : 'no-class';
         const tag = el.tagName.toLowerCase();
         const zIndex = window.getComputedStyle(el).zIndex || 'auto';
         const hidden = el.hasAttribute('hidden') ? 'HIDDEN' : '';
