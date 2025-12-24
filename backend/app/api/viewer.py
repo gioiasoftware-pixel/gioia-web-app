@@ -261,12 +261,19 @@ async def export_viewer_csv(current_user: dict = Depends(get_current_user)):
 
             # Rows
             for wine in wines_rows:
+                # Formatta il prezzo con virgola come separatore decimale (formato italiano)
+                # per evitare che Excel lo interpreti come orario
+                if wine.selling_price:
+                    price_str = f"{float(wine.selling_price):.2f}".replace('.', ',')
+                else:
+                    price_str = "0,00"
+                
                 writer.writerow([
                     wine.name or "",
                     wine.producer or "",
                     wine.vintage or "",
                     wine.quantity or 0,
-                    f"{float(wine.selling_price):.2f}" if wine.selling_price else "0.00",
+                    price_str,
                     wine.wine_type or "",
                     wine.supplier or ""
                 ])
