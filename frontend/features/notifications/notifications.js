@@ -89,8 +89,34 @@ const NotificationsManager = {
             
             const data = await response.json();
             console.log('[NOTIFICATIONS] Dati ricevuti:', data);
+            
+            // Salva gli ID delle notifiche PDF esistenti prima di aggiornare
+            const existingPdfKeys = new Set();
+            if (window._notificationPdfs) {
+                Object.keys(window._notificationPdfs).forEach(key => {
+                    existingPdfKeys.add(key);
+                });
+            }
+            
             this.notifications = data.notifications || [];
             this.unreadCount = data.unread_count || 0;
+            
+            // Pulisci PDF di notifiche che non esistono più (scadute o eliminate)
+            if (window._notificationPdfs) {
+                const currentNotificationIds = new Set(
+                    this.notifications
+                        .filter(n => n.metadata?.type === 'pdf_report')
+                        .map(n => `pdf_${n.id}`)
+                );
+                
+                // Rimuovi solo i PDF che non sono più presenti nelle notifiche correnti
+                Object.keys(window._notificationPdfs).forEach(key => {
+                    if (!currentNotificationIds.has(key)) {
+                        delete window._notificationPdfs[key];
+                        console.log(`[NOTIFICATIONS] Rimosso PDF scaduto/eliminato: ${key}`);
+                    }
+                });
+            }
             
             console.log(`[NOTIFICATIONS] ${this.notifications.length} notifiche caricate, ${this.unreadCount} non lette`);
             
