@@ -272,7 +272,13 @@ const NotificationsManager = {
         // Attach event listeners per "Segna come letta"
         container.querySelectorAll('.notification-mark-read').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const notificationId = parseInt(e.target.dataset.notificationId);
+                // Usa currentTarget invece di target per essere sicuri di ottenere il pulsante
+                const button = e.currentTarget;
+                const notificationId = parseInt(button.dataset.notificationId);
+                if (isNaN(notificationId)) {
+                    console.error('[NOTIFICATIONS] notificationId non valido:', button.dataset.notificationId);
+                    return;
+                }
                 await this.markAsRead(notificationId);
             });
         });
