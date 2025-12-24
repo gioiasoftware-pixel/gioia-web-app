@@ -766,10 +766,6 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         pointer-events: none;
     }
 
-    .mHeader .header-logo-center .logo-container {
-        width: 56px;
-        height: 56px;
-    }
 
     /* Toggle dark mode rimosso dall'header mobile */
 
@@ -4131,9 +4127,9 @@ body.dark-theme .wine-card-error-message .error-text {
         font-size: 20px;
     }
 
-    .chat-header .header-logo-center .logo-container {
-        width: 56px;
-        height: 56px;
+    .chat-header-left .logo-container {
+        width: 112px;
+        height: 112px;
     }
 
     .sidebar-toggle-btn {
