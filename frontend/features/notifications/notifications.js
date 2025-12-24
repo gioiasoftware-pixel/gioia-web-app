@@ -577,8 +577,10 @@ const NotificationsManager = {
                 notification.read_at = new Date().toISOString();
             }
             
-            // Ricarica notifiche per aggiornare UI
-            await this.loadNotifications();
+            // Aggiorna UI senza ricaricare (più veloce e mantiene PDF in cache)
+            this.unreadCount = Math.max(0, this.unreadCount - 1);
+            this.updateBadge();
+            this.renderNotifications();
         } catch (error) {
             console.error('[NOTIFICATIONS] Errore marcatura notifica come letta:', error);
         }
