@@ -281,9 +281,12 @@ async def save_notification(user_id: int, title: str, content: str, report_date:
         expires_at = datetime.now(timezone.utc) + timedelta(days=3)
         
         async with AsyncSessionLocal() as session:
+            # Prepara metadata come JSON string
+            metadata_json = json.dumps(metadata) if metadata else None
+            
             insert_query = sql_text("""
                 INSERT INTO notifications (user_id, type, title, content, report_date, expires_at, metadata)
-                VALUES (:user_id, 'daily_report', :title, :content, :report_date, :expires_at, :metadata::jsonb)
+                VALUES (:user_id, 'daily_report', :title, :content, :report_date, :expires_at, CAST(:metadata AS jsonb))
                 RETURNING id
             """)
             result = await session.execute(insert_query, {
@@ -292,7 +295,7 @@ async def save_notification(user_id: int, title: str, content: str, report_date:
                 "content": content,
                 "report_date": report_date,
                 "expires_at": expires_at,
-                "metadata": json.dumps(metadata) if metadata else None
+                "metadata": metadata_json
             })
             notification_id = result.scalar()
             await session.commit()
