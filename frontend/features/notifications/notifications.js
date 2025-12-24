@@ -252,10 +252,25 @@ const NotificationsManager = {
      * Visualizza PDF in un modal
      */
     viewPdf(pdfBase64) {
-        // Crea blob URL dal base64
-        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
+        if (!pdfBase64 || typeof pdfBase64 !== 'string') {
+            console.error('[NOTIFICATIONS] PDF base64 non valido:', pdfBase64);
+            alert('Errore: PDF non disponibile o formato non valido');
+            return;
+        }
+        
+        try {
+            // Rimuovi eventuali spazi bianchi o caratteri non validi
+            const cleanBase64 = pdfBase64.trim().replace(/\s/g, '');
+            
+            // Verifica che sia base64 valido
+            if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+                throw new Error('Stringa base64 contiene caratteri non validi');
+            }
+            
+            // Crea blob URL dal base64
+            const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
         
         // Crea modal per visualizzare PDF
         const modal = document.createElement('div');
@@ -295,24 +310,47 @@ const NotificationsManager = {
             }
         };
         document.addEventListener('keydown', handleEsc);
+        } catch (error) {
+            console.error('[NOTIFICATIONS] Errore visualizzazione PDF:', error);
+            alert(`Errore nel caricamento del PDF: ${error.message}`);
+        }
     },
     
     /**
      * Scarica PDF
      */
     downloadPdf(pdfBase64, filename) {
-        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
+        if (!pdfBase64 || typeof pdfBase64 !== 'string') {
+            console.error('[NOTIFICATIONS] PDF base64 non valido per download:', pdfBase64);
+            alert('Errore: PDF non disponibile o formato non valido');
+            return;
+        }
         
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        URL.revokeObjectURL(url);
+        try {
+            // Rimuovi eventuali spazi bianchi o caratteri non validi
+            const cleanBase64 = pdfBase64.trim().replace(/\s/g, '');
+            
+            // Verifica che sia base64 valido
+            if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+                throw new Error('Stringa base64 contiene caratteri non validi');
+            }
+            
+            const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('[NOTIFICATIONS] Errore download PDF:', error);
+            alert(`Errore nel download del PDF: ${error.message}`);
+        }
     },
     
     /**
