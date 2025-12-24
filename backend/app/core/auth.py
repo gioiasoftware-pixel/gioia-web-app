@@ -264,8 +264,9 @@ async def get_current_user(
     if not user:
         logger.warning(f"[AUTH] get_current_user: utente non trovato nel database, user_id={user_id}, telegram_id={telegram_id}")
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Utente non trovato"
+            status_code=status.HTTP_401_UNAUTHORIZED,  # Cambiato da 404 a 401 per permettere logout automatico
+            detail="Utente non trovato o account cancellato",
+            headers={"WWW-Authenticate": "Bearer"},
         )
     
     return {

@@ -1080,8 +1080,18 @@ async function loadUserInfo() {
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             console.error('[AUTH] Errore caricamento info utente:', response.status, errorData);
-            // Se c'è un errore grave, fai logout
-            if (response.status >= 500) {
+            // Se c'è un errore 401/403/404 (autenticazione/autorizzazione/utente non trovato), fai logout
+            if (response.status === 401 || response.status === 403 || response.status === 404) {
+                console.warn('[AUTH] Utente non autorizzato o account cancellato, logout automatico');
+                handleLogout();
+                // Mostra messaggio all'utente
+                const errorEl = document.getElementById('login-error');
+                if (errorEl) {
+                    errorEl.textContent = errorData.detail || 'Account non trovato o sessione scaduta. Effettua nuovamente il login.';
+                    errorEl.classList.remove('hidden');
+                }
+            } else if (response.status >= 500) {
+                // Se c'è un errore grave del server, fai logout
                 handleLogout();
             }
             return;
