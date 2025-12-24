@@ -1080,9 +1080,9 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         gap: 12px;
     }
     
-    .chat-header .header-logo-center .logo-container {
-        width: 56px;
-        height: 56px;
+    .chat-header-left .logo-container {
+        width: 112px;
+        height: 112px;
     }
     
     .chat-header-right {
@@ -1658,26 +1658,11 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     display: flex;
     align-items: center;
     gap: 16px;
-    flex: 1;
-    position: relative;
 }
 
-.chat-header .header-logo-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    user-select: none;
-    -webkit-user-select: none;
-    cursor: default;
-}
-
-.chat-header .header-logo-center .logo-container {
-    width: 64px;
-    height: 64px;
+.chat-header-left .logo-container {
+    width: 128px;
+    height: 128px;
 }
 
 .chat-title {
