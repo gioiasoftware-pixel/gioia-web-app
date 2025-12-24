@@ -195,11 +195,15 @@ const NotificationsManager = {
             if (isPdfReport && metadata.pdf_base64) {
                 // Notifica PDF
                 // Salva pdf_base64 in un oggetto globale invece di data attribute (può essere troppo lungo)
-                const pdfKey = `pdf_${notification.id}`;
+                // Inizializza l'oggetto globale se non esiste
                 if (!window._notificationPdfs) {
                     window._notificationPdfs = {};
                 }
-                window._notificationPdfs[pdfKey] = metadata.pdf_base64;
+                const pdfKey = `pdf_${notification.id}`;
+                // Salva il PDF solo se non è già presente (mantiene PDF già caricato se la lista viene re-renderizzata)
+                if (!window._notificationPdfs[pdfKey]) {
+                    window._notificationPdfs[pdfKey] = metadata.pdf_base64;
+                }
                 
                 contentHtml = `
                     <div class="notification-pdf-container">
