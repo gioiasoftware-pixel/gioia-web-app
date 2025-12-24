@@ -1302,8 +1302,9 @@ function diagnoseChatScroll() {
         const elementAtPoint = document.elementFromPoint(x, y);
         const isInsideWrapper = scrollWrapper.contains(elementAtPoint) || elementAtPoint === scrollWrapper;
         
+        const classNameStr = elementAtPoint?.className ? String(elementAtPoint.className).split(' ')[0] : '';
         console.log(`[SCROLL DIAG]   - Punto ${point} (${Math.round(x)}, ${Math.round(y)}):`, {
-            element: elementAtPoint?.tagName + (elementAtPoint?.id ? '#' + elementAtPoint.id : '') + (elementAtPoint?.className ? '.' + elementAtPoint.className.split(' ')[0] : ''),
+            element: elementAtPoint?.tagName + (elementAtPoint?.id ? '#' + elementAtPoint.id : '') + (classNameStr ? '.' + classNameStr : ''),
             isInsideWrapper: isInsideWrapper ? '✅' : '❌',
             zIndex: elementAtPoint ? window.getComputedStyle(elementAtPoint).zIndex : 'N/A',
             pointerEvents: elementAtPoint ? window.getComputedStyle(elementAtPoint).pointerEvents : 'N/A'
