@@ -316,7 +316,9 @@ const NotificationsManager = {
                     alert('Errore: PDF non disponibile');
                     return;
                 }
-                this.viewPdf(pdfBase64);
+                // Passa notificationId per marcare automaticamente come letto quando si apre il PDF
+                const notifId = notificationId ? parseInt(notificationId) : null;
+                this.viewPdf(pdfBase64, notifId);
             });
         });
         
@@ -402,6 +404,14 @@ const NotificationsManager = {
             }
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
+            
+            // Marca automaticamente come letto quando si apre il PDF (se notificationId è fornito)
+            if (notificationId) {
+                this.markAsRead(notificationId).catch(error => {
+                    console.error('[NOTIFICATIONS] Errore marcatura automatica come letto:', error);
+                    // Non bloccare l'apertura del PDF se fallisce la marcatura
+                });
+            }
         
         // Crea modal per visualizzare PDF
         const modal = document.createElement('div');
