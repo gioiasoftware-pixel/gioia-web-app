@@ -1,13 +1,15 @@
 """
-Scheduler per generare report giornalieri automatici.
+Scheduler per recuperare PDF report giornalieri da processor e salvarli nelle notifiche.
 Esegue alle 10 AM ora italiana.
 """
 import logging
 import asyncio
+import base64
 from datetime import datetime, time, timedelta, timezone
 from typing import List
 from app.core.database import db_manager
-from app.core.notifications_service import generate_daily_report, save_notification, cleanup_expired_notifications
+from app.core.notifications_service import save_notification, cleanup_expired_notifications
+from app.core.processor_client import processor_client
 
 logger = logging.getLogger(__name__)
 
@@ -24,10 +26,16 @@ def get_italian_time():
 
 async def generate_daily_reports_for_all_users():
     """
-    Genera report giornalieri per tutti gli utenti attivi.
+    Recupera PDF report giornalieri da processor e li salva nelle notifiche.
+    I PDF sono già stati generati alle 5 AM da processor.
     """
     try:
-        logger.info("[SCHEDULER] Avvio generazione report giornalieri...")
+        logger.info("[SCHEDULER] Avvio recupero PDF report giornalieri da processor...")
+        
+        # Data del giorno precedente
+        italian_time = get_italian_time()
+        yesterday_date = (italian_time - timedelta(days=1)).date()
+        report_date_str = yesterday_date.strftime("%Y-%m-%d")
         
         # Recupera tutti gli utenti con business_name (utenti attivi)
         from app.core.database import AsyncSessionLocal
@@ -46,42 +54,67 @@ async def generate_daily_reports_for_all_users():
             logger.info("[SCHEDULER] Nessun utente attivo trovato")
             return
         
-        logger.info(f"[SCHEDULER] Trovati {len(users)} utenti attivi, generazione report...")
+        logger.info(f"[SCHEDULER] Trovati {len(users)} utenti attivi, recupero PDF da processor...")
         
         success_count = 0
         error_count = 0
+        skipped_count = 0
         
         for user in users:
             user_id = user.id
+            business_name = user.business_name
             try:
-                # Genera report per il giorno precedente
-                report_data = await generate_daily_report(user_id)
+                # Recupera PDF da processor
+                pdf_data = await processor_client.get_daily_report_pdf(
+                    user_id=user_id,
+                    report_date=report_date_str
+                )
                 
-                if report_data:
-                    # Salva notifica
+                if pdf_data:
+                    # Converti PDF in base64 per salvare nel metadata
+                    pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
+                    
+                    # Salva notifica con PDF
+                    report_date_formatted = yesterday_date.strftime("%d/%m/%Y")
                     notification_id = await save_notification(
                         user_id=user_id,
-                        title=report_data["title"],
-                        content=report_data["content"],
-                        report_date=report_data["report_date"],
-                        metadata=report_data["metadata"]
+                        title=f"📊 Report Movimenti - {report_date_formatted}",
+                        content="",  # Contenuto vuoto, il PDF è nel metadata
+                        report_date=yesterday_date,
+                        metadata={
+                            "type": "pdf_report",
+                            "pdf_base64": pdf_base64,
+                            "pdf_size": len(pdf_data),
+                            "business_name": business_name,
+                            "report_date": report_date_str
+                        }
                     )
                     
                     if notification_id:
                         success_count += 1
-                        logger.info(f"[SCHEDULER] Report generato per user_id={user_id}, notification_id={notification_id}")
+                        logger.info(
+                            f"[SCHEDULER] PDF report salvato per user_id={user_id}, "
+                            f"notification_id={notification_id}, size={len(pdf_data)} bytes"
+                        )
                     else:
                         error_count += 1
                         logger.warning(f"[SCHEDULER] Errore salvataggio notifica per user_id={user_id}")
                 else:
-                    logger.debug(f"[SCHEDULER] Nessun movimento trovato per user_id={user_id}, skip")
+                    skipped_count += 1
+                    logger.debug(
+                        f"[SCHEDULER] PDF non trovato per user_id={user_id}, date={report_date_str} "
+                        "(probabilmente nessun movimento o PDF non ancora generato)"
+                    )
             
             except Exception as e:
                 error_count += 1
-                logger.error(f"[SCHEDULER] Errore generazione report per user_id={user_id}: {e}", exc_info=True)
+                logger.error(f"[SCHEDULER] Errore recupero PDF per user_id={user_id}: {e}", exc_info=True)
                 continue
         
-        logger.info(f"[SCHEDULER] ✅ Generazione report completata: {success_count} successi, {error_count} errori")
+        logger.info(
+            f"[SCHEDULER] ✅ Recupero PDF completato: {success_count} successi, "
+            f"{skipped_count} saltati, {error_count} errori"
+        )
         
         # Cleanup notifiche scadute
         try:
@@ -92,7 +125,7 @@ async def generate_daily_reports_for_all_users():
             logger.error(f"[SCHEDULER] Errore cleanup notifiche: {e}", exc_info=True)
     
     except Exception as e:
-        logger.error(f"[SCHEDULER] Errore durante generazione report giornalieri: {e}", exc_info=True)
+        logger.error(f"[SCHEDULER] Errore durante recupero PDF report giornalieri: {e}", exc_info=True)
 
 
 async def scheduler_loop():

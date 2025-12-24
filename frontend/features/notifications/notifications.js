@@ -156,15 +156,36 @@ const NotificationsManager = {
                 minute: '2-digit'
             }) : '';
             
+            // Controlla se è un PDF report
+            const metadata = notification.metadata || {};
+            const isPdfReport = metadata.type === 'pdf_report';
+            
+            let contentHtml = '';
+            if (isPdfReport && metadata.pdf_base64) {
+                // Notifica PDF
+                contentHtml = `
+                    <div class="notification-pdf-container">
+                        <p class="notification-pdf-info">📄 Report PDF disponibile</p>
+                        <button class="notification-view-pdf" data-notification-id="${notification.id}" data-pdf-base64="${metadata.pdf_base64}">
+                            Visualizza PDF
+                        </button>
+                        <button class="notification-download-pdf" data-notification-id="${notification.id}" data-pdf-base64="${metadata.pdf_base64}" data-filename="report_${metadata.report_date || 'report'}.pdf">
+                            Scarica PDF
+                        </button>
+                    </div>
+                `;
+            } else {
+                // Notifica normale (markdown)
+                contentHtml = `<div class="notification-content">${this.formatNotificationContent(notification.content)}</div>`;
+            }
+            
             return `
                 <div class="notification-item ${readClass}" data-notification-id="${notification.id}">
                     <div class="notification-header">
                         <h3 class="notification-title">${this.escapeHtml(notification.title)}</h3>
                         <span class="notification-date">${date}</span>
                     </div>
-                    <div class="notification-content">
-                        ${this.formatNotificationContent(notification.content)}
-                    </div>
+                    ${contentHtml}
                     ${!isRead ? `<button class="notification-mark-read" data-notification-id="${notification.id}">Segna come letta</button>` : ''}
                 </div>
             `;
@@ -177,6 +198,90 @@ const NotificationsManager = {
                 await this.markAsRead(notificationId);
             });
         });
+        
+        // Attach event listeners per "Visualizza PDF"
+        container.querySelectorAll('.notification-view-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pdfBase64 = e.target.dataset.pdfBase64;
+                this.viewPdf(pdfBase64);
+            });
+        });
+        
+        // Attach event listeners per "Scarica PDF"
+        container.querySelectorAll('.notification-download-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const pdfBase64 = e.target.dataset.pdfBase64;
+                const filename = e.target.dataset.filename || 'report.pdf';
+                this.downloadPdf(pdfBase64, filename);
+            });
+        });
+    },
+    
+    /**
+     * Visualizza PDF in un modal
+     */
+    viewPdf(pdfBase64) {
+        // Crea blob URL dal base64
+        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        // Crea modal per visualizzare PDF
+        const modal = document.createElement('div');
+        modal.className = 'pdf-viewer-modal';
+        modal.innerHTML = `
+            <div class="pdf-viewer-overlay"></div>
+            <div class="pdf-viewer-container">
+                <div class="pdf-viewer-header">
+                    <h3>Report PDF</h3>
+                    <button class="pdf-viewer-close">&times;</button>
+                </div>
+                <div class="pdf-viewer-content">
+                    <iframe src="${url}" class="pdf-viewer-iframe"></iframe>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Chiudi modal
+        const closeBtn = modal.querySelector('.pdf-viewer-close');
+        const overlay = modal.querySelector('.pdf-viewer-overlay');
+        
+        const closeModal = () => {
+            document.body.removeChild(modal);
+            URL.revokeObjectURL(url);
+        };
+        
+        closeBtn.addEventListener('click', closeModal);
+        overlay.addEventListener('click', closeModal);
+        
+        // Chiudi con ESC
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+    },
+    
+    /**
+     * Scarica PDF
+     */
+    downloadPdf(pdfBase64, filename) {
+        const pdfBytes = Uint8Array.from(atob(pdfBase64), c => c.charCodeAt(0));
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        URL.revokeObjectURL(url);
     },
     
     /**

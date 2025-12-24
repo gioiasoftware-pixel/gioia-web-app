@@ -392,6 +392,46 @@ class ProcessorClient:
         except Exception as e:
             logger.error(f"[PROCESSOR_CLIENT] Errore add_wine: {e}", exc_info=True)
             return {"status": "error", "error": str(e)}
+    
+    async def get_daily_report_pdf(
+        self,
+        user_id: int,
+        report_date: str = None  # Formato YYYY-MM-DD, default: ieri
+    ) -> Optional[bytes]:
+        """
+        Recupera PDF report giornaliero per un utente.
+        
+        Args:
+            user_id: ID utente
+            report_date: Data report in formato YYYY-MM-DD (default: ieri)
+        
+        Returns:
+            Bytes del PDF o None se errore
+        """
+        try:
+            url = f"{self.base_url}/api/reports/daily/{user_id}"
+            if report_date:
+                url += f"?report_date={report_date}"
+            
+            timeout = aiohttp.ClientTimeout(total=30.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    if response.status == 404:
+                        logger.debug(f"[PROCESSOR_CLIENT] Report PDF non trovato per user_id={user_id}, date={report_date}")
+                        return None
+                    response.raise_for_status()
+                    pdf_data = await response.read()
+                    logger.info(f"[PROCESSOR_CLIENT] PDF recuperato: {len(pdf_data)} bytes per user_id={user_id}")
+                    return pdf_data
+        except aiohttp.ClientResponseError as e:
+            if e.status == 404:
+                logger.debug(f"[PROCESSOR_CLIENT] Report PDF non trovato: {e}")
+                return None
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_daily_report_pdf: HTTP {e.status} - {e.message}")
+            return None
+        except Exception as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_daily_report_pdf: {e}", exc_info=True)
+            return None
 
 
 # Istanza globale del client

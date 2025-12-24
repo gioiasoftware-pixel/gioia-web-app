@@ -837,6 +837,114 @@ async def whoami_admin(
     }
 
 
+@router.post("/trigger-send-pdf-reports")
+async def admin_trigger_send_pdf_reports(
+    user_id: Optional[int] = Query(None),
+    report_date: Optional[str] = Query(None),  # Formato: YYYY-MM-DD, default: ieri
+    admin_user: dict = Depends(is_admin_user)
+):
+    """
+    Endpoint admin per triggerare manualmente l'invio PDF report nelle notifiche.
+    
+    Args:
+        user_id: ID utente specifico (opzionale). Se None, invia per tutti.
+        report_date: Data del report in formato YYYY-MM-DD (opzionale). Default: ieri.
+    
+    Returns:
+        Dict con risultato invio PDF
+    """
+    try:
+        import base64
+        from datetime import datetime, timedelta
+        from app.services.daily_report_scheduler import generate_daily_reports_for_all_users
+        from app.core.notifications_service import save_notification
+        from app.core.processor_client import processor_client
+        from app.core.database import AsyncSessionLocal, User
+        from sqlalchemy import select
+        
+        # Parse data report (default: ieri)
+        if report_date:
+            try:
+                report_date_obj = datetime.strptime(report_date, "%Y-%m-%d").date()
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Formato data non valido: {report_date}. Usa formato YYYY-MM-DD"
+                )
+        else:
+            # Default: ieri
+            report_date_obj = (datetime.now().date() - timedelta(days=1))
+        
+        report_date_str = report_date_obj.strftime("%Y-%m-%d")
+        
+        logger.info(
+            f"[ADMIN_SEND_PDF] Trigger manuale invio PDF per data: {report_date_str}, "
+            f"user_id: {user_id if user_id else 'TUTTI'}"
+        )
+        
+        if user_id:
+            # Invia PDF per un utente specifico
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    select(User).where(User.id == user_id)
+                )
+                user = result.scalar_one_or_none()
+                
+                if not user or not user.business_name:
+                    raise HTTPException(status_code=404, detail="Utente non trovato o senza business_name")
+                
+                pdf_data = await processor_client.get_daily_report_pdf(
+                    user_id=user_id,
+                    report_date=report_date_str
+                )
+                
+                if pdf_data:
+                    pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
+                    report_date_formatted = report_date_obj.strftime("%d/%m/%Y")
+                    notification_id = await save_notification(
+                        user_id=user_id,
+                        title=f"📊 Report Movimenti - {report_date_formatted}",
+                        content="",
+                        report_date=report_date_obj,
+                        metadata={
+                            "type": "pdf_report",
+                            "pdf_base64": pdf_base64,
+                            "pdf_size": len(pdf_data),
+                            "business_name": user.business_name,
+                            "report_date": report_date_str
+                        }
+                    )
+                    
+                    if notification_id:
+                        return {
+                            "success": True,
+                            "message": f"PDF inviato nelle notifiche per user_id={user_id}",
+                            "notification_id": notification_id,
+                            "report_date": report_date_str
+                        }
+                    else:
+                        raise HTTPException(status_code=500, detail="Errore salvataggio notifica")
+                else:
+                    raise HTTPException(
+                        status_code=404,
+                        detail=f"PDF non trovato per user_id={user_id}, date={report_date_str}"
+                    )
+        else:
+            # Invia PDF per tutti gli utenti
+            await generate_daily_reports_for_all_users()
+            return {
+                "success": True,
+                "message": "Invio PDF avviato per tutti gli utenti",
+                "report_date": report_date_str
+            }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[ADMIN_SEND_PDF] Errore invio PDF: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Errore invio PDF: {str(e)}")
+
+
 @router.get("/dashboard/kpi", response_model=DashboardKPIResponse)
 async def get_dashboard_kpi(
     admin_user: dict = Depends(is_admin_user)
