@@ -228,7 +228,17 @@ const NotificationsManager = {
                 const pdfKey = `pdf_${notification.id}`;
                 // Salva il PDF solo se non è già presente (mantiene PDF già caricato se la lista viene re-renderizzata)
                 if (!window._notificationPdfs[pdfKey]) {
-                    window._notificationPdfs[pdfKey] = metadata.pdf_base64;
+                    // Verifica che pdf_base64 sia una stringa valida e non vuota
+                    if (metadata.pdf_base64 && typeof metadata.pdf_base64 === 'string' && metadata.pdf_base64.length > 0) {
+                        window._notificationPdfs[pdfKey] = metadata.pdf_base64;
+                        console.log(`[NOTIFICATIONS] PDF salvato per notifica ${notification.id}, lunghezza base64: ${metadata.pdf_base64.length}`);
+                    } else {
+                        console.error(`[NOTIFICATIONS] PDF base64 non valido per notifica ${notification.id}:`, {
+                            type: typeof metadata.pdf_base64,
+                            length: metadata.pdf_base64?.length,
+                            preview: metadata.pdf_base64?.substring(0, 50)
+                        });
+                    }
                 }
                 
                 contentHtml = `
