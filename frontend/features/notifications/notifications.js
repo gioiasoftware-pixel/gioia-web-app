@@ -308,16 +308,35 @@ const NotificationsManager = {
         }
         
         try {
-            // Rimuovi eventuali spazi bianchi o caratteri non validi
-            const cleanBase64 = pdfBase64.trim().replace(/\s/g, '');
+            // Rimuovi eventuali spazi bianchi, newline, e caratteri non validi
+            let cleanBase64 = pdfBase64.trim();
+            // Rimuovi tutti gli spazi bianchi (spazi, tab, newline, ecc.)
+            cleanBase64 = cleanBase64.replace(/\s+/g, '');
+            // Rimuovi eventuali prefissi data URL se presenti
+            cleanBase64 = cleanBase64.replace(/^data:application\/pdf;base64,/, '');
             
-            // Verifica che sia base64 valido
-            if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+            // Verifica che sia base64 valido (solo caratteri base64 e padding)
+            if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+                console.error('[NOTIFICATIONS] Base64 non valido dopo pulizia:', cleanBase64.substring(0, 100));
                 throw new Error('Stringa base64 contiene caratteri non validi');
             }
             
-            // Crea blob URL dal base64
-            const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+            // Verifica che non sia vuoto
+            if (cleanBase64.length === 0) {
+                throw new Error('Stringa base64 vuota dopo pulizia');
+            }
+            
+            // Prova a decodificare con try-catch specifico per atob
+            let pdfBytes;
+            try {
+                const decoded = atob(cleanBase64);
+                pdfBytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+            } catch (atobError) {
+                console.error('[NOTIFICATIONS] Errore decodifica base64:', atobError);
+                console.error('[NOTIFICATIONS] Base64 length:', cleanBase64.length);
+                console.error('[NOTIFICATIONS] Base64 preview:', cleanBase64.substring(0, 200));
+                throw new Error(`Errore decodifica base64: ${atobError.message}`);
+            }
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
         
@@ -376,15 +395,33 @@ const NotificationsManager = {
         }
         
         try {
-            // Rimuovi eventuali spazi bianchi o caratteri non validi
-            const cleanBase64 = pdfBase64.trim().replace(/\s/g, '');
+            // Rimuovi eventuali spazi bianchi, newline, e caratteri non validi
+            let cleanBase64 = pdfBase64.trim();
+            // Rimuovi tutti gli spazi bianchi (spazi, tab, newline, ecc.)
+            cleanBase64 = cleanBase64.replace(/\s+/g, '');
+            // Rimuovi eventuali prefissi data URL se presenti
+            cleanBase64 = cleanBase64.replace(/^data:application\/pdf;base64,/, '');
             
-            // Verifica che sia base64 valido
-            if (!/^[A-Za-z0-9+/=]+$/.test(cleanBase64)) {
+            // Verifica che sia base64 valido (solo caratteri base64 e padding)
+            if (!/^[A-Za-z0-9+/]*={0,2}$/.test(cleanBase64)) {
+                console.error('[NOTIFICATIONS] Base64 non valido per download:', cleanBase64.substring(0, 100));
                 throw new Error('Stringa base64 contiene caratteri non validi');
             }
             
-            const pdfBytes = Uint8Array.from(atob(cleanBase64), c => c.charCodeAt(0));
+            // Verifica che non sia vuoto
+            if (cleanBase64.length === 0) {
+                throw new Error('Stringa base64 vuota dopo pulizia');
+            }
+            
+            // Prova a decodificare con try-catch specifico per atob
+            let pdfBytes;
+            try {
+                const decoded = atob(cleanBase64);
+                pdfBytes = Uint8Array.from(decoded, c => c.charCodeAt(0));
+            } catch (atobError) {
+                console.error('[NOTIFICATIONS] Errore decodifica base64 per download:', atobError);
+                throw new Error(`Errore decodifica base64: ${atobError.message}`);
+            }
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             
