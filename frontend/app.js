@@ -409,7 +409,8 @@ document.addEventListener("pointerup", (e) => {
     // Verifica anche se elementi dell'header (tranne hamburger) intercettano tap
     const suspiciousLayers = els.filter(el => {
         const id = el.id || '';
-        const className = el.className || '';
+        // className può essere stringa o DOMTokenList, converti sempre in stringa
+        const className = el.className ? String(el.className) : '';
         const tag = el.tagName.toLowerCase();
         const isInHeader = el.closest('.mHeader') || el.closest('.chat-header');
         
