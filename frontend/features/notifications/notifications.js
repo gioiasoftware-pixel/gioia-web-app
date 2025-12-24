@@ -69,7 +69,8 @@ const NotificationsManager = {
      */
     async loadNotifications() {
         try {
-            const token = localStorage.getItem('authToken');
+            // Prova entrambe le chiavi possibili per il token
+            const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
             if (!token) {
                 console.log('[NOTIFICATIONS] Nessun token trovato, skip caricamento');
                 return;
