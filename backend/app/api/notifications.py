@@ -45,7 +45,7 @@ async def get_notifications(
     Recupera notifiche per l'utente corrente.
     """
     try:
-        user_id = current_user["id"]
+        user_id = current_user["user_id"]
         notifications = await get_user_notifications(
             user_id=user_id,
             limit=limit,
