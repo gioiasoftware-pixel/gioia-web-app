@@ -280,10 +280,33 @@ const NotificationsManager = {
         // Attach event listeners per "Visualizza PDF"
         container.querySelectorAll('.notification-view-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const pdfKey = e.target.dataset.pdfKey;
+                // Usa currentTarget invece di target per essere sicuri di ottenere il pulsante anche se si clicca su un elemento figlio
+                const button = e.currentTarget;
+                const pdfKey = button.dataset.pdfKey;
+                const notificationId = button.dataset.notificationId;
+                
+                if (!pdfKey) {
+                    console.error('[NOTIFICATIONS] pdfKey non trovato nel dataset del pulsante:', {
+                        dataset: button.dataset,
+                        notificationId: notificationId
+                    });
+                    // Fallback: prova a ricostruire la chiave se abbiamo notificationId
+                    if (notificationId) {
+                        const fallbackKey = `pdf_${notificationId}`;
+                        console.log(`[NOTIFICATIONS] Tentativo con chiave fallback: ${fallbackKey}`);
+                        const pdfBase64 = window._notificationPdfs?.[fallbackKey];
+                        if (pdfBase64) {
+                            this.viewPdf(pdfBase64);
+                            return;
+                        }
+                    }
+                    alert('Errore: PDF non disponibile (chiave non trovata)');
+                    return;
+                }
+                
                 const pdfBase64 = window._notificationPdfs?.[pdfKey];
                 if (!pdfBase64) {
-                    console.error('[NOTIFICATIONS] PDF non trovato per key:', pdfKey);
+                    console.error('[NOTIFICATIONS] PDF non trovato per key:', pdfKey, 'Chiavi disponibili:', Object.keys(window._notificationPdfs || {}));
                     alert('Errore: PDF non disponibile');
                     return;
                 }
@@ -294,14 +317,38 @@ const NotificationsManager = {
         // Attach event listeners per "Scarica PDF"
         container.querySelectorAll('.notification-download-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const pdfKey = e.target.dataset.pdfKey;
+                // Usa currentTarget invece di target per essere sicuri di ottenere il pulsante anche se si clicca su un elemento figlio
+                const button = e.currentTarget;
+                const pdfKey = button.dataset.pdfKey;
+                const notificationId = button.dataset.notificationId;
+                
+                if (!pdfKey) {
+                    console.error('[NOTIFICATIONS] pdfKey non trovato nel dataset del pulsante per download:', {
+                        dataset: button.dataset,
+                        notificationId: notificationId
+                    });
+                    // Fallback: prova a ricostruire la chiave se abbiamo notificationId
+                    if (notificationId) {
+                        const fallbackKey = `pdf_${notificationId}`;
+                        console.log(`[NOTIFICATIONS] Tentativo con chiave fallback: ${fallbackKey}`);
+                        const pdfBase64 = window._notificationPdfs?.[fallbackKey];
+                        if (pdfBase64) {
+                            const filename = button.dataset.filename || 'report.pdf';
+                            this.downloadPdf(pdfBase64, filename);
+                            return;
+                        }
+                    }
+                    alert('Errore: PDF non disponibile (chiave non trovata)');
+                    return;
+                }
+                
                 const pdfBase64 = window._notificationPdfs?.[pdfKey];
                 if (!pdfBase64) {
-                    console.error('[NOTIFICATIONS] PDF non trovato per key:', pdfKey);
+                    console.error('[NOTIFICATIONS] PDF non trovato per key per download:', pdfKey, 'Chiavi disponibili:', Object.keys(window._notificationPdfs || {}));
                     alert('Errore: PDF non disponibile');
                     return;
                 }
-                const filename = e.target.dataset.filename || 'report.pdf';
+                const filename = button.dataset.filename || 'report.pdf';
                 this.downloadPdf(pdfBase64, filename);
             });
         });
