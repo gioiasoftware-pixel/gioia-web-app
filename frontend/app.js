@@ -357,18 +357,19 @@ function addUniversalEventListener(element, handler, options = {}) {
         }
     };
     
-    // Su dispositivi touch, ascolta entrambi touch e click
+    // Su dispositivi touch (inclusi tablet), ascolta entrambi touch e click
+    // Su tablet il layout è desktop ma supporta touch, quindi dobbiamo gestire entrambi
     if (isTouchDevice()) {
-        // Touch events per mobile
+        // Touch events per mobile e tablet
         // Su elementi scrollabili, usa passive: true per migliorare performance scroll
         const passiveForTouch = elementIsScrollable ? true : false;
         element.addEventListener('touchstart', unifiedHandler, { passive: passiveForTouch, ...options });
         element.addEventListener('touchend', unifiedHandler, { passive: passiveForTouch, ...options });
         // Click come fallback per browser che non supportano touch events correttamente
-        // o per dispositivi touch che emulano mouse
+        // o per dispositivi touch che emulano mouse (come tablet)
         element.addEventListener('click', unifiedHandler, { passive: true, ...options });
     } else {
-        // Su desktop, solo click
+        // Su desktop senza touch, solo click
         element.addEventListener('click', unifiedHandler, options);
     }
 }
