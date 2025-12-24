@@ -302,7 +302,8 @@ const NotificationsManager = {
                         console.log(`[NOTIFICATIONS] Tentativo con chiave fallback: ${fallbackKey}`);
                         const pdfBase64 = window._notificationPdfs?.[fallbackKey];
                         if (pdfBase64) {
-                            this.viewPdf(pdfBase64);
+                            const notifId = notificationId ? parseInt(notificationId) : null;
+                            this.viewPdf(pdfBase64, notifId);
                             return;
                         }
                     }
@@ -365,7 +366,7 @@ const NotificationsManager = {
     /**
      * Visualizza PDF in un modal
      */
-    viewPdf(pdfBase64) {
+    viewPdf(pdfBase64, notificationId = null) {
         if (!pdfBase64 || typeof pdfBase64 !== 'string') {
             console.error('[NOTIFICATIONS] PDF base64 non valido:', pdfBase64);
             alert('Errore: PDF non disponibile o formato non valido');
