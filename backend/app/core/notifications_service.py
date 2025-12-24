@@ -346,17 +346,57 @@ async def get_user_notifications(user_id: int, limit: int = 50, unread_only: boo
             
             notifications = []
             for row in rows:
-                notifications.append({
-                    "id": row[0],
-                    "type": row[1],
-                    "title": row[2],
-                    "content": row[3],
-                    "report_date": row[4].isoformat() if row[4] else None,
-                    "created_at": row[5].isoformat() if row[5] else None,
-                    "expires_at": row[6].isoformat() if row[6] else None,
-                    "read_at": row[7].isoformat() if row[7] else None,
-                    "metadata": row[8] if row[8] else {}
-                })
+                try:
+                    # Gestisci report_date (può essere date o datetime)
+                    report_date = None
+                    if row[4]:
+                        if hasattr(row[4], 'isoformat'):
+                            report_date = row[4].isoformat()
+                        else:
+                            report_date = str(row[4])
+                    
+                    # Gestisci created_at, expires_at, read_at (datetime)
+                    created_at = None
+                    if row[5] and hasattr(row[5], 'isoformat'):
+                        created_at = row[5].isoformat()
+                    elif row[5]:
+                        created_at = str(row[5])
+                    
+                    expires_at = None
+                    if row[6] and hasattr(row[6], 'isoformat'):
+                        expires_at = row[6].isoformat()
+                    elif row[6]:
+                        expires_at = str(row[6])
+                    
+                    read_at = None
+                    if row[7] and hasattr(row[7], 'isoformat'):
+                        read_at = row[7].isoformat()
+                    elif row[7]:
+                        read_at = str(row[7])
+                    
+                    # Gestisci metadata (JSONB)
+                    metadata = row[8] if row[8] else {}
+                    if isinstance(metadata, str):
+                        try:
+                            import json
+                            metadata = json.loads(metadata)
+                        except:
+                            metadata = {}
+                    
+                    notifications.append({
+                        "id": row[0],
+                        "type": row[1],
+                        "title": row[2],
+                        "content": row[3],
+                        "report_date": report_date,
+                        "created_at": created_at,
+                        "expires_at": expires_at,
+                        "read_at": read_at,
+                        "metadata": metadata
+                    })
+                except Exception as row_error:
+                    logger.error(f"[NOTIFICATIONS] Errore processando riga notifica: {row_error}", exc_info=True)
+                    continue  # Salta questa riga e continua con la prossima
             
             return notifications
     except Exception as e:
