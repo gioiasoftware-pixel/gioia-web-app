@@ -127,9 +127,8 @@ async def startup_tasks():
     # Avvia scheduler report giornalieri in background task
     try:
         from app.services.daily_report_scheduler import start_scheduler_async
-        # Avvia lo scheduler come background task
-        import asyncio
-        asyncio.create_task(start_scheduler_async())
+        # Avvia lo scheduler come background task (await per assicurarsi che parta)
+        await start_scheduler_async()
         logger.info("✅ Scheduler report giornalieri avviato")
     except Exception as e:
         logger.error(f"Errore avvio scheduler: {e}", exc_info=True)

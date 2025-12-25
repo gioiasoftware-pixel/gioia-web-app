@@ -162,12 +162,22 @@ async def scheduler_loop():
             await asyncio.sleep(60)
 
 
+async def start_scheduler_async():
+    """
+    Avvia lo scheduler in background (versione async per FastAPI startup).
+    """
+    logger.info("[SCHEDULER] Avvio scheduler report giornalieri...")
+    # Avvia il loop dello scheduler come background task (non await, così non blocca)
+    asyncio.create_task(scheduler_loop())
+    logger.info("[SCHEDULER] ✅ Scheduler avviato con successo (task creato)")
+
+
 def start_scheduler():
     """
-    Avvia lo scheduler in background.
+    Avvia lo scheduler in background (versione legacy per compatibilità).
     """
     try:
-        logger.info("[SCHEDULER] Avvio scheduler report giornalieri...")
+        logger.info("[SCHEDULER] Avvio scheduler report giornalieri (legacy)...")
         # Prova a ottenere l'event loop corrente, se non esiste creane uno nuovo
         try:
             loop = asyncio.get_event_loop()
@@ -178,6 +188,7 @@ def start_scheduler():
         # Se il loop è già in esecuzione, crea il task direttamente
         if loop.is_running():
             asyncio.create_task(scheduler_loop())
+            logger.info("[SCHEDULER] ✅ Scheduler avviato con successo (legacy)")
         else:
             # Se il loop non è in esecuzione, avvialo in un thread separato
             import threading
@@ -185,8 +196,7 @@ def start_scheduler():
                 loop.run_until_complete(scheduler_loop())
             thread = threading.Thread(target=run_scheduler, daemon=True)
             thread.start()
-        
-        logger.info("[SCHEDULER] ✅ Scheduler avviato con successo")
+            logger.info("[SCHEDULER] ✅ Scheduler avviato in thread separato (legacy)")
     except Exception as e:
         logger.error(f"[SCHEDULER] Errore avvio scheduler: {e}", exc_info=True)
 
