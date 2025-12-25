@@ -133,7 +133,7 @@ async def scheduler_loop():
     Loop principale dello scheduler.
     Controlla ogni minuto se è ora di generare i report (10 AM ora italiana).
     """
-    logger.info("[SCHEDULER] Scheduler avviato, controllo ogni minuto per le 10 AM ora italiana")
+    logger.info("[SCHEDULER] ✅ Scheduler loop avviato, controllo ogni minuto per le 10 AM ora italiana")
     
     last_run_date = None
     
@@ -143,21 +143,28 @@ async def scheduler_loop():
             current_time = italian_time.time()
             current_date = italian_time.date()
             
-            # Controlla se è tra le 10:00 e le 10:01 e non abbiamo già eseguito oggi
+            # Controlla se è tra le 10:00 e le 10:05 e non abbiamo già eseguito oggi
+            # Allargato a 10:05 per avere più margine (in caso di delay)
             target_time = time(10, 0)
+            end_window = time(10, 5)
             if (current_time >= target_time and 
-                current_time < time(10, 1) and 
+                current_time < end_window and 
                 last_run_date != current_date):
                 
-                logger.info(f"[SCHEDULER] È ora di generare i report giornalieri (ora italiana: {italian_time})")
+                logger.info(f"[SCHEDULER] ⏰ È ora di recuperare i report giornalieri (ora italiana: {italian_time.strftime('%Y-%m-%d %H:%M:%S')})")
                 await generate_daily_reports_for_all_users()
                 last_run_date = current_date
+                logger.info(f"[SCHEDULER] ✅ Report giornalieri recuperati per data: {last_run_date}")
+            
+            # Log ogni 10 minuti per debugging (non troppo verbose)
+            if current_time.minute % 10 == 0 and current_time.second < 5:
+                logger.debug(f"[SCHEDULER] Controllo orario - Ora italiana: {italian_time.strftime('%Y-%m-%d %H:%M:%S')}, Last run: {last_run_date}")
             
             # Attendi 1 minuto prima del prossimo controllo
             await asyncio.sleep(60)
         
         except Exception as e:
-            logger.error(f"[SCHEDULER] Errore nel loop scheduler: {e}", exc_info=True)
+            logger.error(f"[SCHEDULER] ❌ Errore nel loop scheduler: {e}", exc_info=True)
             # Attendi 60 secondi prima di riprovare
             await asyncio.sleep(60)
 
