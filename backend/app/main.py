@@ -124,9 +124,13 @@ async def startup_tasks():
         logger.error(f"Errore durante migrazioni: {e}", exc_info=True)
         # Non bloccare l'avvio se le migrazioni falliscono
     
-    # Avvia scheduler report giornalieri
+    # Avvia scheduler report giornalieri in background task
     try:
-        start_scheduler()
+        from app.services.daily_report_scheduler import start_scheduler_async
+        # Avvia lo scheduler come background task
+        import asyncio
+        asyncio.create_task(start_scheduler_async())
+        logger.info("✅ Scheduler report giornalieri avviato")
     except Exception as e:
         logger.error(f"Errore avvio scheduler: {e}", exc_info=True)
         # Non bloccare l'avvio se lo scheduler fallisce

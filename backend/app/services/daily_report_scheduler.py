@@ -168,8 +168,24 @@ def start_scheduler():
     """
     try:
         logger.info("[SCHEDULER] Avvio scheduler report giornalieri...")
-        loop = asyncio.get_event_loop()
-        loop.create_task(scheduler_loop())
+        # Prova a ottenere l'event loop corrente, se non esiste creane uno nuovo
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        
+        # Se il loop è già in esecuzione, crea il task direttamente
+        if loop.is_running():
+            asyncio.create_task(scheduler_loop())
+        else:
+            # Se il loop non è in esecuzione, avvialo in un thread separato
+            import threading
+            def run_scheduler():
+                loop.run_until_complete(scheduler_loop())
+            thread = threading.Thread(target=run_scheduler, daemon=True)
+            thread.start()
+        
         logger.info("[SCHEDULER] ✅ Scheduler avviato con successo")
     except Exception as e:
         logger.error(f"[SCHEDULER] Errore avvio scheduler: {e}", exc_info=True)
