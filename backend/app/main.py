@@ -7,11 +7,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
 import os
+import logging
 from dotenv import load_dotenv
 
 # Setup logging PRIMA di tutto
 from app.core.logging_config import setup_logging
 setup_logging(service_name="web-app")
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -114,6 +116,10 @@ async def startup_tasks():
     """
     Esegue migrazioni database e avvia scheduler all'avvio.
     """
+    # Usa logger globale (definito a livello di modulo)
+    import logging
+    startup_logger = logging.getLogger(__name__)
+    
     from app.core.migrations import run_migrations
     from app.services.daily_report_scheduler import start_scheduler
     
@@ -121,7 +127,7 @@ async def startup_tasks():
     try:
         await run_migrations()
     except Exception as e:
-        logger.error(f"Errore durante migrazioni: {e}", exc_info=True)
+        startup_logger.error(f"Errore durante migrazioni: {e}", exc_info=True)
         # Non bloccare l'avvio se le migrazioni falliscono
     
     # Avvia scheduler report giornalieri in background task
@@ -129,9 +135,9 @@ async def startup_tasks():
         from app.services.daily_report_scheduler import start_scheduler_async
         # Avvia lo scheduler come background task (await per assicurarsi che parta)
         await start_scheduler_async()
-        logger.info("✅ Scheduler report giornalieri avviato")
+        startup_logger.info("✅ Scheduler report giornalieri avviato")
     except Exception as e:
-        logger.error(f"Errore avvio scheduler: {e}", exc_info=True)
+        startup_logger.error(f"Errore avvio scheduler: {e}", exc_info=True)
         # Non bloccare l'avvio se lo scheduler fallisce
 
 if __name__ == "__main__":
