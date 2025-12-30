@@ -242,7 +242,7 @@ class MultiMovementAgent:
         # Parole chiave per RIFORNIMENTO (aumento giacenza = merce entra in magazzino)
         rifornimento_keywords = [
             "rifornito", "ricevuto", "aggiunto", "acquistato", "comprado", 
-            "scaricato",  # scaricato dal camion nel magazzino
+            "caricato",  # caricato in magazzino
             "entrato", "arrivato", "inserito", "immesso", "messo",
             "inventariato", "preso in carico"
         ]
@@ -250,7 +250,7 @@ class MultiMovementAgent:
         consumo_keywords = [
             "consumato", "venduto", "bevuto", "usato", "tolto", "rimosso",
             "prelevato", "ritirato", "dato via", "consegnato", "spedito",
-            "uscite", "uscito", "consegnato a", "venduto a", "caricato"  # caricato sul camion dal magazzino
+            "uscite", "uscito", "consegnato a", "venduto a", "scaricato"  # scaricato dal magazzino
         ]
         
         movement_type = "consumo"  # Default
