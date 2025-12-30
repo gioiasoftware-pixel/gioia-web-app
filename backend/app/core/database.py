@@ -931,6 +931,117 @@ class DatabaseManager:
                 logger.error(f"[DB] Errore cancellando conversazione: {e}", exc_info=True)
                 await session.rollback()
                 return False
+    
+    async def save_pending_movements(self, conversation_id: int, user_id: int, pending_movements: List[Dict[str, Any]]) -> bool:
+        """
+        Salva i movimenti pendenti per una conversazione.
+        Usato quando c'è una disambiguazione in movimenti multipli.
+        
+        Args:
+            conversation_id: ID conversazione
+            user_id: ID utente (per sicurezza)
+            pending_movements: Lista di dict con movimenti pendenti (type, wine_name, quantity)
+        
+        Returns:
+            True se salvato con successo
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                import json
+                # Verifica che la conversazione appartenga all'utente
+                check_query = sql_text("""
+                    SELECT id FROM conversations
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                result = await session.execute(check_query, {"conversation_id": conversation_id, "user_id": user_id})
+                if not result.fetchone():
+                    logger.warning(f"[DB] Conversazione {conversation_id} non trovata o non appartiene a user_id={user_id}")
+                    return False
+                
+                # Salva movimenti pendenti come JSON
+                pending_movements_json = json.dumps(pending_movements, ensure_ascii=False)
+                pending_movements_json_escaped = pending_movements_json.replace("'", "''")
+                
+                update_query = sql_text(f"""
+                    UPDATE conversations
+                    SET pending_movements = '{pending_movements_json_escaped}'::jsonb,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                await session.execute(update_query, {"conversation_id": conversation_id, "user_id": user_id})
+                await session.commit()
+                logger.info(f"[DB] Salvati {len(pending_movements)} movimenti pendenti per conversazione id={conversation_id}")
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore salvando movimenti pendenti: {e}", exc_info=True)
+                await session.rollback()
+                return False
+    
+    async def get_pending_movements(self, conversation_id: int, user_id: int) -> Optional[List[Dict[str, Any]]]:
+        """
+        Recupera i movimenti pendenti per una conversazione.
+        
+        Args:
+            conversation_id: ID conversazione
+            user_id: ID utente (per sicurezza)
+        
+        Returns:
+            Lista di dict con movimenti pendenti o None se non ci sono
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                import json
+                query = sql_text("""
+                    SELECT pending_movements
+                    FROM conversations
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                result = await session.execute(query, {"conversation_id": conversation_id, "user_id": user_id})
+                row = result.fetchone()
+                
+                if not row or not row[0]:
+                    return None
+                
+                pending_movements = row[0]
+                # Se è già un dict/list (JSONB), ritorna direttamente
+                if isinstance(pending_movements, list):
+                    return pending_movements
+                # Se è una stringa, parsala
+                if isinstance(pending_movements, str):
+                    return json.loads(pending_movements)
+                # Se è dict/object, convertilo
+                return list(pending_movements) if pending_movements else None
+            except Exception as e:
+                logger.error(f"[DB] Errore recuperando movimenti pendenti: {e}", exc_info=True)
+                return None
+    
+    async def clear_pending_movements(self, conversation_id: int, user_id: int) -> bool:
+        """
+        Cancella i movimenti pendenti per una conversazione.
+        
+        Args:
+            conversation_id: ID conversazione
+            user_id: ID utente (per sicurezza)
+        
+        Returns:
+            True se cancellato con successo
+        """
+        async with AsyncSessionLocal() as session:
+            try:
+                update_query = sql_text("""
+                    UPDATE conversations
+                    SET pending_movements = NULL,
+                        updated_at = CURRENT_TIMESTAMP
+                    WHERE id = :conversation_id AND user_id = :user_id
+                """)
+                await session.execute(update_query, {"conversation_id": conversation_id, "user_id": user_id})
+                await session.commit()
+                logger.info(f"[DB] Cancellati movimenti pendenti per conversazione id={conversation_id}")
+                return True
+            except Exception as e:
+                logger.error(f"[DB] Errore cancellando movimenti pendenti: {e}", exc_info=True)
+                await session.rollback()
+                return False
 
 
 # Istanza globale

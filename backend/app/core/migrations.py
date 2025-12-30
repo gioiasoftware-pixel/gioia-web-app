@@ -36,6 +36,10 @@ async def run_migrations():
             from app.core.notifications_service import migrate_notifications_table
             await migrate_notifications_table(session)
             
+            # Migrazione 4: Aggiungi colonna pending_movements a conversations
+            print("[MIGRATIONS] Esecuzione migrazione pending_movements...", file=sys.stderr)
+            await migrate_pending_movements_column(session)
+            
             print("[MIGRATIONS] Commit modifiche database...", file=sys.stderr)
             await session.commit()
             
@@ -200,4 +204,48 @@ async def migrate_log_interaction_tables(session: AsyncSession):
     except Exception as e:
         logger.error(f"[MIGRATIONS] Errore durante migrazione tabelle LOG interazione: {e}", exc_info=True)
         # Non sollevare eccezione per non bloccare l'avvio se alcune tabelle falliscono
+        logger.warning("[MIGRATIONS] Continuo comunque l'avvio dell'applicazione...")
+
+
+async def migrate_pending_movements_column(session: AsyncSession):
+    """
+    Aggiunge la colonna pending_movements alla tabella conversations se non esiste.
+    """
+    try:
+        # Verifica se la colonna esiste già
+        check_column_query = sql_text("""
+            SELECT EXISTS (
+                SELECT FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = 'conversations'
+                AND column_name = 'pending_movements'
+            );
+        """)
+        result = await session.execute(check_column_query)
+        column_exists = result.scalar()
+        
+        if column_exists:
+            logger.info("[MIGRATIONS] Colonna 'pending_movements' già presente in 'conversations', skip")
+            return
+        
+        # Aggiungi la colonna
+        logger.info("[MIGRATIONS] Aggiunta colonna 'pending_movements' a 'conversations'...")
+        add_column_query = sql_text("""
+            ALTER TABLE conversations 
+            ADD COLUMN pending_movements JSONB;
+        """)
+        await session.execute(add_column_query)
+        
+        # Crea indice per query rapide
+        create_index_query = sql_text("""
+            CREATE INDEX IF NOT EXISTS idx_conversations_pending_movements 
+            ON conversations(user_id, pending_movements) 
+            WHERE pending_movements IS NOT NULL;
+        """)
+        await session.execute(create_index_query)
+        
+        logger.info("[MIGRATIONS] ✅ Colonna 'pending_movements' aggiunta a 'conversations' con successo")
+    except Exception as e:
+        logger.error(f"[MIGRATIONS] Errore aggiungendo colonna pending_movements: {e}", exc_info=True)
+        # Non sollevare eccezione per non bloccare l'avvio
         logger.warning("[MIGRATIONS] Continuo comunque l'avvio dell'applicazione...")

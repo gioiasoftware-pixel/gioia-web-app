@@ -63,6 +63,148 @@ class CreateConversationResponse(BaseModel):
     title: str
 
 
+async def check_and_process_pending_movements(
+    user_message: str,
+    user_id: int,
+    conversation_id: Optional[int]
+) -> Optional[Dict[str, Any]]:
+    """
+    Controlla se ci sono movimenti pendenti e se il messaggio è una conferma di disambiguazione.
+    Se sì, processa il movimento confermato e continua con i movimenti rimanenti.
+    
+    Args:
+        user_message: Messaggio dell'utente
+        user_id: ID utente
+        conversation_id: ID conversazione
+    
+    Returns:
+        Dict con risultato del processing o None se non ci sono movimenti pendenti
+    """
+    if not conversation_id:
+        return None
+    
+    try:
+        # Recupera movimenti pendenti
+        pending_movements = await db_manager.get_pending_movements(conversation_id, user_id)
+        if not pending_movements or len(pending_movements) == 0:
+            return None
+        
+        logger.info(f"[CHAT] 🔍 Trovati {len(pending_movements)} movimenti pendenti per conversazione {conversation_id}")
+        
+        # Il primo movimento pendente è quello che richiedeva disambiguazione
+        # Il messaggio dell'utente dovrebbe contenere la conferma per questo movimento
+        first_pending = pending_movements[0]
+        wine_name_original = first_pending.get("wine_name", "").lower()
+        
+        # Controlla se il messaggio contiene il nome del vino (conferma disambiguazione)
+        user_message_lower = user_message.lower()
+        # Il messaggio potrebbe essere il nome completo del vino selezionato
+        # Oppure potrebbe essere un messaggio che contiene il nome del vino
+        
+        # Se il messaggio è molto corto o corrisponde al pattern di un nome vino, è probabile una conferma
+        is_likely_confirmation = (
+            len(user_message) < 100 and  # Messaggio corto (probabilmente solo nome vino)
+            (wine_name_original in user_message_lower or 
+             any(word in user_message_lower for word in wine_name_original.split() if len(word) > 3))
+        )
+        
+        if not is_likely_confirmation:
+            logger.info(f"[CHAT] Messaggio non sembra una conferma di disambiguazione, processamento normale")
+            return None
+        
+        # Processa il movimento confermato usando MovementAgent
+        logger.info(f"[CHAT] ✅ Rilevata conferma disambiguazione, processo movimento: {first_pending}")
+        from app.services.agents.movement_agent import MovementAgent
+        movement_agent = MovementAgent()
+        
+        movement_type = first_pending.get("type", "consumo")
+        quantity = first_pending.get("quantity", 1)
+        # Usa il messaggio dell'utente come nome vino confermato (potrebbe essere il nome completo)
+        confirmed_wine_name = user_message.strip()
+        
+        # Prepara messaggio per MovementAgent con il vino confermato
+        type_text = "consumo" if movement_type == "consumo" else "rifornimento"
+        movement_message = f"Registra {type_text} di {quantity} bottiglie di {confirmed_wine_name}"
+        
+        # Processa il movimento confermato
+        movement_result = await movement_agent.process_with_context(
+            message=movement_message,
+            user_id=user_id,
+            thread_id=None
+        )
+        
+        # Rimuovi il movimento processato dalla lista pendenti
+        remaining_movements = pending_movements[1:] if len(pending_movements) > 1 else []
+        
+        # Processa i movimenti rimanenti uno per uno
+        results_parts = [movement_result.get("message", "")]
+        has_html = movement_result.get("is_html", False)
+        buttons = movement_result.get("buttons")
+        needs_more_disambiguation = False
+        
+        for idx, remaining_movement in enumerate(remaining_movements):
+            remaining_type = remaining_movement.get("type", "consumo")
+            remaining_wine_name = remaining_movement.get("wine_name", "")
+            remaining_quantity = remaining_movement.get("quantity", 1)
+            
+            remaining_type_text = "consumo" if remaining_type == "consumo" else "rifornimento"
+            remaining_message = f"Registra {remaining_type_text} di {remaining_quantity} bottiglie di {remaining_wine_name}"
+            
+            logger.info(f"[CHAT] Processamento movimento rimanente {idx+1}/{len(remaining_movements)}: {remaining_type} {remaining_quantity}x {remaining_wine_name}")
+            
+            remaining_result = await movement_agent.process_with_context(
+                message=remaining_message,
+                user_id=user_id,
+                thread_id=None
+            )
+            
+            if remaining_result.get("success"):
+                results_parts.append(remaining_result.get("message", ""))
+            else:
+                # Se richiede disambiguazione, salva i movimenti ancora rimanenti e fermati
+                if remaining_result.get("is_html") or "<div class=\"wines-list-card\">" in str(remaining_result.get("message", "")):
+                    # Salva i movimenti ancora da processare (questo e tutti quelli dopo)
+                    yet_remaining = remaining_movements[idx:]
+                    await db_manager.save_pending_movements(
+                        conversation_id=conversation_id,
+                        user_id=user_id,
+                        pending_movements=yet_remaining
+                    )
+                    logger.info(f"[CHAT] 💾 Salvati {len(yet_remaining)} movimenti ancora pendenti (richiede disambiguazione)")
+                    results_parts.append(remaining_result.get("message", ""))
+                    has_html = True
+                    buttons = remaining_result.get("buttons")
+                    needs_more_disambiguation = True
+                    break
+                else:
+                    # Errore normale, aggiungi e continua
+                    results_parts.append(remaining_result.get("message", ""))
+        
+        # Se abbiamo processato tutti i movimenti senza altre disambiguazioni, cancella i pendenti
+        if not needs_more_disambiguation:
+            await db_manager.clear_pending_movements(conversation_id, user_id)
+            logger.info(f"[CHAT] ✅ Tutti i movimenti processati, cancellati movimenti pendenti")
+        
+        # Combina tutti i risultati
+        combined_message = "\n\n".join(results_parts)
+        
+        return {
+            "message": combined_message,
+            "metadata": {
+                "type": "multi_movement_continuation",
+                "confirmed_movement": first_pending,
+                "remaining_count": len(remaining_movements)
+            },
+            "is_html": has_html,
+            "buttons": buttons
+        }
+    
+    except Exception as e:
+        logger.error(f"[CHAT] ❌ Errore processando movimenti pendenti: {e}", exc_info=True)
+        # In caso di errore, continua con processamento normale
+        return None
+
+
 async def process_text_message(
     user_message: str,
     user_id: int,
@@ -96,6 +238,40 @@ async def process_text_message(
             logger.warning(f"[CHAT] Errore creando nuova conversazione per user_id={user_id}")
             conversation_id = None
     
+    # Salva messaggio utente PRIMA di processare (così viene sempre salvato)
+    try:
+        message_to_log = f"🎤 {user_message}" if source == "audio" else user_message
+        await db_manager.log_chat_message(user_id, "user", message_to_log, conversation_id=conversation_id)
+    except Exception as e:
+        logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
+    
+    # Step 0: Controlla se ci sono movimenti pendenti e se questo è una conferma
+    pending_result = await check_and_process_pending_movements(
+        user_message=user_message,
+        user_id=user_id,
+        conversation_id=conversation_id
+    )
+    
+    if pending_result:
+        # Movimenti pendenti processati, salva la risposta e ritorna il risultato
+        logger.info(f"[CHAT] ✅ Movimenti pendenti processati, ritorno risultato")
+        try:
+            ai_response_message = pending_result.get("message", "")
+            if ai_response_message:
+                await db_manager.log_chat_message(user_id, "assistant", ai_response_message, conversation_id=conversation_id)
+                if conversation_id:
+                    await db_manager.update_conversation_last_message(conversation_id, user_id)
+        except Exception as e:
+            logger.warning(f"[CHAT] Errore salvataggio risposta movimenti pendenti: {e}")
+        
+        return ChatResponse(
+            message=pending_result.get("message", "Movimento processato"),
+            conversation_id=conversation_id,
+            metadata=pending_result.get("metadata", {}),
+            buttons=pending_result.get("buttons"),
+            is_html=pending_result.get("is_html", False)
+        )
+    
     # Recupera storia conversazione (ultimi 10 messaggi) per questa conversazione
     conversation_history = None
     try:
@@ -115,13 +291,6 @@ async def process_text_message(
         logger.warning(f"[CHAT] Errore recupero storia conversazione: {e}")
         conversation_history = None
     
-    # Salva messaggio utente PRIMA di processare
-    try:
-        message_to_log = f"🎤 {user_message}" if source == "audio" else user_message
-        await db_manager.log_chat_message(user_id, "user", message_to_log, conversation_id=conversation_id)
-    except Exception as e:
-        logger.warning(f"[CHAT] Errore salvataggio messaggio utente: {e}")
-    
     # Sistema ibrido: prova prima V1, se non funziona passa a V2
     logger.info(f"[CHAT] 🔄 Provo prima con AIServiceV1...")
     result = await ai_service_v1.process_message(
@@ -136,7 +305,8 @@ async def process_text_message(
         result = await ai_service_v2.process_message(
             user_message=user_message,
             user_id=user_id,
-            conversation_history=conversation_history
+            conversation_history=conversation_history,
+            conversation_id=conversation_id
         )
     else:
         logger.info(f"[CHAT] ✅ Risposta V1 valida, uso quella")

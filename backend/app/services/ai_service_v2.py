@@ -46,7 +46,8 @@ class AIServiceV2:
         self,
         user_message: str,
         user_id: int,
-        conversation_history: Optional[list] = None
+        conversation_history: Optional[list] = None,
+        conversation_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Processa messaggio usando sistema multi-agent.
@@ -96,10 +97,27 @@ class AIServiceV2:
             
             # Step 4: Instrada al agent appropriato
             logger.info(f"[AI_SERVICE_V2] 🔄 Invio messaggio a {agent_name}")
-            result = await agent_instance.process_with_context(
-                message=user_message,
-                user_id=user_id
-            )
+            # Passa conversation_id se disponibile (per MultiMovementAgent)
+            if hasattr(agent_instance, 'process_with_context'):
+                # Alcuni agent hanno conversation_id come parametro opzionale
+                import inspect
+                sig = inspect.signature(agent_instance.process_with_context)
+                if 'conversation_id' in sig.parameters:
+                    result = await agent_instance.process_with_context(
+                        message=user_message,
+                        user_id=user_id,
+                        conversation_id=conversation_id
+                    )
+                else:
+                    result = await agent_instance.process_with_context(
+                        message=user_message,
+                        user_id=user_id
+                    )
+            else:
+                result = await agent_instance.process_with_context(
+                    message=user_message,
+                    user_id=user_id
+                )
             
             # Log risultato
             if result.get("success"):

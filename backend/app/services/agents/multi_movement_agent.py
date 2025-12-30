@@ -34,7 +34,8 @@ class MultiMovementAgent:
         self,
         message: str,
         user_id: int,
-        thread_id: Optional[str] = None
+        thread_id: Optional[str] = None,
+        conversation_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Processa messaggio con movimenti multipli.
@@ -48,6 +49,7 @@ class MultiMovementAgent:
             message: Messaggio dell'utente contenente movimenti multipli
             user_id: ID utente
             thread_id: ID thread (opzionale)
+            conversation_id: ID conversazione (opzionale, per salvare movimenti pendenti)
         
         Returns:
             Dict con risposta combinata e metadati
@@ -78,6 +80,7 @@ class MultiMovementAgent:
             # Step 2: Processa ogni movimento usando MovementAgent
             results = []
             errors = []
+            has_ambiguity = False  # Flag per tracciare se c'è almeno una disambiguazione
             
             for idx, movement in enumerate(movements, 1):
                 movement_type = movement.get("type", "")
@@ -110,6 +113,7 @@ class MultiMovementAgent:
                         # Controlla se l'errore contiene HTML con wine cards (ambiguità vino)
                         if movement_result.get("is_html") or "<div class=\"wines-list-card\">" in str(error_msg):
                             # È un errore con wine cards HTML (ambiguità vino)
+                            has_ambiguity = True
                             errors.append({
                                 "movement": movement,
                                 "error": str(error_msg),  # Mantieni HTML originale
@@ -118,6 +122,21 @@ class MultiMovementAgent:
                                 "raw_error": error_msg
                             })
                             logger.info(f"[MULTI_MOVEMENT] ⚠️ Movimento {idx} richiede selezione vino (HTML con wine cards)")
+                            
+                            # Salva i movimenti rimanenti per continuare dopo la disambiguazione
+                            remaining_movements = movements[idx:]  # Tutti i movimenti da questo in poi
+                            if remaining_movements and conversation_id:
+                                try:
+                                    await db_manager.save_pending_movements(
+                                        conversation_id=conversation_id,
+                                        user_id=user_id,
+                                        pending_movements=remaining_movements
+                                    )
+                                    logger.info(f"[MULTI_MOVEMENT] 💾 Salvati {len(remaining_movements)} movimenti rimanenti per conversazione {conversation_id}")
+                                except Exception as e:
+                                    logger.error(f"[MULTI_MOVEMENT] ❌ Errore salvando movimenti pendenti: {e}", exc_info=True)
+                            # Interrompi il loop quando incontriamo una disambiguazione (processeremo i rimanenti dopo)
+                            break
                         else:
                             # Errore normale, pulisci HTML
                             error_msg_clean = self._clean_error_message(str(error_msg))
