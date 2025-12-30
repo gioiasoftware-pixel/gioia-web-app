@@ -30,13 +30,17 @@ class RouterAgent(BaseAgent):
         PRIORITÀ 2: MOVIMENTI (movement / multi_movement)
         ==========================================
         Usa "movement" per UN SOLO movimento:
-        - Esempi: "ho venduto 3 Barolo", "consumato 2 Chianti", "ricevuto 10 Brunello"
+        - Esempi: "ho venduto 3 Barolo", "consumato 2 Chianti", "ricevuto 10 Brunello", "ho caricato 3 bottiglie di Costa Marina"
+        - IMPORTANTE: Se il messaggio contiene un verbo d'azione (ho caricato, ho scaricato, ho venduto, ecc.) + quantità + nome vino, è SEMPRE un movimento, anche se contiene "bottiglie di"
+        - "bottiglie di [nome vino]" non deve essere interpretato come query se c'è un verbo d'azione prima
         
         Usa "multi_movement" per PIÙ movimenti nello stesso messaggio:
         - Esempi: "ho venduto 3 Barolo e 2 Chianti", "ricevuto 10 Brunello, 5 Amarone e 3 Chianti"
         - Segnali: presenza di "e", ",", "più" tra vini/quantità diverse
         
-        Keywords: "consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "scaricato", "caricato", "rimosso", "registra", "consumato", "ricevuto"
+        Keywords movimento: "ho caricato", "ho scaricato", "ho venduto", "ho comprato", "ho acquistato", "ho rifornito", "ho ricevuto", "ho aggiunto", "ho tolto", "ho rimosso", "ho consumato", "ho bevuto", "consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "scaricato", "caricato", "rimosso", "registra", "consumato", "ricevuto"
+        
+        REGOLA CHIAVE: Se il messaggio inizia o contiene un verbo d'azione al passato prossimo (ho + participio passato) o imperativo + quantità numerica, è SEMPRE un movimento, non una query!
         
         ==========================================
         PRIORITÀ 3: STATISTICHE VINO SPECIFICO (notification)
@@ -98,12 +102,13 @@ class RouterAgent(BaseAgent):
         ==========================================
         REGOLE DI RISOLUZIONE CONFLITTI
         ==========================================
-        1. Se il messaggio contiene nome vino specifico + keywords statistiche → "notification" (non analytics)
-        2. Se il messaggio è "statistiche" senza nome vino → "analytics"
-        3. Se il messaggio contiene "report" esplicito → "report" (non analytics)
-        4. Se il messaggio è ricerca/info vino → "query" (non notification)
-        5. Se il messaggio contiene gestione vini (crea/modifica/elimina) → "wine_management" (non query)
-        6. Se il messaggio contiene movimenti → "movement" o "multi_movement" (non query)
+        1. Se il messaggio contiene verbo d'azione movimento (ho caricato, ho scaricato, ho venduto, ecc.) + quantità → "movement" o "multi_movement" (PRIORITÀ MASSIMA, anche se contiene "bottiglie di" o nome vino)
+        2. Se il messaggio contiene nome vino specifico + keywords statistiche → "notification" (non analytics)
+        3. Se il messaggio è "statistiche" senza nome vino → "analytics"
+        4. Se il messaggio contiene "report" esplicito → "report" (non analytics)
+        5. Se il messaggio è ricerca/info vino SENZA verbi d'azione movimento → "query" (non notification)
+        6. Se il messaggio contiene gestione vini (crea/modifica/elimina) → "wine_management" (non query)
+        7. Se il messaggio contiene movimenti → "movement" o "multi_movement" (non query, PRIORITÀ SU QUERY)
         
         RISPOSTA:
         - Rispondi SOLO con il nome dell'agent in minuscolo
