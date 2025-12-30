@@ -239,10 +239,25 @@ class MultiMovementAgent:
         message_lower = message.lower()
         
         # Determina tipo movimento
-        movement_type = "consumo"
-        if any(word in message_lower for word in ["rifornito", "ricevuto", "aggiunto", "acquistato", "comprado"]):
+        # Parole chiave per RIFORNIMENTO (aumento giacenza = merce entra in magazzino)
+        rifornimento_keywords = [
+            "rifornito", "ricevuto", "aggiunto", "acquistato", "comprado", 
+            "scaricato",  # scaricato dal camion nel magazzino
+            "entrato", "arrivato", "inserito", "immesso", "messo",
+            "inventariato", "preso in carico"
+        ]
+        # Parole chiave per CONSUMO (diminuzione giacenza = merce esce dal magazzino)
+        consumo_keywords = [
+            "consumato", "venduto", "bevuto", "usato", "tolto", "rimosso",
+            "prelevato", "ritirato", "dato via", "consegnato", "spedito",
+            "uscite", "uscito", "consegnato a", "venduto a", "caricato"  # caricato sul camion dal magazzino
+        ]
+        
+        movement_type = "consumo"  # Default
+        # Controlla prima rifornimento (priorità più alta se presenti entrambi)
+        if any(word in message_lower for word in rifornimento_keywords):
             movement_type = "rifornimento"
-        elif any(word in message_lower for word in ["consumato", "venduto", "bevuto", "usato"]):
+        elif any(word in message_lower for word in consumo_keywords):
             movement_type = "consumo"
         
         # Pattern per trovare quantità + nome vino

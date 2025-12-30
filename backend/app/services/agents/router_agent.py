@@ -36,7 +36,7 @@ class RouterAgent(BaseAgent):
         - Esempi: "ho venduto 3 Barolo e 2 Chianti", "ricevuto 10 Brunello, 5 Amarone e 3 Chianti"
         - Segnali: presenza di "e", ",", "più" tra vini/quantità diverse
         
-        Keywords: "consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "registra", "consumato", "ricevuto"
+        Keywords: "consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "scaricato", "caricato", "rimosso", "registra", "consumato", "ricevuto"
         
         ==========================================
         PRIORITÀ 3: STATISTICHE VINO SPECIFICO (notification)

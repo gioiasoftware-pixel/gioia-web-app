@@ -196,7 +196,7 @@ class AIServiceV2:
         # Logica di fallback basata su keywords
         if any(kw in message_lower for kw in ["carica", "importa", "file", "csv", "excel"]):
             return "extraction"
-        elif any(kw in message_lower for kw in ["consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "registra"]):
+        elif any(kw in message_lower for kw in ["consumo", "venduto", "rifornito", "acquistato", "aggiunto", "tolto", "scaricato", "caricato", "rimosso", "registra"]):
             # Distingui tra singolo e multiplo
             if any(kw in message_lower for kw in [" e ", ",", "più"]):
                 return "multi_movement"

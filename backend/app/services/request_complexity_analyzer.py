@@ -19,9 +19,9 @@ class RequestComplexityAnalyzer:
     SIMPLE_PATTERNS = {
         # Movimenti singoli diretti
         "single_movement": [
-            r"ho\s+(consumato|bevuto|venduto|acquistato|rifornito|aggiunto)\s+\d+\s+",
+            r"ho\s+(consumato|bevuto|venduto|acquistato|rifornito|aggiunto|scaricato|caricato|tolto|rimosso)\s+\d+\s+",
             r"\d+\s+(bottiglia|bottiglie)\s+(di|di\s+un|di\s+una)\s+",
-            r"(consumo|vendo|vendi|acquisto|rifornisci|aggiungi)\s+\d+\s+",
+            r"(consumo|vendo|vendi|acquisto|rifornisci|aggiungi|scarico|carico|tolgo|rimuovo)\s+\d+\s+",
             r"movimento\s+(consumo|rifornimento)\s+\d+\s+",
         ],
         # Query semplici dirette
@@ -48,7 +48,7 @@ class RequestComplexityAnalyzer:
         "multiple_movements": [
             r"\d+\s+.*\s+e\s+\d+\s+",  # "1 barolo e 2 chianti"
             r",\s*\d+\s+",  # Lista separata da virgole
-            r"(consumato|bevuto|venduto|acquistato|rifornito).*e.*",  # "consumato X e Y"
+            r"(consumato|bevuto|venduto|acquistato|rifornito|scaricato|caricato|tolto|rimosso).*e.*",  # "consumato X e Y"
         ],
         # Gestione vini complessa (CRUD)
         "wine_management": [
@@ -122,7 +122,7 @@ class RequestComplexityAnalyzer:
                     return "simple"
         
         # Default: se contiene numeri + verbi d'azione specifici, probabilmente semplice
-        if re.search(r'\d+\s+.*(consumo|vendo|acquisto|rifornisci)', message_clean, re.IGNORECASE):
+        if re.search(r'\d+\s+.*(consumo|vendo|acquisto|rifornisci|scarico|carico|tolgo|rimuovo)', message_clean, re.IGNORECASE):
             logger.info(f"[COMPLEXITY] Richiesta semplice (movimento singolo implicito): {message[:50]}...")
             return "simple"
         
@@ -134,5 +134,6 @@ class RequestComplexityAnalyzer:
     def is_simple(cls, message: str) -> bool:
         """Helper: True se richiesta semplice, False se complessa"""
         return cls.analyze(message) == "simple"
+
 
 
