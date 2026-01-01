@@ -38,21 +38,39 @@ body.dark-theme .notifications-badge {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-granaccia);
+    color: var(--color-granaccia) !important;
     position: relative;
     min-width: 44px;
     min-height: 44px;
     touch-action: manipulation;
 }
 
+/* Forza colore rosso anche su SVG interno mobile */
+.btn-notifications-mobile svg {
+    color: var(--color-granaccia) !important;
+    fill: none;
+}
+
+.btn-notifications-mobile svg path {
+    stroke: var(--color-granaccia) !important;
+}
+
 /* Dark mode mobile button */
 body.dark-theme .btn-notifications-mobile {
-    color: var(--color-granaccia);
+    color: var(--color-granaccia) !important;
+}
+
+body.dark-theme .btn-notifications-mobile svg {
+    color: var(--color-granaccia) !important;
+}
+
+body.dark-theme .btn-notifications-mobile svg path {
+    stroke: var(--color-granaccia) !important;
 }
 
 /* Pulsante notifiche desktop */
 #notifications-btn.btn-icon {
-    color: var(--color-granaccia);
+    color: var(--color-granaccia) !important;
     background: none;
     border: none;
     cursor: pointer;
@@ -63,9 +81,27 @@ body.dark-theme .btn-notifications-mobile {
     position: relative;
 }
 
+/* Forza colore rosso anche su SVG interno */
+#notifications-btn.btn-icon svg {
+    color: var(--color-granaccia) !important;
+    fill: none;
+}
+
+#notifications-btn.btn-icon svg path {
+    stroke: var(--color-granaccia) !important;
+}
+
 /* Dark mode desktop button */
 body.dark-theme #notifications-btn.btn-icon {
-    color: var(--color-granaccia);
+    color: var(--color-granaccia) !important;
+}
+
+body.dark-theme #notifications-btn.btn-icon svg {
+    color: var(--color-granaccia) !important;
+}
+
+body.dark-theme #notifications-btn.btn-icon svg path {
+    stroke: var(--color-granaccia) !important;
 }
 
 #notifications-btn.btn-icon:hover {
