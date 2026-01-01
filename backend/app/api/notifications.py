@@ -78,7 +78,7 @@ async def mark_read(
     Marca una notifica come letta.
     """
     try:
-        user_id = current_user["id"]
+        user_id = current_user["user_id"]
         success = await mark_notification_read(notification_id, user_id)
         
         if not success:
@@ -101,7 +101,7 @@ async def generate_test_report(
     Solo per sviluppo/test.
     """
     try:
-        user_id = current_user["id"]
+        user_id = current_user["user_id"]
         
         # Genera report per ieri
         report_data = await generate_daily_report(user_id)
