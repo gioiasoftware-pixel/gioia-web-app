@@ -2,13 +2,13 @@
    NOTIFICATIONS STYLES
    ============================================ */
 
-/* Badge notifiche - posizionato rispetto all'SVG (20x20px centrato nel pulsante) */
-/* SVG inizia a ~12px dal bordo pulsante (8px padding + 4px centratura) */
-/* Badge 18px + border 2px = 20px totale, posizionato per sfiorare l'angolo SVG */
+/* Badge notifiche - posizionato leggermente a destra rispetto al centro del pulsante */
 .notifications-badge {
     position: absolute;
+    /* Centrato verticalmente e leggermente spostato a destra dal centro orizzontale */
     top: -2px;
-    right: -2px;
+    left: calc(50% + 8px);
+    transform: translateX(-50%);
     min-width: 18px;
     height: 18px;
     border-radius: 9px;
