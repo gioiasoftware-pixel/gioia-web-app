@@ -555,8 +555,10 @@ const NotificationsManager = {
      */
     async markAsRead(notificationId) {
         try {
-            const token = localStorage.getItem('authToken');
+            // Prova entrambe le chiavi possibili per il token (allineato con loadNotifications)
+            const token = localStorage.getItem('authToken') || localStorage.getItem('auth_token');
             if (!token) {
+                console.warn('[NOTIFICATIONS] Nessun token trovato per marcare come letta');
                 return;
             }
             
@@ -577,10 +579,8 @@ const NotificationsManager = {
                 notification.read_at = new Date().toISOString();
             }
             
-            // Aggiorna UI senza ricaricare (più veloce e mantiene PDF in cache)
-            this.unreadCount = Math.max(0, this.unreadCount - 1);
-            this.updateBadge();
-            this.renderNotifications();
+            // Ricarica notifiche dal server per sincronizzare il conteggio (i PDF rimangono in cache)
+            await this.loadNotifications();
         } catch (error) {
             console.error('[NOTIFICATIONS] Errore marcatura notifica come letta:', error);
         }
