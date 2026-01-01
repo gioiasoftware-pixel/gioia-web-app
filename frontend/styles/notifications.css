@@ -5,8 +5,8 @@
 /* Badge notifiche */
 .notifications-badge {
     position: absolute;
-    top: -2px;
-    right: -2px;
+    top: -6px;
+    right: -6px;
     min-width: 18px;
     height: 18px;
     border-radius: 9px;
@@ -24,6 +24,11 @@
     box-sizing: border-box;
 }
 
+/* Dark mode badge border */
+body.dark-theme .notifications-badge {
+    border-color: var(--color-white);
+}
+
 /* Pulsante notifiche mobile */
 .btn-notifications-mobile {
     background: none;
@@ -33,11 +38,38 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--color-text-primary);
+    color: var(--color-granaccia);
     position: relative;
     min-width: 44px;
     min-height: 44px;
     touch-action: manipulation;
+}
+
+/* Dark mode mobile button */
+body.dark-theme .btn-notifications-mobile {
+    color: var(--color-granaccia);
+}
+
+/* Pulsante notifiche desktop */
+#notifications-btn.btn-icon {
+    color: var(--color-granaccia);
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Dark mode desktop button */
+body.dark-theme #notifications-btn.btn-icon {
+    color: var(--color-granaccia);
+}
+
+#notifications-btn.btn-icon:hover {
+    opacity: 0.8;
 }
 
 .btn-notifications-mobile:hover {
