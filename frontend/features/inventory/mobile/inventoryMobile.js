@@ -807,8 +807,64 @@ async function handleSaveClick() {
         return;
     }
     
-    // STEP 3: Mostra popup anteprima modifiche
-    showChangesPreviewPopup(updateData, originalWineData);
+    // STEP 4: Mostra popup anteprima modifiche e salva se confermato
+    const confirmed = await showConfirmSavePopup(updateData, originalWineData);
+    if (!confirmed) {
+        return; // Utente ha annullato
+    }
+    
+    // Mostra loading sul bottone
+    const saveBtn = document.getElementById('inventory-save-btn-mobile');
+    const originalBtnText = saveBtn ? saveBtn.textContent : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'SALVATAGGIO...';
+        saveBtn.style.opacity = '0.6';
+    }
+    
+    // Salva modifiche
+    try {
+        const authToken = getAuthToken();
+        if (!authToken) {
+            showErrorPopup('Errore autenticazione', 'Token di autenticazione non disponibile. Effettua il login.');
+            throw new Error('Token di autenticazione non disponibile');
+        }
+        
+        const response = await fetch(`${window.API_BASE_URL || ''}/api/wines/${currentWineId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Errore salvataggio: ${response.status}`);
+        }
+        
+        const result = await response.json();
+        
+        // Aggiorna dati originali
+        originalWineData = { ...originalWineData, ...updateData };
+        
+        // Mostra messaggio successo
+        showSuccessPopup('Modifiche salvate', 'Le modifiche sono state salvate con successo');
+        
+        // Ricarica dati vino per aggiornare display
+        await showWineDetails(currentWineId);
+        
+    } catch (error) {
+        showErrorPopup('Errore salvataggio', `Errore durante il salvataggio: ${error.message}`);
+    } finally {
+        // Ripristina bottone
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalBtnText;
+            saveBtn.style.opacity = '1';
+        }
+    }
 }
 
 /**
@@ -1099,10 +1155,11 @@ function showSuccessPopup(title, message) {
  * Utility: Escape HTML
  */
 /**
- * Mostra popup anteprima modifiche (prima/dopo)
- * STEP 1: Solo per validare funzionamento bottone salva
+ * Mostra popup conferma salvataggio con dati modificati
+ * Ritorna Promise<boolean> - true se confermato, false se annullato
  */
-function showChangesPreviewPopup(updateData, originalData) {
+function showConfirmSavePopup(updateData, originalData) {
+    return new Promise((resolve) => {
     // Mappa nomi campo per visualizzazione
     const fieldLabels = {
         'producer': 'Produttore',
@@ -1198,7 +1255,7 @@ function showChangesPreviewPopup(updateData, originalData) {
             </div>
         </div>
         <div style="display: flex; gap: 12px;">
-            <button type="button" id="preview-close-btn" style="
+            <button type="button" id="preview-cancel-btn" style="
                 flex: 1;
                 padding: 12px;
                 background: #e5e7eb;
@@ -1208,7 +1265,18 @@ function showChangesPreviewPopup(updateData, originalData) {
                 font-size: 16px;
                 font-weight: 600;
                 cursor: pointer;
-            ">Chiudi</button>
+            ">Annulla</button>
+            <button type="button" id="preview-save-btn" style="
+                flex: 1;
+                padding: 12px;
+                background: #16a34a;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+            ">Salva</button>
         </div>
     `;
     
@@ -1216,17 +1284,21 @@ function showChangesPreviewPopup(updateData, originalData) {
     document.body.appendChild(overlay);
     
     // Gestione click
-    const closeBtn = popup.querySelector('#preview-close-btn');
+    const cancelBtn = popup.querySelector('#preview-cancel-btn');
+    const saveBtn = popup.querySelector('#preview-save-btn');
     
-    const closePopup = () => {
+    const closePopup = (confirmed) => {
         document.body.removeChild(overlay);
+        resolve(confirmed);
     };
     
-    closeBtn.addEventListener('click', closePopup);
+    cancelBtn.addEventListener('click', () => closePopup(false));
+    saveBtn.addEventListener('click', () => closePopup(true));
     overlay.addEventListener('click', (e) => {
         if (e.target === overlay) {
-            closePopup();
+            closePopup(false);
         }
+    });
     });
 }
 
