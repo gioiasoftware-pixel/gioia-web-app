@@ -362,15 +362,10 @@ function setupSaveButton() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati al bottone salva');
     
-    // Handler semplice - STEP 1: Senza preventDefault/stopPropagation
+    // Handler semplice - TEST: Popup fisso per verificare se il click viene intercettato
     const handler = (e) => {
-        // NON chiamare preventDefault/stopPropagation per evitare conflitti
-        // Test diretto: chiama handleSaveClick immediatamente
-        try {
-            handleSaveClick();
-        } catch (err) {
-            showErrorPopup('Errore', `Errore durante il salvataggio: ${err.message}`);
-        }
+        // Popup fisso immediato per test
+        showErrorPopup('TEST BOTTONE', 'Il bottone funziona! Click intercettato correttamente.');
     };
     
     // STEP 1: Listener semplice senza capture
