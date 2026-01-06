@@ -602,11 +602,16 @@ async function showWineDetails(wineId) {
         
         const wineData = await response.json();
         console.log('[InventoryMobile] Dati vino ricevuti:', wineData);
+        console.log('[InventoryMobile] Supplier value:', wineData?.supplier);
+        console.log('[InventoryMobile] Classification value:', wineData?.classification);
+        console.log('[InventoryMobile] Description value:', wineData?.description);
+        console.log('[InventoryMobile] Notes value:', wineData?.notes);
         
         if (!wineData || !wineData.id) {
             throw new Error('Dati vino non validi nella risposta');
         }
         
+        // Salva dati originali (mantieni null se presente, non convertire in undefined)
         originalWineData = { ...wineData };
         
         populateWineForm(wineData);
@@ -672,7 +677,9 @@ function populateWineForm(wineData) {
     ];
     
     form.innerHTML = fields.map(field => {
-        const value = wineData[field.key] || '';
+        // Gestisci correttamente null/undefined per tutti i campi
+        const rawValue = wineData[field.key];
+        const value = (rawValue === null || rawValue === undefined) ? '' : String(rawValue);
         const inputId = `inventory-field-${field.key}-mobile`;
         
         if (field.type === 'textarea') {
