@@ -127,7 +127,10 @@ async function loadInventory() {
         }
         
         const data = await response.json();
-        renderWineList(data.wines || []);
+        // L'API restituisce 'rows' non 'wines'
+        const wines = data.wines || data.rows || [];
+        console.log('[InventoryMobile] Vini caricati:', wines.length, wines);
+        renderWineList(wines);
         
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento inventario:', error);
@@ -148,11 +151,19 @@ function renderWineList(wines) {
     }
     
     wineList.innerHTML = wines.map(wine => {
-        const wineId = wine.id || wine.wine_id;
+        // L'API restituisce 'id' direttamente o potrebbe essere in altri formati
+        const wineId = wine.id || wine.wine_id || wine.wineId;
         const name = wine.name || '-';
-        const producer = wine.producer || '-';
+        // L'API potrebbe restituire 'winery' invece di 'producer'
+        const producer = wine.producer || wine.winery || '-';
         const vintage = wine.vintage || '-';
-        const quantity = wine.quantity || 0;
+        // L'API potrebbe restituire 'qty' invece di 'quantity'
+        const quantity = wine.quantity || wine.qty || 0;
+        
+        if (!wineId) {
+            console.warn('[InventoryMobile] Vino senza ID:', wine);
+            return '';
+        }
         
         return `
             <button type="button" class="inventory-wine-item-btn" data-wine-id="${wineId}">
@@ -162,17 +173,29 @@ function renderWineList(wines) {
                 </div>
             </button>
         `;
-    }).join('');
+    }).filter(html => html !== '').join('');
 }
 
 /**
  * Mostra dettagli vino
  */
 async function showWineDetails(wineId) {
+    if (!wineId || wineId === 'undefined' || wineId === 'null') {
+        console.error('[InventoryMobile] wineId non valido:', wineId);
+        alert('ID vino non valido');
+        return;
+    }
+    
     currentWineId = wineId;
     
     // Mostra schermata dettagli
     showInventoryScreen('details');
+    
+    // Mostra loading
+    const form = document.getElementById('inventory-wine-form-mobile');
+    if (form) {
+        form.innerHTML = '<div class="inventory-loading">Caricamento dettagli vino...</div>';
+    }
     
     // Carica dati vino completi
     try {
@@ -181,17 +204,31 @@ async function showWineDetails(wineId) {
             throw new Error('Token di autenticazione non disponibile');
         }
         
-        const response = await fetch(`${window.API_BASE_URL || ''}/api/wines/${wineId}`, {
+        console.log('[InventoryMobile] Caricamento dettagli vino:', wineId);
+        const url = `${window.API_BASE_URL || ''}/api/wines/${wineId}`;
+        console.log('[InventoryMobile] URL:', url);
+        
+        const response = await fetch(url, {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
         });
         
+        console.log('[InventoryMobile] Response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error(`Errore caricamento vino: ${response.status}`);
+            const errorText = await response.text();
+            console.error('[InventoryMobile] Errore risposta:', errorText);
+            throw new Error(`Errore caricamento vino: ${response.status} - ${errorText}`);
         }
         
         const wineData = await response.json();
+        console.log('[InventoryMobile] Dati vino ricevuti:', wineData);
+        
+        if (!wineData || !wineData.id) {
+            throw new Error('Dati vino non validi nella risposta');
+        }
+        
         originalWineData = { ...wineData };
         
         populateWineForm(wineData);
@@ -200,7 +237,11 @@ async function showWineDetails(wineId) {
         
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento dettagli vino:', error);
-        alert('Errore caricamento dettagli vino');
+        const form = document.getElementById('inventory-wine-form-mobile');
+        if (form) {
+            form.innerHTML = `<div class="inventory-loading" style="color: red;">Errore: ${error.message}</div>`;
+        }
+        alert(`Errore caricamento dettagli vino: ${error.message}`);
     }
 }
 
