@@ -553,25 +553,41 @@
     min-width: 0;
 }
 
+/* Bottone indietro inventario mobile - Stile tondo */
 .mobileRoot .mViewer .inventory-back-btn-mobile {
-    padding: clamp(8px, 2vw, 10px) clamp(12px, 4vw, 20px);
+    width: clamp(40px, 10vw, 50px);
+    height: clamp(40px, 10vw, 50px);
+    min-width: clamp(40px, 10vw, 50px);
+    min-height: clamp(40px, 10vw, 50px);
+    padding: 0;
     background-color: var(--color-granaccia);
     color: var(--color-white);
     border: none;
-    border-radius: 8px;
-    font-size: clamp(12px, 3vw, 14px);
+    border-radius: 50%; /* Bottone completamente tondo */
+    font-size: clamp(10px, 2.5vw, 12px);
     font-weight: 600;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s ease;
     flex-shrink: 0;
-    white-space: nowrap;
-    pointer-events: auto !important; /* Forza pointer-events per garantire che il bottone sia sempre cliccabile */
-    position: relative; /* Crea nuovo stacking context */
-    z-index: 1000; /* Assicura che il bottone sia sopra altri elementi */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .mobileRoot .mViewer .inventory-back-btn-mobile:active {
-    opacity: 0.8;
+    transform: scale(0.95);
+    opacity: 0.9;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mobileRoot .mViewer .inventory-back-btn-mobile:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Container schermate */

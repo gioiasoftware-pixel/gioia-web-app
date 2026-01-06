@@ -41,44 +41,70 @@ function initInventoryMobile() {
 
 /**
  * Setup bottoni inventario
+ * Crea il bottone indietro da zero con stile tondo
  */
 function setupInventoryButtons() {
-    // Setup bottone indietro
-    const backBtn = document.getElementById('inventory-back-btn-mobile');
-    if (backBtn) {
-        // Rimuovi listener esistenti clonando il bottone
-        const newBtn = backBtn.cloneNode(true);
-        backBtn.parentNode.replaceChild(newBtn, backBtn);
-        
-        // Aggiungi listener per click
-        newBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('[InventoryMobile] Bottone indietro cliccato');
-            handleBackClick();
-        });
-        
-        // Aggiungi listener per touchstart (mobile)
-        newBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('[InventoryMobile] Bottone indietro toccato (touchstart)');
-            handleBackClick();
-        }, { passive: false });
-        
-        console.log('[InventoryMobile] Listener bottone indietro aggiunto con successo');
-        return true;
-    } else {
-        console.warn('[InventoryMobile] Bottone indietro non trovato nel DOM, riprovo tra poco...');
-        // Retry dopo un breve delay se il bottone non è ancora disponibile
-        setTimeout(() => {
-            const retryBtn = document.getElementById('inventory-back-btn-mobile');
-            if (retryBtn) {
-                setupInventoryButtons();
-            }
-        }, 100);
+    console.log('[InventoryMobile] === CREAZIONE BOTTONE INDIETRO DA ZERO ===');
+    
+    // Trova l'header
+    const header = document.getElementById('inventory-header-mobile');
+    if (!header) {
+        console.warn('[InventoryMobile] Header inventario non trovato, riprovo...');
+        setTimeout(() => setupInventoryButtons(), 100);
         return false;
     }
+    
+    // Rimuovi bottone esistente se presente
+    const existingBtn = document.getElementById('inventory-back-btn-mobile');
+    if (existingBtn) {
+        console.log('[InventoryMobile] Rimuovo bottone esistente');
+        existingBtn.remove();
+    }
+    
+    // Crea nuovo bottone da zero
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.id = 'inventory-back-btn-mobile';
+    backBtn.className = 'inventory-back-btn-mobile';
+    backBtn.title = 'Indietro';
+    backBtn.setAttribute('aria-label', 'Torna indietro');
+    
+    // Icona freccia indietro (testo semplice per ora, può essere sostituita con SVG)
+    backBtn.textContent = '←';
+    backBtn.style.fontSize = 'clamp(18px, 4.5vw, 24px)';
+    backBtn.style.lineHeight = '1';
+    
+    // Aggiungi listener per click
+    backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('[InventoryMobile] ✅ Bottone indietro cliccato!');
+        handleBackClick();
+    }, { capture: true });
+    
+    // Aggiungi listener per touchstart (mobile)
+    backBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('[InventoryMobile] ✅ Bottone indietro toccato (touchstart)!');
+        handleBackClick();
+    }, { capture: true, passive: false });
+    
+    // Aggiungi listener per touchend (backup)
+    backBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, { capture: true, passive: false });
+    
+    // Aggiungi bottone all'header
+    header.appendChild(backBtn);
+    
+    console.log('[InventoryMobile] ✅ Bottone indietro creato e aggiunto con successo');
+    console.log('[InventoryMobile] Bottone posizione:', backBtn.getBoundingClientRect());
+    
+    return true;
 }
 
 /**
