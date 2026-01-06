@@ -19,59 +19,80 @@ let debugLogs = [];
 const MAX_LOGS = 50;
 
 function createDebugLogPanel() {
-    console.log('[InventoryMobile] === CREAZIONE PANNELLO LOG DEBUG ===');
+    console.log('[InventoryMobile] === CREAZIONE PANNELLO LOG DEBUG (POPUP) ===');
     
-    // Rimuovi pannello esistente se presente
+    // Rimuovi pannello e overlay esistenti se presenti
     const existing = document.getElementById('inventory-debug-log-panel');
     if (existing) {
         console.log('[InventoryMobile] Rimuovo pannello esistente');
         existing.remove();
     }
+    const existingOverlay = document.getElementById('inventory-debug-log-overlay');
+    if (existingOverlay) {
+        console.log('[InventoryMobile] Rimuovo overlay esistente');
+        existingOverlay.remove();
+    }
     
-    // Crea pannello
+    // Crea OVERLAY (sfondo scuro)
+    const overlay = document.createElement('div');
+    overlay.id = 'inventory-debug-log-overlay';
+    overlay.style.cssText = `
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0, 0, 0, 0.3) !important;
+        z-index: 999998 !important;
+        pointer-events: none !important;
+    `;
+    document.body.appendChild(overlay);
+    
+    // Crea PANNELLO POPUP (finestra principale)
     debugLogPanel = document.createElement('div');
     debugLogPanel.id = 'inventory-debug-log-panel';
     
-    // Stili FORZATI per garantire visibilità - PANNELLO GRANDE E VISIBILE
+    // Stili FORZATI per garantire visibilità - POPUP MODAL
     debugLogPanel.style.cssText = `
         position: fixed !important;
         top: 50% !important;
         left: 50% !important;
         transform: translate(-50%, -50%) !important;
         width: 90% !important;
-        max-width: 500px !important;
-        min-width: 300px !important;
-        height: 60% !important;
-        max-height: 400px !important;
-        min-height: 300px !important;
-        background: rgba(0, 0, 0, 0.98) !important;
+        max-width: 600px !important;
+        min-width: 320px !important;
+        height: 70% !important;
+        max-height: 500px !important;
+        min-height: 350px !important;
+        background: #000000 !important;
         color: #00ff00 !important;
         font-family: 'Courier New', monospace !important;
-        font-size: 12px !important;
-        padding: 15px !important;
-        border-radius: 12px !important;
-        border: 3px solid #00ff00 !important;
+        font-size: 13px !important;
+        padding: 0 !important;
+        border-radius: 16px !important;
+        border: 4px solid #00ff00 !important;
         z-index: 999999 !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        box-shadow: 0 8px 24px rgba(0, 255, 0, 0.8) !important;
+        overflow: hidden !important;
+        box-shadow: 0 10px 40px rgba(0, 255, 0, 1) !important;
         pointer-events: auto !important;
-        display: block !important;
+        display: flex !important;
+        flex-direction: column !important;
         visibility: visible !important;
         opacity: 1 !important;
     `;
     
     console.log('[InventoryMobile] Pannello creato, stili applicati');
     
-    // Header del pannello
+    // Header del pannello con pulsanti
     const header = document.createElement('div');
     header.style.cssText = `
         display: flex !important;
         justify-content: space-between !important;
         align-items: center !important;
-        margin-bottom: 8px !important;
-        padding-bottom: 8px !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+        padding: 12px 15px !important;
+        border-bottom: 2px solid #00ff00 !important;
+        background: rgba(0, 255, 0, 0.1) !important;
+        flex-shrink: 0 !important;
     `;
     
     const title = document.createElement('div');
@@ -79,13 +100,19 @@ function createDebugLogPanel() {
     title.style.cssText = `
         font-weight: bold !important;
         color: #00ff00 !important;
-        font-size: 14px !important;
+        font-size: 15px !important;
+    `;
+    
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+        display: flex !important;
+        gap: 8px !important;
     `;
     
     const clearBtn = document.createElement('button');
     clearBtn.textContent = 'CLEAR';
     clearBtn.style.cssText = `
-        background: rgba(255, 0, 0, 0.7) !important;
+        background: rgba(255, 0, 0, 0.8) !important;
         color: white !important;
         border: 1px solid #ff0000 !important;
         padding: 6px 12px !important;
@@ -100,24 +127,62 @@ function createDebugLogPanel() {
         updateLogDisplay();
     });
     
+    const minimizeBtn = document.createElement('button');
+    minimizeBtn.textContent = '−';
+    minimizeBtn.style.cssText = `
+        background: rgba(255, 255, 0, 0.8) !important;
+        color: black !important;
+        border: 1px solid #ffff00 !important;
+        padding: 6px 12px !important;
+        border-radius: 6px !important;
+        font-size: 16px !important;
+        font-weight: bold !important;
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        line-height: 1 !important;
+    `;
+    let isMinimized = false;
+    minimizeBtn.addEventListener('click', () => {
+        const logContainer = document.getElementById('inventory-debug-log-content');
+        if (isMinimized) {
+            debugLogPanel.style.height = '70%';
+            debugLogPanel.style.maxHeight = '500px';
+            if (logContainer) logContainer.style.display = 'block';
+            minimizeBtn.textContent = '−';
+            isMinimized = false;
+        } else {
+            debugLogPanel.style.height = 'auto';
+            debugLogPanel.style.maxHeight = '60px';
+            if (logContainer) logContainer.style.display = 'none';
+            minimizeBtn.textContent = '+';
+            isMinimized = true;
+        }
+    });
+    
+    buttonsContainer.appendChild(clearBtn);
+    buttonsContainer.appendChild(minimizeBtn);
     header.appendChild(title);
-    header.appendChild(clearBtn);
+    header.appendChild(buttonsContainer);
     debugLogPanel.appendChild(header);
     
     // Container log - più grande
     const logContainer = document.createElement('div');
     logContainer.id = 'inventory-debug-log-content';
     logContainer.style.cssText = `
-        height: calc(100% - 60px) !important;
-        max-height: calc(100% - 60px) !important;
+        flex: 1 !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        padding: 5px 0 !important;
+        padding: 15px !important;
+        min-height: 0 !important;
     `;
     debugLogPanel.appendChild(logContainer);
     
-    // Aggiungi al body
+    // Aggiungi al body (sopra tutto)
     document.body.appendChild(debugLogPanel);
+    
+    // Forza che sia sopra TUTTO - anche sopra eventuali modali
+    debugLogPanel.style.zIndex = '9999999';
+    overlay.style.zIndex = '9999998';
     console.log('[InventoryMobile] ✅ Pannello aggiunto al body');
     
     // Forza reflow
