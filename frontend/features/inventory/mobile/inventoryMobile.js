@@ -786,17 +786,29 @@ async function handleSaveClick() {
         if (!input) continue;
         
         const currentValue = input.value.trim();
-        const originalValue = originalWineData?.[backendKey] || '';
+        const originalValue = originalWineData?.[backendKey];
         
-        // Confronta valori (gestisce anche null/undefined)
-        if (currentValue !== String(originalValue || '')) {
+        // Normalizza valori per confronto (null, undefined, '' sono tutti considerati vuoti)
+        const normalizedCurrent = currentValue === '' ? null : currentValue;
+        const normalizedOriginal = originalValue === null || originalValue === undefined || originalValue === '' 
+            ? null 
+            : String(originalValue);
+        
+        // Confronta valori normalizzati
+        const currentForComparison = normalizedCurrent === null ? '' : String(normalizedCurrent);
+        const originalForComparison = normalizedOriginal === null ? '' : String(normalizedOriginal);
+        
+        if (currentForComparison !== originalForComparison) {
             // Converti tipo se necessario
             if (backendKey === 'vintage' || backendKey === 'quantity') {
-                updateData[backendKey] = currentValue ? parseInt(currentValue) : null;
+                // Per vintage e quantity: invia null se vuoto, altrimenti numero
+                updateData[backendKey] = normalizedCurrent ? parseInt(normalizedCurrent) : null;
             } else if (backendKey === 'selling_price' || backendKey === 'cost_price' || backendKey === 'alcohol_content') {
-                updateData[backendKey] = currentValue ? parseFloat(currentValue) : null;
+                // Per prezzi e gradazione: invia null se vuoto, altrimenti float
+                updateData[backendKey] = normalizedCurrent ? parseFloat(normalizedCurrent) : null;
             } else {
-                updateData[backendKey] = currentValue || null;
+                // Per stringhe: invia null se vuoto, altrimenti stringa
+                updateData[backendKey] = normalizedCurrent || null;
             }
         }
     }
