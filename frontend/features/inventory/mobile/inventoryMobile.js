@@ -34,7 +34,8 @@ function initInventoryMobile() {
     
     // Setup event listeners
     setupWineListClickHandlers();
-    setupSaveButton();
+    // setupSaveButton() RIMOSSO da qui - viene chiamato troppo presto quando il bottone è nascosto
+    // Verrà chiamato quando si apre un vino (showWineDetails) e tramite MutationObserver
     setupSearchAndFilters();
     
     // Carica inventario iniziale
@@ -46,18 +47,40 @@ function initInventoryMobile() {
         // Setup immediato se già visibile
         if (!viewerPanel.hidden) {
             setupInventoryButtons();
+            // Setup bottone salva se details screen è visibile
+            setupSaveButtonIfVisible();
         }
         
         // Observer per quando diventa visibile
         const observer = new MutationObserver(() => {
-            if (!viewerPanel.hidden && !backButtonInitialized) {
-                console.log('[InventoryMobile] ViewerPanel visibile, setup bottone');
-                setupInventoryButtons();
+            if (!viewerPanel.hidden) {
+                if (!backButtonInitialized) {
+                    console.log('[InventoryMobile] ViewerPanel visibile, setup bottone indietro');
+                    setupInventoryButtons();
+                }
+                // Setup bottone salva se details screen è visibile
+                setupSaveButtonIfVisible();
             }
         });
         observer.observe(viewerPanel, {
             attributes: true,
             attributeFilter: ['hidden']
+        });
+    }
+    
+    // Observer per quando inventory-screen-details diventa visibile
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    if (detailsScreen) {
+        const detailsObserver = new MutationObserver(() => {
+            // Se details screen diventa visibile (rimossa classe hidden), setup bottone salva
+            if (!detailsScreen.classList.contains('hidden') && !saveButtonInitialized) {
+                console.log('[InventoryMobile] Details screen visibile, setup bottone salva');
+                setupSaveButton();
+            }
+        });
+        detailsObserver.observe(detailsScreen, {
+            attributes: true,
+            attributeFilter: ['class']
         });
     }
     
@@ -239,6 +262,16 @@ function setupWineListClickHandlers() {
 }
 
 /**
+ * Verifica se il bottone salva può essere setup (helper)
+ */
+function setupSaveButtonIfVisible() {
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    if (detailsScreen && !detailsScreen.classList.contains('hidden')) {
+        setupSaveButton();
+    }
+}
+
+/**
  * Setup bottone salva modifiche
  * BOTTONE STATICO IN HTML - solo attach handler, niente creazione dinamica
  */
@@ -266,10 +299,24 @@ function setupSaveButton() {
         return false;
     }
     
+    // Verifica che inventory-screen-details sia visibile (non hidden)
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    if (!detailsScreen || detailsScreen.classList.contains('hidden')) {
+        console.log('[InventoryMobile] Details screen nascosto, skip setup salva');
+        return false;
+    }
+    
     // Verifica che il bottone STATICO esista (non crearlo, solo trovarlo)
     const saveBtn = document.getElementById('inventory-save-btn-mobile');
     if (!saveBtn) {
         console.log('[InventoryMobile] Bottone salva statico non trovato nel DOM');
+        return false;
+    }
+    
+    // Verifica che il bottone sia effettivamente visibile (non nascosto da CSS o parent)
+    const computedStyle = window.getComputedStyle(saveBtn);
+    if (computedStyle.display === 'none' || computedStyle.visibility === 'hidden' || computedStyle.opacity === '0') {
+        console.log('[InventoryMobile] Bottone salva non visibile (CSS), skip setup');
         return false;
     }
     
@@ -569,9 +616,23 @@ async function showWineDetails(wineId) {
         // Setup bottone salva quando la schermata dettagli è pronta
         // Reset flag per permettere re-setup quando si apre un nuovo vino
         saveButtonInitialized = false;
-        setTimeout(() => {
-            setupSaveButton();
-        }, 100);
+        
+        // Usa requestAnimationFrame per assicurarsi che il DOM sia aggiornato
+        // Poi verifica che lo screen sia visibile prima di fare setup
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                // Doppio requestAnimationFrame per assicurarsi che le classi CSS siano applicate
+                const detailsScreen = document.getElementById('inventory-screen-details');
+                if (detailsScreen && !detailsScreen.classList.contains('hidden')) {
+                    setupSaveButton();
+                } else {
+                    // Se ancora nascosto, riprova dopo un breve delay
+                    setTimeout(() => {
+                        setupSaveButton();
+                    }, 50);
+                }
+            });
+        });
         
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento dettagli vino:', error);
