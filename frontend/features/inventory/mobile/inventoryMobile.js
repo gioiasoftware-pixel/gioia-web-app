@@ -52,10 +52,47 @@ function setupWineListClickHandlers() {
     wineList.addEventListener('click', (e) => {
         const wineItem = e.target.closest('[data-wine-id]');
         if (wineItem) {
-            const wineId = wineItem.getAttribute('data-wine-id');
-            if (wineId) {
-                showWineDetails(parseInt(wineId));
+            // Estrai l'ID dall'attributo data-wine-id
+            let wineIdAttr = wineItem.getAttribute('data-wine-id');
+            
+            // Se getAttribute fallisce o restituisce qualcosa di strano, prova con dataset
+            if (!wineIdAttr || wineIdAttr === 'null' || wineIdAttr === 'undefined') {
+                if (wineItem.dataset?.wineId !== undefined) {
+                    const datasetValue = wineItem.dataset.wineId;
+                    // Se dataset restituisce un oggetto, estrai l'ID dall'oggetto
+                    if (typeof datasetValue === 'object' && datasetValue !== null) {
+                        // Se l'oggetto ha una proprietà 'id', usala
+                        if ('id' in datasetValue && datasetValue.id !== undefined && datasetValue.id !== null) {
+                            wineIdAttr = String(datasetValue.id);
+                        } else {
+                            console.error('[InventoryMobile] dataset.wineId è un oggetto senza proprietà id:', datasetValue);
+                            showErrorPopup('Errore', 'ID vino non valido: oggetto senza proprietà id');
+                            return;
+                        }
+                    } else {
+                        wineIdAttr = String(datasetValue);
+                    }
+                }
             }
+            
+            if (!wineIdAttr || wineIdAttr === 'null' || wineIdAttr === 'undefined') {
+                console.error('[InventoryMobile] ID vino non trovato nell\'elemento cliccato');
+                showErrorPopup('Errore', 'ID vino non trovato nell\'elemento cliccato');
+                return;
+            }
+            
+            // Converti a numero intero
+            const cleanedAttr = String(wineIdAttr).trim().replace(/[^\d-]/g, '');
+            const wineId = parseInt(cleanedAttr, 10);
+            
+            // Validazione
+            if (isNaN(wineId) || wineId <= 0 || !Number.isInteger(wineId)) {
+                console.error('[InventoryMobile] ID vino non valido dopo conversione:', wineIdAttr, '->', wineId);
+                showErrorPopup('Errore', `ID vino non valido: ${wineIdAttr}`);
+                return;
+            }
+            
+            showWineDetails(wineId);
         }
     });
 }
@@ -153,19 +190,41 @@ function renderWineList(wines) {
     }
     
     wineList.innerHTML = wines.map(wine => {
-        // L'API restituisce 'id' direttamente o potrebbe essere in altri formati
-        const wineId = wine.id || wine.wine_id || wine.wineId;
+        // Estrai l'ID - gestisci il caso in cui è un oggetto
+        let wineId = wine.id || wine.wine_id || wine.wineId;
+        
+        // Se l'ID è un oggetto, estrai la proprietà id
+        if (typeof wineId === 'object' && wineId !== null) {
+            if ('id' in wineId && wineId.id !== undefined && wineId.id !== null) {
+                wineId = wineId.id;
+            } else {
+                console.warn('[InventoryMobile] wine.id è un oggetto senza proprietà id:', wineId);
+                return '';
+            }
+        }
+        
+        // Converti a numero intero se necessario
+        if (typeof wineId !== 'number') {
+            const parsedId = parseInt(String(wineId).trim().replace(/[^\d-]/g, ''), 10);
+            if (isNaN(parsedId) || parsedId <= 0 || !Number.isInteger(parsedId)) {
+                console.warn('[InventoryMobile] ID vino non valido:', wineId);
+                return '';
+            }
+            wineId = parsedId;
+        }
+        
+        // Validazione finale: deve essere un numero intero positivo
+        if (!Number.isInteger(wineId) || wineId <= 0) {
+            console.warn('[InventoryMobile] ID vino finale non valido:', wineId);
+            return '';
+        }
+        
         const name = wine.name || '-';
         // L'API potrebbe restituire 'winery' invece di 'producer'
         const producer = wine.producer || wine.winery || '-';
         const vintage = wine.vintage || '-';
         // L'API potrebbe restituire 'qty' invece di 'quantity'
         const quantity = wine.quantity || wine.qty || 0;
-        
-        if (!wineId) {
-            console.warn('[InventoryMobile] Vino senza ID:', wine);
-            return '';
-        }
         
         return `
             <button type="button" class="inventory-wine-item-btn" data-wine-id="${wineId}">
@@ -182,13 +241,47 @@ function renderWineList(wines) {
  * Mostra dettagli vino
  */
 async function showWineDetails(wineId) {
-    if (!wineId || wineId === 'undefined' || wineId === 'null') {
-        console.error('[InventoryMobile] wineId non valido:', wineId);
-        alert('ID vino non valido');
+    // Validazione: assicurati che wineId sia un numero intero valido
+    if (wineId === null || wineId === undefined) {
+        console.error('[InventoryMobile] wineId è null o undefined');
+        showErrorPopup('Errore', 'ID vino non valido: valore nullo o indefinito');
         return;
     }
     
-    currentWineId = wineId;
+    // Se wineId è un oggetto, estrai la proprietà id
+    if (typeof wineId === 'object' && wineId !== null) {
+        if ('id' in wineId && wineId.id !== undefined && wineId.id !== null) {
+            wineId = wineId.id;
+        } else {
+            console.error('[InventoryMobile] wineId è un oggetto senza proprietà id:', wineId);
+            showErrorPopup('Errore', 'ID vino non valido: ricevuto oggetto invece di numero');
+            return;
+        }
+    }
+    
+    // Converti a numero intero se necessario
+    let wineIdNum;
+    if (typeof wineId === 'string') {
+        const cleaned = wineId.trim().replace(/[^\d-]/g, '');
+        wineIdNum = parseInt(cleaned, 10);
+    } else if (typeof wineId === 'number') {
+        wineIdNum = Number.isInteger(wineId) ? wineId : Math.floor(wineId);
+    } else {
+        const str = String(wineId).trim().replace(/[^\d-]/g, '');
+        wineIdNum = parseInt(str, 10);
+    }
+    
+    // Validazione rigorosa
+    if (isNaN(wineIdNum) || !Number.isFinite(wineIdNum) || wineIdNum <= 0 || !Number.isInteger(wineIdNum)) {
+        console.error('[InventoryMobile] wineId non valido dopo conversione:', wineId, '->', wineIdNum);
+        showErrorPopup('Errore', `ID vino non valido: ${wineId}`);
+        return;
+    }
+    
+    // Forza a numero primitivo
+    const finalWineId = Number(wineIdNum);
+    
+    currentWineId = finalWineId;
     
     // Mostra schermata dettagli
     showInventoryScreen('details');
@@ -208,8 +301,8 @@ async function showWineDetails(wineId) {
             throw new Error('Token di autenticazione non disponibile');
         }
         
-        console.log('[InventoryMobile] Caricamento dettagli vino:', wineId);
-        const url = `${window.API_BASE_URL || ''}/api/wines/${wineId}`;
+        console.log('[InventoryMobile] Caricamento dettagli vino:', finalWineId);
+        const url = `${window.API_BASE_URL || ''}/api/wines/${finalWineId}`;
         console.log('[InventoryMobile] URL:', url);
         
         const response = await fetch(url, {
@@ -237,7 +330,8 @@ async function showWineDetails(wineId) {
         
         populateWineForm(wineData);
         updateWineBanner(wineData);
-        loadMovements(wineId);
+        // Usa finalWineId invece di wineId per evitare problemi
+        loadMovements(finalWineId);
         
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento dettagli vino:', error);
