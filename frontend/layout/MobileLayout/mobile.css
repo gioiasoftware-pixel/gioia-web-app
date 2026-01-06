@@ -1010,8 +1010,23 @@
     flex-direction: column;
 }
 
+/* Sezione movimenti sotto il form */
+.mobileRoot .mViewer .inventory-movements-section-mobile {
+    margin-top: clamp(24px, 6vw, 32px);
+    width: 100%;
+}
+
+.mobileRoot .mViewer .inventory-movements-title-mobile {
+    font-size: clamp(16px, 4vw, 18px);
+    font-weight: 600;
+    color: var(--color-dark-gray);
+    margin-bottom: clamp(12px, 3vw, 16px);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 .mobileRoot .mViewer .inventory-movements-log-mobile {
-    max-height: clamp(300px, 80vw, 400px);
+    max-height: clamp(300px, 80vw, 500px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     display: flex;
@@ -1021,7 +1036,7 @@
     background-color: var(--color-light-gray);
     border-radius: 8px;
     box-sizing: border-box;
-    max-width: 100%;
+    width: 100%;
 }
 
 .mobileRoot .mViewer .inventory-movement-card-mobile {

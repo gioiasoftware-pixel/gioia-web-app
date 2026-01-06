@@ -616,8 +616,8 @@ async function showWineDetails(wineId) {
         
         populateWineForm(wineData);
         updateWineBanner(wineData);
-        // Usa finalWineId invece di wineId per evitare problemi
-        loadMovements(finalWineId);
+        // Carica movimenti usando il nome del vino (l'API si aspetta wine_name, non wine_id)
+        loadMovements(wineData.name);
         
         // Setup bottone salva quando la schermata dettagli è pronta
         // Reset flag per permettere re-setup quando si apre un nuovo vino
@@ -744,15 +744,112 @@ function updateQuantityDisplay(quantity) {
 /**
  * Carica movimenti vino
  */
-async function loadMovements(wineId) {
+/**
+ * Carica e visualizza movimenti del vino
+ * @param {string} wineName - Nome del vino (l'API si aspetta wine_name, non wine_id)
+ */
+async function loadMovements(wineName) {
     const movementsLog = document.getElementById('inventory-movements-log-mobile');
-    if (!movementsLog) return;
+    if (!movementsLog) {
+        console.warn('[InventoryMobile] Elemento movements-log non trovato');
+        return;
+    }
     
     movementsLog.innerHTML = '<div class="inventory-loading">Caricamento movimenti...</div>';
     
-    // TODO: Implementare caricamento movimenti
-    // Per ora mostra messaggio placeholder
-    movementsLog.innerHTML = '<div class="inventory-loading">Nessun movimento disponibile</div>';
+    try {
+        if (!wineName) {
+            console.warn('[InventoryMobile] Nome vino non disponibile per caricamento movimenti');
+            movementsLog.innerHTML = '<div class="inventory-loading">Nome vino non disponibile</div>';
+            return;
+        }
+        
+        const authToken = getAuthToken();
+        if (!authToken) {
+            movementsLog.innerHTML = '<div class="inventory-loading">Errore autenticazione</div>';
+            return;
+        }
+        
+        // Chiama API movimenti (endpoint si aspetta wine_name, non wine_id)
+        const response = await fetch(
+            `${window.API_BASE_URL || ''}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[InventoryMobile] Errore caricamento movimenti:', errorText);
+            movementsLog.innerHTML = '<div class="inventory-loading">Errore caricamento movimenti</div>';
+            return;
+        }
+        
+        const data = await response.json();
+        const movements = data.movements || [];
+        
+        if (movements.length === 0) {
+            movementsLog.innerHTML = '<div class="inventory-loading">Nessun movimento disponibile</div>';
+            return;
+        }
+        
+        // Ordina movimenti per data (più recenti prima)
+        movements.sort((a, b) => {
+            const dateA = a.at ? new Date(a.at) : new Date(0);
+            const dateB = b.at ? new Date(b.at) : new Date(0);
+            return dateB - dateA; // Ordine decrescente (più recenti prima)
+        });
+        
+        // Genera HTML movimenti
+        movementsLog.innerHTML = movements.map(movement => {
+            const date = movement.at ? new Date(movement.at).toLocaleString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            }) : 'Data non disponibile';
+            
+            const type = movement.type || 'unknown';
+            const isConsumed = type === 'consumo';
+            const isRifornimento = type === 'rifornimento';
+            
+            const quantityChange = movement.quantity_change || 0;
+            const quantityBefore = movement.quantity_before || 0;
+            const quantityAfter = movement.quantity_after || 0;
+            
+            const typeLabel = isConsumed ? 'Consumo' : isRifornimento ? 'Rifornimento' : 'Movimento';
+            const quantityLabel = isConsumed 
+                ? `-${Math.abs(quantityChange)}` 
+                : `+${Math.abs(quantityChange)}`;
+            
+            return `
+                <div class="inventory-movement-card-mobile ${isConsumed ? 'consumed' : isRifornimento ? 'refilled' : ''}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <span style="font-weight: 600; color: var(--color-dark-gray);">${escapeHtml(typeLabel)}</span>
+                        <span style="font-weight: 700; color: ${isConsumed ? 'var(--color-granaccia)' : 'var(--color-green)'};">
+                            ${quantityLabel}
+                        </span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--color-gray); margin-bottom: 4px;">
+                        ${escapeHtml(date)}
+                    </div>
+                    <div style="font-size: 12px; color: var(--color-gray);">
+                        Da: ${quantityBefore} → A: ${quantityAfter}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        console.log(`[InventoryMobile] ✅ Caricati ${movements.length} movimenti per vino: ${wineName}`);
+        
+    } catch (error) {
+        console.error('[InventoryMobile] Errore caricamento movimenti:', error);
+        movementsLog.innerHTML = '<div class="inventory-loading">Errore caricamento movimenti</div>';
+    }
 }
 
 /**
