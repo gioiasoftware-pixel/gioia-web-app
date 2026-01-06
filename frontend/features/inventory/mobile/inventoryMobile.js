@@ -112,6 +112,8 @@ async function loadInventory() {
     try {
         const authToken = getAuthToken();
         if (!authToken) {
+            // Mostra popup errore invece di solo throw
+            showErrorPopup('Errore autenticazione', 'Token di autenticazione non disponibile. Effettua il login.');
             throw new Error('Token di autenticazione non disponibile');
         }
         
@@ -201,6 +203,8 @@ async function showWineDetails(wineId) {
     try {
         const authToken = getAuthToken();
         if (!authToken) {
+            // Mostra popup errore invece di solo throw
+            showErrorPopup('Errore autenticazione', 'Token di autenticazione non disponibile. Effettua il login.');
             throw new Error('Token di autenticazione non disponibile');
         }
         
@@ -241,7 +245,8 @@ async function showWineDetails(wineId) {
         if (form) {
             form.innerHTML = `<div class="inventory-loading" style="color: red;">Errore: ${error.message}</div>`;
         }
-        alert(`Errore caricamento dettagli vino: ${error.message}`);
+        // Mostra popup errore invece di alert
+        showErrorPopup('Errore caricamento dettagli vino', error.message);
     }
 }
 
@@ -348,7 +353,7 @@ async function loadMovements(wineId) {
  */
 async function handleSaveClick() {
     if (!currentWineId) {
-        alert('Nessun vino selezionato');
+        showErrorPopup('Errore', 'Nessun vino selezionato');
         return;
     }
     
@@ -400,7 +405,7 @@ async function handleSaveClick() {
     
     // Se nessuna modifica, esci
     if (Object.keys(updateData).length === 0) {
-        alert('Nessuna modifica da salvare');
+        showSuccessPopup('Nessuna modifica', 'Non ci sono modifiche da salvare');
         return;
     }
     
@@ -408,6 +413,8 @@ async function handleSaveClick() {
     try {
         const authToken = getAuthToken();
         if (!authToken) {
+            // Mostra popup errore invece di solo throw
+            showErrorPopup('Errore autenticazione', 'Token di autenticazione non disponibile. Effettua il login.');
             throw new Error('Token di autenticazione non disponibile');
         }
         
@@ -431,14 +438,14 @@ async function handleSaveClick() {
         originalWineData = { ...originalWineData, ...updateData };
         
         // Mostra messaggio successo
-        alert('Modifiche salvate con successo');
+        showSuccessPopup('Modifiche salvate', 'Le modifiche sono state salvate con successo');
         
         // Ricarica dati vino per aggiornare display
         await showWineDetails(currentWineId);
         
     } catch (error) {
         console.error('[InventoryMobile] Errore salvataggio:', error);
-        alert(`Errore durante il salvataggio: ${error.message}`);
+        showErrorPopup('Errore salvataggio', `Errore durante il salvataggio: ${error.message}`);
     }
 }
 
@@ -510,9 +517,177 @@ function resetFilters() {
 
 /**
  * Utility: Ottiene token autenticazione
+ * Cerca in tutte le possibili chiavi utilizzate dall'app
  */
 function getAuthToken() {
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    // Prova variabile globale se esiste (usata da chatAPI.js)
+    if (typeof window !== 'undefined' && window.authToken) {
+        return window.authToken;
+    }
+    
+    // Prova tutte le possibili chiavi in ordine di priorità
+    const token = localStorage.getItem('authToken') || 
+                  localStorage.getItem('auth_token') ||
+                  sessionStorage.getItem('authToken') ||
+                  sessionStorage.getItem('auth_token') ||
+                  null;
+    
+    // Debug: se non trovato, mostra popup con info disponibili
+    if (!token && typeof window !== 'undefined') {
+        const availableKeys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token'))) {
+                availableKeys.push(key);
+            }
+        }
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            if (key && (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token'))) {
+                availableKeys.push(key);
+            }
+        }
+        
+        if (availableKeys.length > 0) {
+            console.warn('[InventoryMobile] Token non trovato. Chiavi disponibili:', availableKeys);
+        }
+    }
+    
+    return token;
+}
+
+/**
+ * Utility: Mostra popup errore mobile-friendly
+ */
+function showErrorPopup(title, message) {
+    // Crea popup overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    // Crea popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    popup.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0; color: #dc2626; font-size: 18px; font-weight: 600;">${escapeHtml(title)}</h3>
+            <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(message)}</p>
+        </div>
+        <button type="button" style="
+            width: 100%;
+            padding: 12px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        ">Chiudi</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    
+    // Chiudi al click sul bottone o sull'overlay
+    const closeBtn = popup.querySelector('button');
+    const closePopup = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    closeBtn.addEventListener('click', closePopup);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closePopup();
+        }
+    });
+}
+
+/**
+ * Utility: Mostra popup successo mobile-friendly
+ */
+function showSuccessPopup(title, message) {
+    // Crea popup overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    // Crea popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    popup.innerHTML = `
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0 0 8px 0; color: #16a34a; font-size: 18px; font-weight: 600;">${escapeHtml(title)}</h3>
+            <p style="margin: 0; color: #374151; font-size: 14px; line-height: 1.5;">${escapeHtml(message)}</p>
+        </div>
+        <button type="button" style="
+            width: 100%;
+            padding: 12px;
+            background: #16a34a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        ">OK</button>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    
+    // Chiudi al click sul bottone o sull'overlay
+    const closeBtn = popup.querySelector('button');
+    const closePopup = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    closeBtn.addEventListener('click', closePopup);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closePopup();
+        }
+    });
 }
 
 /**
