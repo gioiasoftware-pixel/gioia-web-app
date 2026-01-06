@@ -362,28 +362,50 @@ function setupSaveButton() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati al bottone salva');
     
-    // Handler semplice
+    // Handler semplice - DEBUG ESTESO
     const handler = (e) => {
         console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO sul bottone salva!');
-        e.preventDefault();
-        e.stopPropagation();
+        console.log('[InventoryMobile] Evento:', e);
+        console.log('[InventoryMobile] Target:', e.target);
+        console.log('[InventoryMobile] CurrentTarget:', e.currentTarget);
+        
+        // NON chiamare preventDefault/stopPropagation per evitare conflitti
+        // e.preventDefault();
+        // e.stopPropagation();
         
         try {
-            handleSaveClick();
+            console.log('[InventoryMobile] Chiamata handleSaveClick()...');
+            const result = handleSaveClick();
+            console.log('[InventoryMobile] handleSaveClick() completato, risultato:', result);
         } catch (err) {
             console.error('[InventoryMobile] ❌ ERRORE in handler salva:', err);
+            console.error('[InventoryMobile] Stack trace:', err.stack);
             showErrorPopup('Errore', `Errore durante il salvataggio: ${err.message}`);
         }
     };
     
-    // UN SOLO LISTENER, SEMPLICE, con capture per intercettare prima di altri
-    saveBtn.addEventListener('click', handler, { capture: true });
+    // UN SOLO LISTENER, SEMPLICE, SENZA capture per evitare conflitti
+    // Prova prima senza capture, poi con capture se necessario
+    saveBtn.addEventListener('click', handler);
+    
+    // Aggiungi anche listener con capture come fallback
+    const handlerCapture = (e) => {
+        console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO (capture) sul bottone salva!');
+        handler(e);
+    };
+    saveBtn.addEventListener('click', handlerCapture, { capture: true });
     
     // Salva riferimento per rimozione futura
     saveButtonListener = handler;
     
-    saveButtonInitialized = true;
+    // Verifica che il listener sia stato aggiunto
     console.log('[InventoryMobile] ✅ Listener aggiunto al bottone salva statico');
+    console.log('[InventoryMobile] Bottone elemento:', saveBtn);
+    console.log('[InventoryMobile] Bottone ID:', saveBtn.id);
+    console.log('[InventoryMobile] Bottone visible:', window.getComputedStyle(saveBtn).visibility);
+    console.log('[InventoryMobile] Bottone display:', window.getComputedStyle(saveBtn).display);
+    
+    saveButtonInitialized = true;
     return true;
 }
 
@@ -747,7 +769,12 @@ async function loadMovements(wineId) {
  * Gestisce click salva modifiche
  */
 async function handleSaveClick() {
+    console.log('[InventoryMobile] ===== handleSaveClick() CHIAMATO =====');
+    console.log('[InventoryMobile] currentWineId:', currentWineId);
+    console.log('[InventoryMobile] originalWineData:', originalWineData);
+    
     if (!currentWineId) {
+        console.error('[InventoryMobile] ❌ Nessun vino selezionato');
         showErrorPopup('Errore', 'Nessun vino selezionato');
         return;
     }
