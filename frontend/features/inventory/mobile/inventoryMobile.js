@@ -820,8 +820,15 @@ async function handleSaveClick() {
                 // Per prezzi e gradazione: invia null se vuoto, altrimenti float
                 updateData[backendKey] = normalizedCurrent ? parseFloat(normalizedCurrent) : null;
             } else {
-                // Per stringhe: invia null se vuoto, altrimenti stringa
-                updateData[backendKey] = normalizedCurrent || null;
+                // Per stringhe (supplier, classification, description, notes, etc.):
+                // Se vuoto → invia null, altrimenti stringa (non stringa vuota)
+                // IMPORTANTE: per campi textarea e stringhe lunghe, mantieni il valore anche se contiene solo spazi
+                if (normalizedCurrent === null) {
+                    updateData[backendKey] = null;
+                } else {
+                    // Mantieni il valore come stringa (può contenere spazi per textarea)
+                    updateData[backendKey] = String(normalizedCurrent);
+                }
             }
         }
     }
