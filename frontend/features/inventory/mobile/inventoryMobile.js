@@ -791,22 +791,35 @@ async function loadMovements(wineName) {
         }
         
         const data = await response.json();
-        const movements = data.movements || [];
+        let movements = data.movements || [];
         
         if (movements.length === 0) {
             movementsLog.innerHTML = '<div class="inventory-loading">Nessun movimento disponibile</div>';
             return;
         }
         
-        // Ordina movimenti per data (più recenti prima)
-        movements.sort((a, b) => {
+        // Salva current_stock e opening_stock dalla risposta API
+        window.currentWineStock = {
+            current: data.current_stock || 0,
+            opening: data.opening_stock || 0
+        };
+        
+        // Ordina movimenti per data (più recenti prima) per la lista
+        const movementsForList = [...movements].sort((a, b) => {
             const dateA = a.at ? new Date(a.at) : new Date(0);
             const dateB = b.at ? new Date(b.at) : new Date(0);
             return dateB - dateA; // Ordine decrescente (più recenti prima)
         });
         
-        // Genera HTML movimenti
-        movementsLog.innerHTML = movements.map(movement => {
+        // Ordina movimenti per data (più vecchi prima) per il grafico
+        movements.sort((a, b) => {
+            const dateA = a.at ? new Date(a.at) : new Date(0);
+            const dateB = b.at ? new Date(b.at) : new Date(0);
+            return dateA - dateB; // Ordine crescente (più vecchi prima) per grafico
+        });
+        
+        // Genera HTML movimenti (usa lista ordinata per display)
+        movementsLog.innerHTML = movementsForList.map(movement => {
             const date = movement.at ? new Date(movement.at).toLocaleString('it-IT', {
                 day: '2-digit',
                 month: '2-digit',
@@ -945,21 +958,21 @@ function renderMovementsChartPreview(movements) {
         // Pulisci container
         previewContainer.innerHTML = '';
         
-        // Converti movimenti nel formato atteso
+        // Converti movimenti nel formato atteso (movements già ordinati cronologicamente)
         const chartMovements = movements.map(m => ({
             at: m.at ? new Date(m.at) : new Date(),
-            delta: m.quantity_change || 0
+            delta: m.quantity_change || 0  // quantity_change è già positivo per rifornimenti, negativo per consumi
         }));
         
-        // Calcola opening stock (primo movimento quantity_before o 0)
-        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+        // Usa opening_stock e current_stock dalla risposta API (fonte unica di verità)
+        const openingStock = window.currentWineStock?.opening || (movements.length > 0 && movements[0].quantity_before !== undefined 
             ? movements[0].quantity_before 
-            : 0;
+            : 0);
         
-        // Calcola final stock (ultimo movimento quantity_after o opening stock)
-        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+        // Usa current_stock dalla risposta API invece di calcolarlo
+        const finalStock = window.currentWineStock?.current || (movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
             ? movements[movements.length - 1].quantity_after
-            : openingStock;
+            : openingStock);
         
         // Crea grafico preview
         const chart = createAnchoredFlowStockChart(previewContainer, chartMovements, {
@@ -1071,19 +1084,19 @@ function renderMovementsChartFullscreen(wineName) {
         // Pulisci container
         chartContainer.innerHTML = '';
         
-        // Converti movimenti
+        // Converti movimenti (movements già ordinati cronologicamente)
         const chartMovements = movements.map(m => ({
             at: m.at ? new Date(m.at) : new Date(),
-            delta: m.quantity_change || 0
+            delta: m.quantity_change || 0  // quantity_change è già positivo per rifornimenti, negativo per consumi
         }));
         
-        // Calcola opening/final stock
-        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+        // Usa opening_stock e current_stock dalla risposta API
+        const openingStock = window.currentWineStock?.opening || (movements.length > 0 && movements[0].quantity_before !== undefined 
             ? movements[0].quantity_before 
-            : 0;
-        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+            : 0);
+        const finalStock = window.currentWineStock?.current || (movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
             ? movements[movements.length - 1].quantity_after
-            : openingStock;
+            : openingStock);
         
         // Crea grafico fullscreen con preset settimana
         const chart = createAnchoredFlowStockChart(chartContainer, chartMovements, {
@@ -1168,19 +1181,19 @@ async function renderMovementsChartFullscreenWithPeriod(wineName, period) {
     try {
         chartContainer.innerHTML = '';
         
-        // Converti movimenti
+        // Converti movimenti (movements già ordinati cronologicamente)
         const chartMovements = movements.map(m => ({
             at: m.at ? new Date(m.at) : new Date(),
-            delta: m.quantity_change || 0
+            delta: m.quantity_change || 0  // quantity_change è già positivo per rifornimenti, negativo per consumi
         }));
         
-        // Calcola opening/final stock
-        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+        // Usa opening_stock e current_stock dalla risposta API
+        const openingStock = window.currentWineStock?.opening || (movements.length > 0 && movements[0].quantity_before !== undefined 
             ? movements[0].quantity_before 
-            : 0;
-        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+            : 0);
+        const finalStock = window.currentWineStock?.current || (movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
             ? movements[movements.length - 1].quantity_after
-            : openingStock;
+            : openingStock);
         
         // Crea grafico con periodo specificato
         const chart = createAnchoredFlowStockChart(chartContainer, chartMovements, {
