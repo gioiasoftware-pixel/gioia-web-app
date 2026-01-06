@@ -9,6 +9,12 @@
  * Inizializza la chat desktop
  */
 function initChatDesktop() {
+    // Verifica che siamo nel namespace desktop
+    if (!window.LayoutBoundary?.isDesktopNamespace()) {
+        console.warn('[ChatDesktop] Namespace non desktop, skip inizializzazione');
+        return;
+    }
+    
     const selectors = window.ChatSelectors?.get();
     if (!selectors || selectors.layout !== 'desktop') {
         console.warn('[ChatDesktop] Selectors non disponibili o layout non desktop');
@@ -95,6 +101,17 @@ if (typeof window !== 'undefined') {
         handleSubmit: handleChatSubmitDesktop,
         addMessage: addChatMessageDesktop
     };
+    
+    // Auto-inizializzazione quando DOM è pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            initChatDesktop();
+        });
+    } else {
+        // DOM già caricato
+        initChatDesktop();
+    }
 }
+
 
 
