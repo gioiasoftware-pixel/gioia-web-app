@@ -19,33 +19,48 @@ let debugLogs = [];
 const MAX_LOGS = 50;
 
 function createDebugLogPanel() {
+    console.log('[InventoryMobile] === CREAZIONE PANNELLO LOG DEBUG ===');
+    
     // Rimuovi pannello esistente se presente
     const existing = document.getElementById('inventory-debug-log-panel');
     if (existing) {
+        console.log('[InventoryMobile] Rimuovo pannello esistente');
         existing.remove();
     }
     
     // Crea pannello
     debugLogPanel = document.createElement('div');
     debugLogPanel.id = 'inventory-debug-log-panel';
+    
+    // Stili FORZATI per garantire visibilità
     debugLogPanel.style.cssText = `
         position: fixed !important;
         bottom: 20px !important;
         left: 10px !important;
         right: 10px !important;
+        width: calc(100% - 20px) !important;
+        max-width: calc(100% - 20px) !important;
+        min-width: 200px !important;
         max-height: 200px !important;
-        background: rgba(0, 0, 0, 0.9) !important;
+        min-height: 100px !important;
+        background: rgba(0, 0, 0, 0.95) !important;
         color: #00ff00 !important;
         font-family: 'Courier New', monospace !important;
         font-size: 11px !important;
         padding: 10px !important;
         border-radius: 8px !important;
-        z-index: 99999 !important;
+        border: 2px solid #00ff00 !important;
+        z-index: 999999 !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
-        pointer-events: none !important;
+        box-shadow: 0 4px 12px rgba(0, 255, 0, 0.5) !important;
+        pointer-events: auto !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
     `;
+    
+    console.log('[InventoryMobile] Pannello creato, stili applicati');
     
     // Header del pannello
     const header = document.createElement('div');
@@ -95,8 +110,39 @@ function createDebugLogPanel() {
     `;
     debugLogPanel.appendChild(logContainer);
     
+    // Aggiungi al body
     document.body.appendChild(debugLogPanel);
-    console.log('[InventoryMobile] ✅ Pannello debug log creato');
+    console.log('[InventoryMobile] ✅ Pannello aggiunto al body');
+    
+    // Forza reflow
+    debugLogPanel.offsetHeight;
+    
+    // Verifica che sia visibile
+    setTimeout(() => {
+        const rect = debugLogPanel.getBoundingClientRect();
+        const computed = window.getComputedStyle(debugLogPanel);
+        console.log('[InventoryMobile] === VERIFICA PANNELLO LOG ===');
+        console.log('[InventoryMobile] Posizione:', rect);
+        console.log('[InventoryMobile] Display:', computed.display);
+        console.log('[InventoryMobile] Visibility:', computed.visibility);
+        console.log('[InventoryMobile] Opacity:', computed.opacity);
+        console.log('[InventoryMobile] Z-index:', computed.zIndex);
+        console.log('[InventoryMobile] Width:', computed.width);
+        console.log('[InventoryMobile] Height:', computed.height);
+        
+        if (rect.width === 0 || rect.height === 0) {
+            console.error('[InventoryMobile] ❌ PANNELLO HA DIMENSIONI ZERO!');
+            // Prova a forzare dimensioni
+            debugLogPanel.style.width = '300px';
+            debugLogPanel.style.height = '150px';
+        }
+        
+        // Aggiungi log iniziale
+        addDebugLog('✅ PANNELLO LOG CREATO E VISIBILE', 'info');
+        addDebugLog('Se vedi questo messaggio, il pannello funziona!', 'info');
+    }, 100);
+    
+    console.log('[InventoryMobile] ✅ Pannello debug log creato e aggiunto al DOM');
 }
 
 function addDebugLog(message, type = 'info') {
@@ -114,6 +160,12 @@ function addDebugLog(message, type = 'info') {
         debugLogs.shift();
     }
     
+    // Verifica che il pannello esista
+    if (!debugLogPanel || !document.getElementById('inventory-debug-log-panel')) {
+        console.warn('[InventoryMobile] Pannello log non trovato, ricreo...');
+        createDebugLogPanel();
+    }
+    
     updateLogDisplay();
     
     // Log anche nella console normale
@@ -123,7 +175,22 @@ function addDebugLog(message, type = 'info') {
 
 function updateLogDisplay() {
     const logContainer = document.getElementById('inventory-debug-log-content');
-    if (!logContainer) return;
+    if (!logContainer) {
+        console.warn('[InventoryMobile] Container log non trovato, ricreo pannello...');
+        createDebugLogPanel();
+        // Riprova dopo un breve delay
+        setTimeout(() => {
+            const retryContainer = document.getElementById('inventory-debug-log-content');
+            if (retryContainer) {
+                retryContainer.innerHTML = debugLogs.map(log => {
+                    const color = log.type === 'error' ? '#ff4444' : log.type === 'warn' ? '#ffaa00' : '#00ff00';
+                    return `<div style="color: ${color}; margin-bottom: 2px; word-break: break-word;">[${log.time}] ${log.message}</div>`;
+                }).join('');
+                retryContainer.scrollTop = retryContainer.scrollHeight;
+            }
+        }, 50);
+        return;
+    }
     
     logContainer.innerHTML = debugLogs.map(log => {
         const color = log.type === 'error' ? '#ff4444' : log.type === 'warn' ? '#ffaa00' : '#00ff00';
@@ -147,7 +214,20 @@ function initInventoryMobile() {
     console.log('[InventoryMobile] === INIZIALIZZAZIONE INVENTARIO MOBILE ===');
     
     // Crea pannello debug log
+    console.log('[InventoryMobile] Chiamata createDebugLogPanel()...');
     createDebugLogPanel();
+    
+    // Verifica che sia stato creato
+    setTimeout(() => {
+        const panel = document.getElementById('inventory-debug-log-panel');
+        if (!panel) {
+            console.error('[InventoryMobile] ❌ Pannello non creato! Riprovo...');
+            createDebugLogPanel();
+        } else {
+            console.log('[InventoryMobile] ✅ Pannello trovato nel DOM');
+        }
+    }, 50);
+    
     addDebugLog('=== INIZIALIZZAZIONE INVENTARIO MOBILE ===', 'info');
     
     // Setup event listeners
