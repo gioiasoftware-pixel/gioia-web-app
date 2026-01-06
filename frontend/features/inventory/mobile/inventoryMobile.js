@@ -1192,26 +1192,32 @@ async function renderMovementsChartFullscreenWithPeriod(wineName, period) {
     try {
         chartContainer.innerHTML = '';
         
-        // Converti movimenti (movements già ordinati cronologicamente)
-        const chartMovements = movements.map(m => ({
-            at: m.at ? new Date(m.at) : new Date(),
-            delta: m.quantity_change || 0  // quantity_change è già positivo per rifornimenti, negativo per consumi
+        // Passa movimenti raw come fa il desktop
+        const rawMovements = movements.map(m => ({
+            type: m.type || 'unknown',
+            quantity_change: m.quantity_change || 0,
+            quantity: m.quantity || Math.abs(m.quantity_change || 0),
+            quantity_before: m.quantity_before,
+            quantity_after: m.quantity_after,
+            date: m.at,
+            at: m.at
         }));
         
-        // Usa opening_stock e current_stock dalla risposta API
-        const openingStock = window.currentWineStock?.opening || (movements.length > 0 && movements[0].quantity_before !== undefined 
-            ? movements[0].quantity_before 
-            : 0);
-        const finalStock = window.currentWineStock?.current || (movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
-            ? movements[movements.length - 1].quantity_after
-            : openingStock);
+        // Prepara dati come nel desktop
+        const movementsData = {
+            movements: rawMovements,
+            current_stock: window.currentWineStock?.current || (movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+                ? movements[movements.length - 1].quantity_after
+                : 0),
+            opening_stock: window.currentWineStock?.opening || (movements.length > 0 && movements[0].quantity_before !== undefined 
+                ? movements[0].quantity_before 
+                : 0)
+        };
         
-        // Crea grafico con periodo specificato
-        const chart = createAnchoredFlowStockChart(chartContainer, chartMovements, {
+        // Crea grafico con periodo specificato - passa movementsData come nel desktop
+        const chart = createAnchoredFlowStockChart(chartContainer, movementsData, {
             now: new Date(),
             preset: period,
-            openingStock: Math.max(0, openingStock),
-            finalStock: finalStock,
             responsive: true,
             maintainAspectRatio: false
         });
