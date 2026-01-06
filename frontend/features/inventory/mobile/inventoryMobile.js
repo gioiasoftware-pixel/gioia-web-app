@@ -32,28 +32,29 @@ function createDebugLogPanel() {
     debugLogPanel = document.createElement('div');
     debugLogPanel.id = 'inventory-debug-log-panel';
     
-    // Stili FORZATI per garantire visibilità
+    // Stili FORZATI per garantire visibilità - PANNELLO GRANDE E VISIBILE
     debugLogPanel.style.cssText = `
         position: fixed !important;
-        bottom: 20px !important;
-        left: 10px !important;
-        right: 10px !important;
-        width: calc(100% - 20px) !important;
-        max-width: calc(100% - 20px) !important;
-        min-width: 200px !important;
-        max-height: 200px !important;
-        min-height: 100px !important;
-        background: rgba(0, 0, 0, 0.95) !important;
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) !important;
+        width: 90% !important;
+        max-width: 500px !important;
+        min-width: 300px !important;
+        height: 60% !important;
+        max-height: 400px !important;
+        min-height: 300px !important;
+        background: rgba(0, 0, 0, 0.98) !important;
         color: #00ff00 !important;
         font-family: 'Courier New', monospace !important;
-        font-size: 11px !important;
-        padding: 10px !important;
-        border-radius: 8px !important;
-        border: 2px solid #00ff00 !important;
+        font-size: 12px !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        border: 3px solid #00ff00 !important;
         z-index: 999999 !important;
         overflow-y: auto !important;
         overflow-x: hidden !important;
-        box-shadow: 0 4px 12px rgba(0, 255, 0, 0.5) !important;
+        box-shadow: 0 8px 24px rgba(0, 255, 0, 0.8) !important;
         pointer-events: auto !important;
         display: block !important;
         visibility: visible !important;
@@ -74,21 +75,23 @@ function createDebugLogPanel() {
     `;
     
     const title = document.createElement('div');
-    title.textContent = '🔍 DEBUG LOG';
+    title.textContent = '🔍 DEBUG LOG - INVENTARIO MOBILE';
     title.style.cssText = `
         font-weight: bold !important;
         color: #00ff00 !important;
+        font-size: 14px !important;
     `;
     
     const clearBtn = document.createElement('button');
     clearBtn.textContent = 'CLEAR';
     clearBtn.style.cssText = `
-        background: rgba(255, 0, 0, 0.5) !important;
+        background: rgba(255, 0, 0, 0.7) !important;
         color: white !important;
-        border: none !important;
-        padding: 4px 8px !important;
-        border-radius: 4px !important;
-        font-size: 10px !important;
+        border: 1px solid #ff0000 !important;
+        padding: 6px 12px !important;
+        border-radius: 6px !important;
+        font-size: 11px !important;
+        font-weight: bold !important;
         cursor: pointer !important;
         pointer-events: auto !important;
     `;
@@ -101,12 +104,15 @@ function createDebugLogPanel() {
     header.appendChild(clearBtn);
     debugLogPanel.appendChild(header);
     
-    // Container log
+    // Container log - più grande
     const logContainer = document.createElement('div');
     logContainer.id = 'inventory-debug-log-content';
     logContainer.style.cssText = `
-        max-height: 150px !important;
+        height: calc(100% - 60px) !important;
+        max-height: calc(100% - 60px) !important;
         overflow-y: auto !important;
+        overflow-x: hidden !important;
+        padding: 5px 0 !important;
     `;
     debugLogPanel.appendChild(logContainer);
     
@@ -194,7 +200,7 @@ function updateLogDisplay() {
     
     logContainer.innerHTML = debugLogs.map(log => {
         const color = log.type === 'error' ? '#ff4444' : log.type === 'warn' ? '#ffaa00' : '#00ff00';
-        return `<div style="color: ${color}; margin-bottom: 2px; word-break: break-word;">[${log.time}] ${log.message}</div>`;
+        return `<div style="color: ${color}; margin-bottom: 4px; word-break: break-word; line-height: 1.4;">[${log.time}] ${log.message}</div>`;
     }).join('');
     
     // Auto-scroll all'ultimo log
@@ -213,11 +219,11 @@ function initInventoryMobile() {
     
     console.log('[InventoryMobile] === INIZIALIZZAZIONE INVENTARIO MOBILE ===');
     
-    // Crea pannello debug log
+    // Crea pannello debug log IMMEDIATAMENTE quando si entra nell'inventario
     console.log('[InventoryMobile] Chiamata createDebugLogPanel()...');
     createDebugLogPanel();
     
-    // Verifica che sia stato creato
+    // Verifica che sia stato creato e forzalo visibile
     setTimeout(() => {
         const panel = document.getElementById('inventory-debug-log-panel');
         if (!panel) {
@@ -225,10 +231,39 @@ function initInventoryMobile() {
             createDebugLogPanel();
         } else {
             console.log('[InventoryMobile] ✅ Pannello trovato nel DOM');
+            // Forza visibilità
+            panel.style.display = 'block';
+            panel.style.visibility = 'visible';
+            panel.style.opacity = '1';
+            panel.style.zIndex = '999999';
         }
     }, 50);
     
+    // Crea anche quando il viewerPanel diventa visibile
+    const viewerPanelForObserver = document.getElementById('viewerPanel');
+    if (viewerPanelForObserver) {
+        const observer = new MutationObserver(() => {
+            if (!viewerPanelForObserver.hidden) {
+                const panel = document.getElementById('inventory-debug-log-panel');
+                if (!panel) {
+                    console.log('[InventoryMobile] ViewerPanel visibile, creo pannello log...');
+                    createDebugLogPanel();
+                } else {
+                    // Forza visibilità quando viewerPanel diventa visibile
+                    panel.style.display = 'block';
+                    panel.style.visibility = 'visible';
+                    panel.style.opacity = '1';
+                }
+            }
+        });
+        observer.observe(viewerPanelForObserver, {
+            attributes: true,
+            attributeFilter: ['hidden']
+        });
+    }
+    
     addDebugLog('=== INIZIALIZZAZIONE INVENTARIO MOBILE ===', 'info');
+    addDebugLog('PANNELLO LOG VISIBILE - Se non lo vedi, controlla console', 'info');
     
     // Setup event listeners
     // Nota: setupInventoryButtons() viene chiamato per primo per assicurarsi che il bottone indietro funzioni
