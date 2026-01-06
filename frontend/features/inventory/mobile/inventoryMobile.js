@@ -678,6 +678,10 @@ function populateWineForm(wineData) {
     
     form.innerHTML = fields.map(field => {
         // Gestisci correttamente null/undefined per tutti i campi
+        // DEBUG: verifica che il campo esista nei dati
+        if (!(field.key in wineData)) {
+            console.warn(`[InventoryMobile] Campo ${field.key} non trovato in wineData. Chiavi disponibili:`, Object.keys(wineData));
+        }
         const rawValue = wineData[field.key];
         const value = (rawValue === null || rawValue === undefined) ? '' : String(rawValue);
         const inputId = `inventory-field-${field.key}-mobile`;
