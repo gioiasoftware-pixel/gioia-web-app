@@ -788,17 +788,30 @@ async function handleSaveClick() {
         const currentValue = input.value.trim();
         const originalValue = originalWineData?.[backendKey];
         
-        // Normalizza valori per confronto (null, undefined, '' sono tutti considerati vuoti)
-        const normalizedCurrent = currentValue === '' ? null : currentValue;
-        const normalizedOriginal = originalValue === null || originalValue === undefined || originalValue === '' 
+        // Normalizza valori originali: null, undefined, '' → null
+        const normalizedOriginal = (originalValue === null || originalValue === undefined || originalValue === '') 
             ? null 
-            : String(originalValue);
+            : String(originalValue).trim();
+        
+        // Normalizza valori correnti: '' → null, altrimenti mantieni valore
+        const normalizedCurrent = currentValue === '' ? null : currentValue;
         
         // Confronta valori normalizzati
-        const currentForComparison = normalizedCurrent === null ? '' : String(normalizedCurrent);
-        const originalForComparison = normalizedOriginal === null ? '' : String(normalizedOriginal);
+        // Se entrambi sono null → nessuna modifica
+        // Se uno è null e l'altro no → modifica
+        // Se entrambi hanno valore → confronta stringhe
+        let hasChanged = false;
         
-        if (currentForComparison !== originalForComparison) {
+        if (normalizedCurrent === null && normalizedOriginal === null) {
+            hasChanged = false; // Entrambi vuoti, nessuna modifica
+        } else if (normalizedCurrent === null || normalizedOriginal === null) {
+            hasChanged = true; // Uno vuoto e l'altro no, c'è modifica
+        } else {
+            // Entrambi hanno valore, confronta
+            hasChanged = String(normalizedCurrent) !== String(normalizedOriginal);
+        }
+        
+        if (hasChanged) {
             // Converti tipo se necessario
             if (backendKey === 'vintage' || backendKey === 'quantity') {
                 // Per vintage e quantity: invia null se vuoto, altrimenti numero
