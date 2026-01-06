@@ -1457,6 +1457,12 @@ function handleBackClick() {
     if (isChartVisible) {
         console.log('[InventoryMobile] Dalla pagina chart → torno ai dettagli');
         console.log('📊 Chart → Dettagli', 'info');
+        
+        // Distruggi chart fullscreen se presente
+        if (window.currentChartFullscreen && typeof window.currentChartFullscreen.destroy === 'function') {
+            window.currentChartFullscreen.destroy();
+            window.currentChartFullscreen = null;
+        }
         showInventoryScreen('details');
         return;
     }
