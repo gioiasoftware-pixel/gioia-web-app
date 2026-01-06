@@ -840,8 +840,31 @@ async function handleSaveClick() {
         });
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Errore salvataggio: ${response.status}`);
+            let errorMessage = `Errore salvataggio: ${response.status}`;
+            try {
+                const errorData = await response.json();
+                // Gestisci diversi formati di errore
+                if (errorData.detail) {
+                    errorMessage = typeof errorData.detail === 'string' 
+                        ? errorData.detail 
+                        : JSON.stringify(errorData.detail);
+                } else if (errorData.message) {
+                    errorMessage = typeof errorData.message === 'string'
+                        ? errorData.message
+                        : JSON.stringify(errorData.message);
+                } else if (errorData.error) {
+                    errorMessage = typeof errorData.error === 'string'
+                        ? errorData.error
+                        : JSON.stringify(errorData.error);
+                } else {
+                    errorMessage = JSON.stringify(errorData);
+                }
+            } catch (e) {
+                // Se non riesce a parsare JSON, usa il testo della risposta
+                const errorText = await response.text().catch(() => 'Errore sconosciuto');
+                errorMessage = errorText || `Errore salvataggio: ${response.status}`;
+            }
+            throw new Error(errorMessage);
         }
         
         const result = await response.json();
@@ -856,7 +879,16 @@ async function handleSaveClick() {
         await showWineDetails(currentWineId);
         
     } catch (error) {
-        showErrorPopup('Errore salvataggio', `Errore durante il salvataggio: ${error.message}`);
+        // Gestisci errori in modo più robusto
+        let errorMessage = 'Errore sconosciuto durante il salvataggio';
+        if (error instanceof Error) {
+            errorMessage = error.message;
+        } else if (typeof error === 'string') {
+            errorMessage = error;
+        } else if (error && typeof error === 'object') {
+            errorMessage = error.message || error.detail || JSON.stringify(error);
+        }
+        showErrorPopup('Errore salvataggio', errorMessage);
     } finally {
         // Ripristina bottone
         if (saveBtn) {
