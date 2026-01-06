@@ -506,6 +506,16 @@
     pointer-events: auto !important;
 }
 
+/* Assicura che quando viewerPanel non è hidden, pointer-events sia auto */
+#viewerPanel:not([hidden]) {
+    pointer-events: auto !important;
+}
+
+/* Assicura che il bottone abbia sempre pointer-events quando visibile */
+.mobileRoot .mViewer:not([hidden]) .inventory-back-btn-mobile {
+    pointer-events: auto !important;
+}
+
 /* Header comune inventario */
 .mobileRoot .mViewer .inventory-header-mobile {
     flex-shrink: 0;
