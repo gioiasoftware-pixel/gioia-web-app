@@ -21,6 +21,8 @@ function initInventoryMobile() {
         return;
     }
     
+    console.log('[InventoryMobile] === INIZIALIZZAZIONE INVENTARIO MOBILE ===');
+    
     // Setup event listeners
     // Nota: setupInventoryButtons() viene chiamato per primo per assicurarsi che il bottone indietro funzioni
     setupInventoryButtons();
@@ -31,10 +33,40 @@ function initInventoryMobile() {
     // Carica inventario iniziale
     loadInventory();
     
-    // Riprova a setup il bottone dopo un breve delay per gestire timing issues
+    // Riprova a setup il bottone più volte per gestire timing issues
     setTimeout(() => {
+        console.log('[InventoryMobile] Retry 1: setup bottone dopo 200ms');
         setupInventoryButtons();
     }, 200);
+    
+    setTimeout(() => {
+        console.log('[InventoryMobile] Retry 2: setup bottone dopo 500ms');
+        setupInventoryButtons();
+    }, 500);
+    
+    setTimeout(() => {
+        console.log('[InventoryMobile] Retry 3: setup bottone dopo 1000ms');
+        setupInventoryButtons();
+    }, 1000);
+    
+    // Observer per quando l'header diventa visibile
+    const observer = new MutationObserver(() => {
+        const header = document.getElementById('inventory-header-mobile');
+        const viewerPanel = document.getElementById('viewerPanel');
+        if (header && viewerPanel && !viewerPanel.hidden) {
+            console.log('[InventoryMobile] Observer: Header visibile, setup bottone');
+            setupInventoryButtons();
+        }
+    });
+    
+    // Osserva il viewerPanel per cambiamenti di visibilità
+    const viewerPanel = document.getElementById('viewerPanel');
+    if (viewerPanel) {
+        observer.observe(viewerPanel, {
+            attributes: true,
+            attributeFilter: ['hidden']
+        });
+    }
     
     console.log('[InventoryMobile] Inizializzato');
 }
@@ -69,7 +101,31 @@ function setupInventoryButtons() {
     backBtn.title = 'Indietro';
     backBtn.setAttribute('aria-label', 'Torna indietro');
     
-    // Icona freccia indietro (testo semplice per ora, può essere sostituita con SVG)
+    // Stili inline per garantire visibilità e posizionamento
+    backBtn.style.cssText = `
+        width: clamp(40px, 10vw, 50px) !important;
+        height: clamp(40px, 10vw, 50px) !important;
+        min-width: clamp(40px, 10vw, 50px) !important;
+        min-height: clamp(40px, 10vw, 50px) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background-color: var(--color-granaccia) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 1001 !important;
+        flex-shrink: 0 !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    `;
+    
+    // Icona freccia indietro
     backBtn.textContent = '←';
     backBtn.style.fontSize = 'clamp(18px, 4.5vw, 24px)';
     backBtn.style.lineHeight = '1';
@@ -98,11 +154,30 @@ function setupInventoryButtons() {
         e.stopPropagation();
     }, { capture: true, passive: false });
     
-    // Aggiungi bottone all'header
+    // Aggiungi bottone all'header (alla fine, così appare a destra)
     header.appendChild(backBtn);
     
+    // Forza il layout per assicurarsi che il bottone sia visibile
+    backBtn.offsetHeight; // Trigger reflow
+    
+    // Verifica che il bottone sia visibile
+    const rect = backBtn.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0 && 
+                      window.getComputedStyle(backBtn).display !== 'none' &&
+                      window.getComputedStyle(backBtn).visibility !== 'hidden' &&
+                      window.getComputedStyle(backBtn).opacity !== '0';
+    
     console.log('[InventoryMobile] ✅ Bottone indietro creato e aggiunto con successo');
-    console.log('[InventoryMobile] Bottone posizione:', backBtn.getBoundingClientRect());
+    console.log('[InventoryMobile] Bottone posizione:', rect);
+    console.log('[InventoryMobile] Bottone visibile:', isVisible);
+    console.log('[InventoryMobile] Bottone display:', window.getComputedStyle(backBtn).display);
+    console.log('[InventoryMobile] Bottone visibility:', window.getComputedStyle(backBtn).visibility);
+    console.log('[InventoryMobile] Bottone opacity:', window.getComputedStyle(backBtn).opacity);
+    console.log('[InventoryMobile] Bottone pointer-events:', window.getComputedStyle(backBtn).pointerEvents);
+    
+    if (!isVisible) {
+        console.error('[InventoryMobile] ⚠️ ATTENZIONE: Bottone creato ma non visibile!');
+    }
     
     return true;
 }
