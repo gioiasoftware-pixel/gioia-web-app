@@ -76,58 +76,32 @@ function initInventoryMobile() {
  * Crea il bottone indietro da zero con stile tondo
  */
 function setupInventoryButtons() {
-    console.log('[InventoryMobile] === CREAZIONE BOTTONE INDIETRO DA ZERO ===');
+    console.log('[InventoryMobile] === SETUP BOTTONE INDIETRO ===');
     
-    // Verifica che il viewerPanel sia visibile
-    const viewerPanel = document.getElementById('viewerPanel');
-    if (!viewerPanel || viewerPanel.hidden) {
-        console.warn('[InventoryMobile] ViewerPanel non visibile, aspetto...');
-        setTimeout(() => setupInventoryButtons(), 100);
+    // Trova il bottone (ora è nell'HTML)
+    const backBtn = document.getElementById('inventory-back-btn-mobile');
+    if (!backBtn) {
+        console.error('[InventoryMobile] ❌ Bottone non trovato nel DOM!');
         return false;
     }
     
-    // Trova l'header
-    const header = document.getElementById('inventory-header-mobile');
-    if (!header) {
-        console.warn('[InventoryMobile] Header inventario non trovato, riprovo...');
-        setTimeout(() => setupInventoryButtons(), 100);
-        return false;
-    }
+    console.log('[InventoryMobile] ✅ Bottone trovato nel DOM');
     
-    // Verifica che l'header sia visibile
-    const headerStyle = window.getComputedStyle(header);
-    if (headerStyle.display === 'none' || headerStyle.visibility === 'hidden') {
-        console.warn('[InventoryMobile] Header non visibile, aspetto...');
-        setTimeout(() => setupInventoryButtons(), 100);
-        return false;
-    }
+    // Rimuovi tutti i listener esistenti clonando il bottone
+    const newBtn = backBtn.cloneNode(true);
+    backBtn.parentNode.replaceChild(newBtn, backBtn);
     
-    // Rimuovi bottone esistente se presente
-    const existingBtn = document.getElementById('inventory-back-btn-mobile');
-    if (existingBtn) {
-        console.log('[InventoryMobile] Rimuovo bottone esistente');
-        existingBtn.remove();
-    }
-    
-    // Crea nuovo bottone da zero
-    const backBtn = document.createElement('button');
-    backBtn.type = 'button';
-    backBtn.id = 'inventory-back-btn-mobile';
-    backBtn.className = 'inventory-back-btn-mobile';
-    backBtn.title = 'Indietro';
-    backBtn.setAttribute('aria-label', 'Torna indietro');
-    
-    // Stili inline per garantire visibilità e posizionamento
-    backBtn.style.cssText = `
-        width: clamp(40px, 10vw, 50px) !important;
-        height: clamp(40px, 10vw, 50px) !important;
-        min-width: clamp(40px, 10vw, 50px) !important;
-        min-height: clamp(40px, 10vw, 50px) !important;
+    // Forza stili inline per garantire visibilità
+    newBtn.style.cssText = `
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
+        min-height: 50px !important;
         padding: 0 !important;
         margin: 0 !important;
-        background-color: var(--color-granaccia) !important;
+        background-color: #8B1538 !important;
         color: white !important;
-        border: none !important;
+        border: 2px solid #8B1538 !important;
         border-radius: 50% !important;
         display: flex !important;
         align-items: center !important;
@@ -135,65 +109,56 @@ function setupInventoryButtons() {
         cursor: pointer !important;
         pointer-events: auto !important;
         position: relative !important;
-        z-index: 1001 !important;
+        z-index: 9999 !important;
         flex-shrink: 0 !important;
         visibility: visible !important;
         opacity: 1 !important;
+        font-size: 24px !important;
+        line-height: 1 !important;
+        box-shadow: 0 4px 12px rgba(139, 21, 56, 0.4) !important;
     `;
     
-    // Icona freccia indietro
-    backBtn.textContent = '←';
-    backBtn.style.fontSize = 'clamp(18px, 4.5vw, 24px)';
-    backBtn.style.lineHeight = '1';
+    console.log('[InventoryMobile] ✅ Stili inline applicati');
     
     // Aggiungi listener per click
-    backBtn.addEventListener('click', (e) => {
+    newBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        console.log('[InventoryMobile] ✅ Bottone indietro cliccato!');
+        console.log('[InventoryMobile] ✅✅✅ BOTTONE CLICCATO! ✅✅✅');
         handleBackClick();
     }, { capture: true });
     
     // Aggiungi listener per touchstart (mobile)
-    backBtn.addEventListener('touchstart', (e) => {
+    newBtn.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
-        console.log('[InventoryMobile] ✅ Bottone indietro toccato (touchstart)!');
+        console.log('[InventoryMobile] ✅✅✅ BOTTONE TOCCATO (touchstart)! ✅✅✅');
         handleBackClick();
     }, { capture: true, passive: false });
     
-    // Aggiungi listener per touchend (backup)
-    backBtn.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, { capture: true, passive: false });
-    
-    // Aggiungi bottone all'header (alla fine, così appare a destra)
-    header.appendChild(backBtn);
-    
-    // Forza il layout per assicurarsi che il bottone sia visibile
-    backBtn.offsetHeight; // Trigger reflow
-    
-    // Verifica che il bottone sia visibile
-    const rect = backBtn.getBoundingClientRect();
-    const isVisible = rect.width > 0 && rect.height > 0 && 
-                      window.getComputedStyle(backBtn).display !== 'none' &&
-                      window.getComputedStyle(backBtn).visibility !== 'hidden' &&
-                      window.getComputedStyle(backBtn).opacity !== '0';
-    
-    console.log('[InventoryMobile] ✅ Bottone indietro creato e aggiunto con successo');
-    console.log('[InventoryMobile] Bottone posizione:', rect);
-    console.log('[InventoryMobile] Bottone visibile:', isVisible);
-    console.log('[InventoryMobile] Bottone display:', window.getComputedStyle(backBtn).display);
-    console.log('[InventoryMobile] Bottone visibility:', window.getComputedStyle(backBtn).visibility);
-    console.log('[InventoryMobile] Bottone opacity:', window.getComputedStyle(backBtn).opacity);
-    console.log('[InventoryMobile] Bottone pointer-events:', window.getComputedStyle(backBtn).pointerEvents);
-    
-    if (!isVisible) {
-        console.error('[InventoryMobile] ⚠️ ATTENZIONE: Bottone creato ma non visibile!');
-    }
+    // Verifica visibilità
+    setTimeout(() => {
+        const rect = newBtn.getBoundingClientRect();
+        const computed = window.getComputedStyle(newBtn);
+        console.log('[InventoryMobile] === VERIFICA BOTTONE ===');
+        console.log('[InventoryMobile] Posizione:', rect);
+        console.log('[InventoryMobile] Display:', computed.display);
+        console.log('[InventoryMobile] Visibility:', computed.visibility);
+        console.log('[InventoryMobile] Opacity:', computed.opacity);
+        console.log('[InventoryMobile] Pointer-events:', computed.pointerEvents);
+        console.log('[InventoryMobile] Z-index:', computed.zIndex);
+        console.log('[InventoryMobile] Background:', computed.backgroundColor);
+        console.log('[InventoryMobile] Width:', computed.width);
+        console.log('[InventoryMobile] Height:', computed.height);
+        
+        if (rect.width === 0 || rect.height === 0) {
+            console.error('[InventoryMobile] ❌❌❌ BOTTONE HA DIMENSIONI ZERO! ❌❌❌');
+        } else {
+            console.log('[InventoryMobile] ✅ Bottone ha dimensioni valide');
+        }
+    }, 100);
     
     return true;
 }

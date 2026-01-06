@@ -555,20 +555,22 @@
 
 /* Bottone indietro inventario mobile - Stile tondo */
 /* IMPORTANTE: Usa selector più specifico per garantire che funzioni anche quando mViewer è visibile */
+#inventory-back-btn-mobile,
 .mobileRoot .mViewer .inventory-back-btn-mobile,
 .mobileRoot .mViewer:not([hidden]) .inventory-back-btn-mobile,
-.mobileRoot .mApp.state-viewer .mViewer .inventory-back-btn-mobile {
-    width: clamp(40px, 10vw, 50px) !important;
-    height: clamp(40px, 10vw, 50px) !important;
-    min-width: clamp(40px, 10vw, 50px) !important;
-    min-height: clamp(40px, 10vw, 50px) !important;
+.mobileRoot .mApp.state-viewer .mViewer .inventory-back-btn-mobile,
+.mobileRoot .mViewer #inventory-back-btn-mobile {
+    width: 50px !important;
+    height: 50px !important;
+    min-width: 50px !important;
+    min-height: 50px !important;
     padding: 0 !important;
     margin: 0 !important;
-    background-color: var(--color-granaccia) !important;
-    color: var(--color-white) !important;
-    border: none !important;
+    background-color: #8B1538 !important; /* Colore esplicito per test */
+    color: white !important;
+    border: 2px solid #8B1538 !important;
     border-radius: 50% !important; /* Bottone completamente tondo */
-    font-size: clamp(18px, 4.5vw, 24px) !important; /* Aumentato per la freccia */
+    font-size: 24px !important;
     font-weight: 600 !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
@@ -578,8 +580,8 @@
     justify-content: center !important;
     pointer-events: auto !important;
     position: relative !important;
-    z-index: 1001 !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    z-index: 9999 !important;
+    box-shadow: 0 4px 12px rgba(139, 21, 56, 0.4) !important;
     user-select: none !important;
     -webkit-tap-highlight-color: transparent !important;
     visibility: visible !important;
