@@ -52,6 +52,7 @@ class Wine(Base):
     region = Column(String(200))
     country = Column(String(100))
     wine_type = Column(String(50))
+    supplier = Column(String(200))  # Fornitore
     classification = Column(String(100))
     quantity = Column(Integer, default=0)
     min_quantity = Column(Integer, default=0)
