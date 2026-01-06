@@ -12,265 +12,102 @@ let currentWineId = null;
 let originalWineData = null;
 
 /**
- * Pannello log mobile per debug
+ * Log semplice su schermo mobile
  */
-let debugLogPanel = null;
-let debugLogs = [];
-const MAX_LOGS = 50;
+function dlog(...args) {
+    console.log(...args);
+    const box = document.getElementById('mobile-debug');
+    if (box) {
+        const message = args.map(arg => {
+            if (typeof arg === 'object') {
+                try {
+                    return JSON.stringify(arg);
+                } catch (e) {
+                    return String(arg);
+                }
+            }
+            return String(arg);
+        }).join(' ');
+        box.textContent += message + '\n';
+        // Auto-scroll all'ultimo log
+        box.scrollTop = box.scrollHeight;
+        // Limita a 100 righe
+        const lines = box.textContent.split('\n');
+        if (lines.length > 100) {
+            box.textContent = lines.slice(-100).join('\n');
+        }
+    }
+}
 
-function createDebugLogPanel() {
-    console.log('[InventoryMobile] === CREAZIONE PANNELLO LOG DEBUG (POPUP) ===');
-    
-    // Rimuovi pannello e overlay esistenti se presenti
-    const existing = document.getElementById('inventory-debug-log-panel');
+/**
+ * Crea div debug semplice sulla pagina
+ */
+function createMobileDebugBox() {
+    // Rimuovi esistente se presente
+    const existing = document.getElementById('mobile-debug');
     if (existing) {
-        console.log('[InventoryMobile] Rimuovo pannello esistente');
         existing.remove();
     }
-    const existingOverlay = document.getElementById('inventory-debug-log-overlay');
-    if (existingOverlay) {
-        console.log('[InventoryMobile] Rimuovo overlay esistente');
-        existingOverlay.remove();
-    }
     
-    // Crea OVERLAY (sfondo scuro)
-    const overlay = document.createElement('div');
-    overlay.id = 'inventory-debug-log-overlay';
-    overlay.style.cssText = `
+    // Crea div semplice
+    const debugBox = document.createElement('div');
+    debugBox.id = 'mobile-debug';
+    debugBox.style.cssText = `
         position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        background: rgba(0, 0, 0, 0.3) !important;
-        z-index: 999998 !important;
-        pointer-events: none !important;
-    `;
-    document.body.appendChild(overlay);
-    
-    // Crea PANNELLO POPUP (finestra principale)
-    debugLogPanel = document.createElement('div');
-    debugLogPanel.id = 'inventory-debug-log-panel';
-    
-    // Stili FORZATI per garantire visibilità - POPUP MODAL
-    debugLogPanel.style.cssText = `
-        position: fixed !important;
-        top: 50% !important;
-        left: 50% !important;
-        transform: translate(-50%, -50%) !important;
-        width: 90% !important;
-        max-width: 600px !important;
-        min-width: 320px !important;
-        height: 70% !important;
-        max-height: 500px !important;
-        min-height: 350px !important;
-        background: #000000 !important;
+        top: 10px !important;
+        left: 10px !important;
+        right: 10px !important;
+        max-height: 300px !important;
+        background: rgba(0, 0, 0, 0.95) !important;
         color: #00ff00 !important;
         font-family: 'Courier New', monospace !important;
-        font-size: 13px !important;
-        padding: 0 !important;
-        border-radius: 16px !important;
-        border: 4px solid #00ff00 !important;
-        z-index: 999999 !important;
-        overflow: hidden !important;
-        box-shadow: 0 10px 40px rgba(0, 255, 0, 1) !important;
+        font-size: 12px !important;
+        padding: 10px !important;
+        border: 2px solid #00ff00 !important;
+        border-radius: 8px !important;
+        z-index: 9999999 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        white-space: pre-wrap !important;
+        word-wrap: break-word !important;
         pointer-events: auto !important;
-        display: flex !important;
-        flex-direction: column !important;
+        display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
+        box-shadow: 0 4px 12px rgba(0, 255, 0, 0.5) !important;
     `;
     
-    console.log('[InventoryMobile] Pannello creato, stili applicati');
-    
-    // Header del pannello con pulsanti
-    const header = document.createElement('div');
-    header.style.cssText = `
-        display: flex !important;
-        justify-content: space-between !important;
-        align-items: center !important;
-        padding: 12px 15px !important;
-        border-bottom: 2px solid #00ff00 !important;
-        background: rgba(0, 255, 0, 0.1) !important;
-        flex-shrink: 0 !important;
-    `;
-    
-    const title = document.createElement('div');
-    title.textContent = '🔍 DEBUG LOG - INVENTARIO MOBILE';
-    title.style.cssText = `
-        font-weight: bold !important;
-        color: #00ff00 !important;
-        font-size: 15px !important;
-    `;
-    
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
-        display: flex !important;
-        gap: 8px !important;
-    `;
-    
+    // Pulsante per pulire
     const clearBtn = document.createElement('button');
     clearBtn.textContent = 'CLEAR';
     clearBtn.style.cssText = `
+        position: absolute !important;
+        top: 5px !important;
+        right: 5px !important;
         background: rgba(255, 0, 0, 0.8) !important;
         color: white !important;
         border: 1px solid #ff0000 !important;
-        padding: 6px 12px !important;
-        border-radius: 6px !important;
-        font-size: 11px !important;
-        font-weight: bold !important;
+        padding: 4px 8px !important;
+        border-radius: 4px !important;
+        font-size: 10px !important;
         cursor: pointer !important;
-        pointer-events: auto !important;
+        z-index: 10000000 !important;
     `;
     clearBtn.addEventListener('click', () => {
-        debugLogs = [];
-        updateLogDisplay();
+        debugBox.textContent = '';
+        dlog('=== LOG PULITI ===');
     });
+    debugBox.appendChild(clearBtn);
     
-    const minimizeBtn = document.createElement('button');
-    minimizeBtn.textContent = '−';
-    minimizeBtn.style.cssText = `
-        background: rgba(255, 255, 0, 0.8) !important;
-        color: black !important;
-        border: 1px solid #ffff00 !important;
-        padding: 6px 12px !important;
-        border-radius: 6px !important;
-        font-size: 16px !important;
-        font-weight: bold !important;
-        cursor: pointer !important;
-        pointer-events: auto !important;
-        line-height: 1 !important;
-    `;
-    let isMinimized = false;
-    minimizeBtn.addEventListener('click', () => {
-        const logContainer = document.getElementById('inventory-debug-log-content');
-        if (isMinimized) {
-            debugLogPanel.style.height = '70%';
-            debugLogPanel.style.maxHeight = '500px';
-            if (logContainer) logContainer.style.display = 'block';
-            minimizeBtn.textContent = '−';
-            isMinimized = false;
-        } else {
-            debugLogPanel.style.height = 'auto';
-            debugLogPanel.style.maxHeight = '60px';
-            if (logContainer) logContainer.style.display = 'none';
-            minimizeBtn.textContent = '+';
-            isMinimized = true;
-        }
-    });
+    // Padding per il pulsante
+    debugBox.style.paddingTop = '35px';
     
-    buttonsContainer.appendChild(clearBtn);
-    buttonsContainer.appendChild(minimizeBtn);
-    header.appendChild(title);
-    header.appendChild(buttonsContainer);
-    debugLogPanel.appendChild(header);
-    
-    // Container log - più grande
-    const logContainer = document.createElement('div');
-    logContainer.id = 'inventory-debug-log-content';
-    logContainer.style.cssText = `
-        flex: 1 !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        padding: 15px !important;
-        min-height: 0 !important;
-    `;
-    debugLogPanel.appendChild(logContainer);
-    
-    // Aggiungi al body (sopra tutto)
-    document.body.appendChild(debugLogPanel);
-    
-    // Forza che sia sopra TUTTO - anche sopra eventuali modali
-    debugLogPanel.style.zIndex = '9999999';
-    overlay.style.zIndex = '9999998';
-    console.log('[InventoryMobile] ✅ Pannello aggiunto al body');
-    
-    // Forza reflow
-    debugLogPanel.offsetHeight;
-    
-    // Verifica che sia visibile
-    setTimeout(() => {
-        const rect = debugLogPanel.getBoundingClientRect();
-        const computed = window.getComputedStyle(debugLogPanel);
-        console.log('[InventoryMobile] === VERIFICA PANNELLO LOG ===');
-        console.log('[InventoryMobile] Posizione:', rect);
-        console.log('[InventoryMobile] Display:', computed.display);
-        console.log('[InventoryMobile] Visibility:', computed.visibility);
-        console.log('[InventoryMobile] Opacity:', computed.opacity);
-        console.log('[InventoryMobile] Z-index:', computed.zIndex);
-        console.log('[InventoryMobile] Width:', computed.width);
-        console.log('[InventoryMobile] Height:', computed.height);
-        
-        if (rect.width === 0 || rect.height === 0) {
-            console.error('[InventoryMobile] ❌ PANNELLO HA DIMENSIONI ZERO!');
-            // Prova a forzare dimensioni
-            debugLogPanel.style.width = '300px';
-            debugLogPanel.style.height = '150px';
-        }
-        
-        // Aggiungi log iniziale
-        addDebugLog('✅ PANNELLO LOG CREATO E VISIBILE', 'info');
-        addDebugLog('Se vedi questo messaggio, il pannello funziona!', 'info');
-    }, 100);
-    
-    console.log('[InventoryMobile] ✅ Pannello debug log creato e aggiunto al DOM');
+    document.body.appendChild(debugBox);
+    dlog('=== MOBILE DEBUG BOX CREATO ===');
+    dlog('Se vedi questo, il box funziona!');
 }
 
-function addDebugLog(message, type = 'info') {
-    const timestamp = new Date().toLocaleTimeString();
-    const logEntry = {
-        time: timestamp,
-        message: message,
-        type: type
-    };
-    
-    debugLogs.push(logEntry);
-    
-    // Mantieni solo gli ultimi MAX_LOGS
-    if (debugLogs.length > MAX_LOGS) {
-        debugLogs.shift();
-    }
-    
-    // Verifica che il pannello esista
-    if (!debugLogPanel || !document.getElementById('inventory-debug-log-panel')) {
-        console.warn('[InventoryMobile] Pannello log non trovato, ricreo...');
-        createDebugLogPanel();
-    }
-    
-    updateLogDisplay();
-    
-    // Log anche nella console normale
-    const consoleMethod = type === 'error' ? 'error' : type === 'warn' ? 'warn' : 'log';
-    console[consoleMethod](`[${timestamp}] ${message}`);
-}
-
-function updateLogDisplay() {
-    const logContainer = document.getElementById('inventory-debug-log-content');
-    if (!logContainer) {
-        console.warn('[InventoryMobile] Container log non trovato, ricreo pannello...');
-        createDebugLogPanel();
-        // Riprova dopo un breve delay
-        setTimeout(() => {
-            const retryContainer = document.getElementById('inventory-debug-log-content');
-            if (retryContainer) {
-                retryContainer.innerHTML = debugLogs.map(log => {
-                    const color = log.type === 'error' ? '#ff4444' : log.type === 'warn' ? '#ffaa00' : '#00ff00';
-                    return `<div style="color: ${color}; margin-bottom: 2px; word-break: break-word;">[${log.time}] ${log.message}</div>`;
-                }).join('');
-                retryContainer.scrollTop = retryContainer.scrollHeight;
-            }
-        }, 50);
-        return;
-    }
-    
-    logContainer.innerHTML = debugLogs.map(log => {
-        const color = log.type === 'error' ? '#ff4444' : log.type === 'warn' ? '#ffaa00' : '#00ff00';
-        return `<div style="color: ${color}; margin-bottom: 4px; word-break: break-word; line-height: 1.4;">[${log.time}] ${log.message}</div>`;
-    }).join('');
-    
-    // Auto-scroll all'ultimo log
-    logContainer.scrollTop = logContainer.scrollHeight;
-}
+// Funzioni vecchie rimosse - ora usiamo createMobileDebugBox() e dlog()
 
 /**
  * Inizializza l'inventario mobile
@@ -284,23 +121,18 @@ function initInventoryMobile() {
     
     console.log('[InventoryMobile] === INIZIALIZZAZIONE INVENTARIO MOBILE ===');
     
-    // Crea pannello debug log IMMEDIATAMENTE quando si entra nell'inventario
-    console.log('[InventoryMobile] Chiamata createDebugLogPanel()...');
-    createDebugLogPanel();
+    // Crea box debug semplice
+    dlog('=== INIZIALIZZAZIONE INVENTARIO MOBILE ===');
+    createMobileDebugBox();
     
-    // Verifica che sia stato creato e forzalo visibile
+    // Verifica che sia stato creato
     setTimeout(() => {
-        const panel = document.getElementById('inventory-debug-log-panel');
-        if (!panel) {
-            console.error('[InventoryMobile] ❌ Pannello non creato! Riprovo...');
-            createDebugLogPanel();
+        const box = document.getElementById('mobile-debug');
+        if (!box) {
+            dlog('❌ Box debug non creato! Riprovo...');
+            createMobileDebugBox();
         } else {
-            console.log('[InventoryMobile] ✅ Pannello trovato nel DOM');
-            // Forza visibilità
-            panel.style.display = 'block';
-            panel.style.visibility = 'visible';
-            panel.style.opacity = '1';
-            panel.style.zIndex = '999999';
+            dlog('✅ Box debug trovato nel DOM');
         }
     }, 50);
     
@@ -309,15 +141,10 @@ function initInventoryMobile() {
     if (viewerPanelForObserver) {
         const observer = new MutationObserver(() => {
             if (!viewerPanelForObserver.hidden) {
-                const panel = document.getElementById('inventory-debug-log-panel');
-                if (!panel) {
-                    console.log('[InventoryMobile] ViewerPanel visibile, creo pannello log...');
-                    createDebugLogPanel();
-                } else {
-                    // Forza visibilità quando viewerPanel diventa visibile
-                    panel.style.display = 'block';
-                    panel.style.visibility = 'visible';
-                    panel.style.opacity = '1';
+                const box = document.getElementById('mobile-debug');
+                if (!box) {
+                    dlog('ViewerPanel visibile, creo box debug...');
+                    createMobileDebugBox();
                 }
             }
         });
@@ -326,9 +153,6 @@ function initInventoryMobile() {
             attributeFilter: ['hidden']
         });
     }
-    
-    addDebugLog('=== INIZIALIZZAZIONE INVENTARIO MOBILE ===', 'info');
-    addDebugLog('PANNELLO LOG VISIBILE - Se non lo vedi, controlla console', 'info');
     
     // Setup event listeners
     // Nota: setupInventoryButtons() viene chiamato per primo per assicurarsi che il bottone indietro funzioni
@@ -342,17 +166,17 @@ function initInventoryMobile() {
     
     // Riprova a setup il bottone più volte per gestire timing issues
     setTimeout(() => {
-        addDebugLog('Retry 1: setup bottone dopo 200ms', 'info');
+        dlog('Retry 1: setup bottone dopo 200ms');
         setupInventoryButtons();
     }, 200);
     
     setTimeout(() => {
-        addDebugLog('Retry 2: setup bottone dopo 500ms', 'info');
+        dlog('Retry 2: setup bottone dopo 500ms');
         setupInventoryButtons();
     }, 500);
     
     setTimeout(() => {
-        addDebugLog('Retry 3: setup bottone dopo 1000ms', 'info');
+        dlog('Retry 3: setup bottone dopo 1000ms');
         setupInventoryButtons();
     }, 1000);
     
@@ -361,7 +185,7 @@ function initInventoryMobile() {
         const header = document.getElementById('inventory-header-mobile');
         const viewerPanel = document.getElementById('viewerPanel');
         if (header && viewerPanel && !viewerPanel.hidden) {
-            addDebugLog('Observer: Header visibile, setup bottone', 'info');
+            dlog('Observer: Header visibile, setup bottone');
             setupInventoryButtons();
         }
     });
@@ -375,7 +199,7 @@ function initInventoryMobile() {
         });
     }
     
-    addDebugLog('Inizializzazione completata', 'info');
+    dlog('Inizializzazione completata');
     console.log('[InventoryMobile] Inizializzato');
 }
 
@@ -385,21 +209,21 @@ function initInventoryMobile() {
  */
 function setupInventoryButtons() {
     console.log('[InventoryMobile] === SETUP BOTTONE INDIETRO (VERSIONE ROBUSTA) ===');
-    addDebugLog('=== SETUP BOTTONE INDIETRO ===', 'info');
-    addDebugLog('📝 ANALISI: Verifico se il bottone può essere cliccato...', 'info');
+    dlog('=== SETUP BOTTONE INDIETRO ===');
+    dlog('📝 ANALISI: Verifico se il bottone può essere cliccato...');
     
     // Trova l'header (usiamo event delegation)
     const header = document.getElementById('inventory-header-mobile');
     if (!header) {
         console.error('[InventoryMobile] ❌ Header non trovato nel DOM!');
-        addDebugLog('❌ PROBLEMA: Header non trovato nel DOM!', 'error');
-        addDebugLog('💡 SOLUZIONE: L\'header deve esistere nell\'HTML con id="inventory-header-mobile"', 'warn');
-        addDebugLog('💡 CAUSA: Il viewerPanel potrebbe non essere ancora caricato', 'warn');
+        dlog('❌ PROBLEMA: Header non trovato nel DOM!', 'error');
+        dlog('💡 SOLUZIONE: L\'header deve esistere nell\'HTML con id="inventory-header-mobile"', 'warn');
+        dlog('💡 CAUSA: Il viewerPanel potrebbe non essere ancora caricato', 'warn');
         return false;
     }
     
     console.log('[InventoryMobile] ✅ Header trovato nel DOM');
-    addDebugLog('✅ Header trovato nel DOM', 'info');
+    dlog('✅ Header trovato nel DOM', 'info');
     
     // Rimuovi listener esistenti sull'header clonandolo
     const newHeader = header.cloneNode(true);
@@ -409,15 +233,15 @@ function setupInventoryButtons() {
     const backBtn = document.getElementById('inventory-back-btn-mobile');
     if (!backBtn) {
         console.error('[InventoryMobile] ❌ Bottone non trovato dopo clone!');
-        addDebugLog('❌ PROBLEMA: Bottone non trovato dopo clone!', 'error');
-        addDebugLog('💡 CAUSA: Il bottone potrebbe non essere nell\'HTML o essere stato rimosso', 'warn');
-        addDebugLog('💡 SOLUZIONE: Verifica che il bottone esista in index.html con id="inventory-back-btn-mobile"', 'warn');
+        dlog('❌ PROBLEMA: Bottone non trovato dopo clone!', 'error');
+        dlog('💡 CAUSA: Il bottone potrebbe non essere nell\'HTML o essere stato rimosso', 'warn');
+        dlog('💡 SOLUZIONE: Verifica che il bottone esista in index.html con id="inventory-back-btn-mobile"', 'warn');
         return false;
     }
     
     console.log('[InventoryMobile] ✅ Bottone trovato nel DOM');
-    addDebugLog('✅ Bottone trovato nel DOM', 'info');
-    addDebugLog('📝 ANALISI: Verifico se il bottone è visibile e cliccabile...', 'info');
+    dlog('✅ Bottone trovato nel DOM', 'info');
+    dlog('📝 ANALISI: Verifico se il bottone è visibile e cliccabile...', 'info');
     
     // Forza stili inline per garantire visibilità
     backBtn.style.cssText = `
@@ -451,39 +275,39 @@ function setupInventoryButtons() {
     // Funzione handler robusta con try-catch
     const handleButtonAction = (eventType, e) => {
         console.log(`[InventoryMobile] 🎯 EVENTO ${eventType} INTERCETTATO sul bottone!`);
-        addDebugLog(`🎯🎯🎯 EVENTO ${eventType} INTERCETTATO! 🎯🎯🎯`, 'info');
-        addDebugLog('✅ SUCCESSO: Il tap è stato rilevato!', 'info');
+        dlog(`🎯🎯🎯 EVENTO ${eventType} INTERCETTATO! 🎯🎯🎯`, 'info');
+        dlog('✅ SUCCESSO: Il tap è stato rilevato!', 'info');
         console.log('[InventoryMobile] Event object:', e);
         console.log('[InventoryMobile] Target:', e.target);
-        addDebugLog(`Target: ${e.target?.id || e.target?.tagName || 'unknown'}`, 'info');
-        addDebugLog('📝 ANALISI: Se vedi questo log, il listener funziona!', 'info');
+        dlog(`Target: ${e.target?.id || e.target?.tagName || 'unknown'}`, 'info');
+        dlog('📝 ANALISI: Se vedi questo log, il listener funziona!', 'info');
         
         try {
             // NON usare preventDefault/stopPropagation qui - potrebbe interferire
             console.log('[InventoryMobile] Verifico handleBackClick...');
-            addDebugLog('📝 Verifico se handleBackClick è disponibile...', 'info');
+            dlog('📝 Verifico se handleBackClick è disponibile...', 'info');
             console.log('[InventoryMobile] handleBackClick type:', typeof handleBackClick);
-            addDebugLog(`handleBackClick type: ${typeof handleBackClick}`, 'info');
+            dlog(`handleBackClick type: ${typeof handleBackClick}`, 'info');
             
             if (typeof handleBackClick !== 'function') {
-                addDebugLog('⚠️ ATTENZIONE: handleBackClick non è una funzione diretta', 'warn');
+                dlog('⚠️ ATTENZIONE: handleBackClick non è una funzione diretta', 'warn');
             }
             
             // Verifica se handleBackClick è definita (può essere in scope diverso)
             let backClickHandler = handleBackClick;
             if (typeof backClickHandler !== 'function') {
-                addDebugLog('⚠️ handleBackClick non è funzione diretta, cerco in window.InventoryMobile...', 'warn');
+                dlog('⚠️ handleBackClick non è funzione diretta, cerco in window.InventoryMobile...', 'warn');
                 // Prova a recuperarla da window.InventoryMobile
                 if (window.InventoryMobile && typeof window.InventoryMobile.handleBackClick === 'function') {
                     backClickHandler = window.InventoryMobile.handleBackClick;
                     console.log('[InventoryMobile] ✅ handleBackClick trovata in window.InventoryMobile');
-                    addDebugLog('✅ handleBackClick trovata in window.InventoryMobile', 'info');
+                    dlog('✅ handleBackClick trovata in window.InventoryMobile', 'info');
                 } else {
                     console.error('[InventoryMobile] ❌ handleBackClick non trovata!');
-                    addDebugLog('❌ PROBLEMA CRITICO: handleBackClick non trovata!', 'error');
-                    addDebugLog('💡 CAUSA: La funzione handleBackClick non è definita o non è accessibile', 'error');
-                    addDebugLog('💡 SOLUZIONE: Verifica che window.InventoryMobile.handleBackClick esista', 'error');
-                    addDebugLog('🔄 FALLBACK: Eseguo refresh diretto del browser', 'warn');
+                    dlog('❌ PROBLEMA CRITICO: handleBackClick non trovata!', 'error');
+                    dlog('💡 CAUSA: La funzione handleBackClick non è definita o non è accessibile', 'error');
+                    dlog('💡 SOLUZIONE: Verifica che window.InventoryMobile.handleBackClick esista', 'error');
+                    dlog('🔄 FALLBACK: Eseguo refresh diretto del browser', 'warn');
                     // Fallback: refresh diretto
                     console.log('[InventoryMobile] Fallback: refresh diretto');
                     window.location.reload();
@@ -492,39 +316,39 @@ function setupInventoryButtons() {
             }
             
             console.log('[InventoryMobile] Chiamata handleBackClick...');
-            addDebugLog('▶️▶️▶️ CHIAMATA handleBackClick() ▶️▶️▶️', 'info');
-            addDebugLog('📝 Se non vedi log dopo questo, handleBackClick potrebbe avere un errore', 'info');
+            dlog('▶️▶️▶️ CHIAMATA handleBackClick() ▶️▶️▶️', 'info');
+            dlog('📝 Se non vedi log dopo questo, handleBackClick potrebbe avere un errore', 'info');
             backClickHandler();
             console.log('[InventoryMobile] ✅ handleBackClick eseguita con successo');
-            addDebugLog('✅✅✅ handleBackClick eseguita con successo! ✅✅✅', 'info');
-            addDebugLog('📝 Se vedi questo, la funzione è stata eseguita correttamente', 'info');
+            dlog('✅✅✅ handleBackClick eseguita con successo! ✅✅✅', 'info');
+            dlog('📝 Se vedi questo, la funzione è stata eseguita correttamente', 'info');
         } catch (error) {
             console.error('[InventoryMobile] ❌ ERRORE in handleButtonAction:', error);
-            addDebugLog('❌❌❌ ERRORE CRITICO in handleButtonAction! ❌❌❌', 'error');
-            addDebugLog(`❌ Messaggio errore: ${error.message}`, 'error');
+            dlog('❌❌❌ ERRORE CRITICO in handleButtonAction! ❌❌❌', 'error');
+            dlog(`❌ Messaggio errore: ${error.message}`, 'error');
             console.error('[InventoryMobile] Stack trace:', error.stack);
-            addDebugLog(`❌ Stack trace: ${error.stack?.substring(0, 150)}...`, 'error');
-            addDebugLog('💡 CAUSA: handleBackClick ha generato un errore JavaScript', 'error');
-            addDebugLog('💡 SOLUZIONE: Controlla la console per dettagli completi', 'error');
+            dlog(`❌ Stack trace: ${error.stack?.substring(0, 150)}...`, 'error');
+            dlog('💡 CAUSA: handleBackClick ha generato un errore JavaScript', 'error');
+            dlog('💡 SOLUZIONE: Controlla la console per dettagli completi', 'error');
             // Fallback: refresh diretto in caso di errore
             console.log('[InventoryMobile] Fallback dopo errore: refresh diretto');
-            addDebugLog('🔄 FALLBACK: Eseguo refresh diretto del browser', 'warn');
+            dlog('🔄 FALLBACK: Eseguo refresh diretto del browser', 'warn');
             try {
                 window.location.reload();
             } catch (reloadError) {
                 console.error('[InventoryMobile] ❌ ERRORE anche nel reload:', reloadError);
-                addDebugLog(`❌ ERRORE CRITICO anche nel reload: ${reloadError.message}`, 'error');
-                addDebugLog('💡 PROBLEMA GRAVE: Nemmeno il reload funziona!', 'error');
+                dlog(`❌ ERRORE CRITICO anche nel reload: ${reloadError.message}`, 'error');
+                dlog('💡 PROBLEMA GRAVE: Nemmeno il reload funziona!', 'error');
             }
         }
     };
     
     // Aggiungi spiegazione finale
-    addDebugLog('📝 RIEPILOGO POSSIBILI PROBLEMI:', 'info');
-    addDebugLog('1. Se NON vedi "EVENTO INTERCETTATO" → listener non funziona', 'info');
-    addDebugLog('2. Se vedi "EVENTO INTERCETTATO" ma non "handleBackClick eseguita" → errore nella funzione', 'info');
-    addDebugLog('3. Se vedi "dimensioni zero" → problema CSS', 'info');
-    addDebugLog('4. Se vedi "pointer-events none" → elemento parent blocca eventi', 'info');
+    dlog('📝 RIEPILOGO POSSIBILI PROBLEMI:', 'info');
+    dlog('1. Se NON vedi "EVENTO INTERCETTATO" → listener non funziona', 'info');
+    dlog('2. Se vedi "EVENTO INTERCETTATO" ma non "handleBackClick eseguita" → errore nella funzione', 'info');
+    dlog('3. Se vedi "dimensioni zero" → problema CSS', 'info');
+    dlog('4. Se vedi "pointer-events none" → elemento parent blocca eventi', 'info');
     
     // Aggiungi listener DIRETTI sul bottone (non capture, per evitare conflitti)
     backBtn.addEventListener('click', (e) => {
@@ -555,68 +379,68 @@ function setupInventoryButtons() {
     }, { passive: false });
     
     console.log('[InventoryMobile] ✅ Listener aggiunti (diretti + delegation)');
-    addDebugLog('✅ Listener aggiunti (diretti + delegation)', 'info');
+    dlog('✅ Listener aggiunti (diretti + delegation)', 'info');
     
     // Verifica visibilità
     setTimeout(() => {
         const rect = backBtn.getBoundingClientRect();
         const computed = window.getComputedStyle(backBtn);
         console.log('[InventoryMobile] === VERIFICA BOTTONE ===');
-        addDebugLog('=== VERIFICA BOTTONE ===', 'info');
+        dlog('=== VERIFICA BOTTONE ===', 'info');
         console.log('[InventoryMobile] Posizione:', rect);
-        addDebugLog(`Posizione: x=${rect.x}, y=${rect.y}, w=${rect.width}, h=${rect.height}`, 'info');
+        dlog(`Posizione: x=${rect.x}, y=${rect.y}, w=${rect.width}, h=${rect.height}`, 'info');
         console.log('[InventoryMobile] Display:', computed.display);
-        addDebugLog(`Display: ${computed.display}`, 'info');
+        dlog(`Display: ${computed.display}`, 'info');
         console.log('[InventoryMobile] Visibility:', computed.visibility);
-        addDebugLog(`Visibility: ${computed.visibility}`, 'info');
+        dlog(`Visibility: ${computed.visibility}`, 'info');
         console.log('[InventoryMobile] Opacity:', computed.opacity);
-        addDebugLog(`Opacity: ${computed.opacity}`, 'info');
+        dlog(`Opacity: ${computed.opacity}`, 'info');
         console.log('[InventoryMobile] Pointer-events:', computed.pointerEvents);
-        addDebugLog(`Pointer-events: ${computed.pointerEvents}`, 'info');
+        dlog(`Pointer-events: ${computed.pointerEvents}`, 'info');
         console.log('[InventoryMobile] Z-index:', computed.zIndex);
-        addDebugLog(`Z-index: ${computed.zIndex}`, 'info');
+        dlog(`Z-index: ${computed.zIndex}`, 'info');
         console.log('[InventoryMobile] Width:', computed.width);
         console.log('[InventoryMobile] Height:', computed.height);
         
         if (rect.width === 0 || rect.height === 0) {
             console.error('[InventoryMobile] ❌❌❌ BOTTONE HA DIMENSIONI ZERO! ❌❌❌');
-            addDebugLog('❌❌❌ PROBLEMA CRITICO: BOTTONE HA DIMENSIONI ZERO! ❌❌❌', 'error');
-            addDebugLog('💡 CAUSA: Il bottone è nascosto da CSS (display:none) o ha width/height=0', 'error');
-            addDebugLog('💡 SOLUZIONE: Verifica CSS - il bottone deve avere width/height > 0', 'error');
-            addDebugLog('💡 VERIFICA: Controlla se .mViewer ha display:none o pointer-events:none', 'error');
+            dlog('❌❌❌ PROBLEMA CRITICO: BOTTONE HA DIMENSIONI ZERO! ❌❌❌', 'error');
+            dlog('💡 CAUSA: Il bottone è nascosto da CSS (display:none) o ha width/height=0', 'error');
+            dlog('💡 SOLUZIONE: Verifica CSS - il bottone deve avere width/height > 0', 'error');
+            dlog('💡 VERIFICA: Controlla se .mViewer ha display:none o pointer-events:none', 'error');
         } else {
             console.log('[InventoryMobile] ✅ Bottone ha dimensioni valide');
-            addDebugLog('✅ Bottone ha dimensioni valide', 'info');
+            dlog('✅ Bottone ha dimensioni valide', 'info');
         }
         
         // Verifica aggiuntive
         if (computed.pointerEvents === 'none') {
-            addDebugLog('❌ PROBLEMA: pointer-events è "none"!', 'error');
-            addDebugLog('💡 CAUSA: Un elemento parent ha pointer-events:none', 'error');
-            addDebugLog('💡 SOLUZIONE: Verifica .mViewer e parent elements', 'error');
+            dlog('❌ PROBLEMA: pointer-events è "none"!', 'error');
+            dlog('💡 CAUSA: Un elemento parent ha pointer-events:none', 'error');
+            dlog('💡 SOLUZIONE: Verifica .mViewer e parent elements', 'error');
         }
         
         if (computed.display === 'none') {
-            addDebugLog('❌ PROBLEMA: display è "none"!', 'error');
-            addDebugLog('💡 CAUSA: Il bottone è nascosto da CSS', 'error');
+            dlog('❌ PROBLEMA: display è "none"!', 'error');
+            dlog('💡 CAUSA: Il bottone è nascosto da CSS', 'error');
         }
         
         if (computed.visibility === 'hidden') {
-            addDebugLog('❌ PROBLEMA: visibility è "hidden"!', 'error');
-            addDebugLog('💡 CAUSA: Il bottone è nascosto da CSS visibility', 'error');
+            dlog('❌ PROBLEMA: visibility è "hidden"!', 'error');
+            dlog('💡 CAUSA: Il bottone è nascosto da CSS visibility', 'error');
         }
         
         if (computed.opacity === '0') {
-            addDebugLog('❌ PROBLEMA: opacity è "0"!', 'error');
-            addDebugLog('💡 CAUSA: Il bottone è trasparente', 'error');
+            dlog('❌ PROBLEMA: opacity è "0"!', 'error');
+            dlog('💡 CAUSA: Il bottone è trasparente', 'error');
         }
         
         if (parseInt(computed.zIndex) < 1000) {
-            addDebugLog('⚠️ ATTENZIONE: z-index potrebbe essere troppo basso', 'warn');
-            addDebugLog('💡 VERIFICA: Potrebbe esserci un overlay sopra il bottone', 'warn');
+            dlog('⚠️ ATTENZIONE: z-index potrebbe essere troppo basso', 'warn');
+            dlog('💡 VERIFICA: Potrebbe esserci un overlay sopra il bottone', 'warn');
         }
         
-        addDebugLog('📝 ANALISI COMPLETA: Se il bottone non funziona, controlla i log sopra', 'info');
+        dlog('📝 ANALISI COMPLETA: Se il bottone non funziona, controlla i log sopra', 'info');
     }, 100);
     
     return true;
@@ -1149,7 +973,7 @@ function showInventoryScreen(screen) {
  */
 function handleBackClick() {
     console.log('[InventoryMobile] handleBackClick chiamato');
-    addDebugLog('▶️ handleBackClick CHIAMATO', 'info');
+    dlog('▶️ handleBackClick CHIAMATO', 'info');
     
     const listScreen = document.getElementById('inventory-screen-list');
     const detailsScreen = document.getElementById('inventory-screen-details');
@@ -1161,12 +985,12 @@ function handleBackClick() {
     const isListVisible = listScreen && !listScreen.classList.contains('hidden');
     
     console.log('[InventoryMobile] Stato schermate - Lista:', isListVisible, 'Dettagli:', isDetailsVisible, 'Chart:', isChartVisible);
-    addDebugLog(`Stato: Lista=${isListVisible}, Dettagli=${isDetailsVisible}, Chart=${isChartVisible}`, 'info');
+    dlog(`Stato: Lista=${isListVisible}, Dettagli=${isDetailsVisible}, Chart=${isChartVisible}`, 'info');
     
     // Se siamo nella pagina dettagli vino → torna alla lista inventario
     if (isDetailsVisible) {
         console.log('[InventoryMobile] Dalla pagina dettagli → torno alla lista inventario');
-        addDebugLog('📋 Dettagli → Lista inventario', 'info');
+        dlog('📋 Dettagli → Lista inventario', 'info');
         showInventoryScreen('list');
         currentWineId = null;
         originalWineData = null;
@@ -1176,7 +1000,7 @@ function handleBackClick() {
     // Se siamo nella pagina chart → torna ai dettagli
     if (isChartVisible) {
         console.log('[InventoryMobile] Dalla pagina chart → torno ai dettagli');
-        addDebugLog('📊 Chart → Dettagli', 'info');
+        dlog('📊 Chart → Dettagli', 'info');
         showInventoryScreen('details');
         return;
     }
@@ -1185,14 +1009,14 @@ function handleBackClick() {
     // Facciamo un refresh del browser per tornare alla homepage
     if (isListVisible) {
         console.log('[InventoryMobile] Dalla pagina lista → refresh browser per tornare alla chat/homepage');
-        addDebugLog('🔄 Lista → Refresh browser (homepage)', 'info');
+        dlog('🔄 Lista → Refresh browser (homepage)', 'info');
         window.location.reload();
         return;
     }
     
     // Fallback: se non riusciamo a determinare la schermata, chiudi inventario
     console.log('[InventoryMobile] Fallback: chiudo inventario');
-    addDebugLog('⚠️ Fallback: chiudo inventario', 'warn');
+    dlog('⚠️ Fallback: chiudo inventario', 'warn');
     const viewerPanel = document.getElementById('viewerPanel');
     const mobileLayout = document.getElementById('mobile-layout');
     
