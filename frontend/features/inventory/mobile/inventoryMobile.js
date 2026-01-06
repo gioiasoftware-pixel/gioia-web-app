@@ -78,10 +78,26 @@ function initInventoryMobile() {
 function setupInventoryButtons() {
     console.log('[InventoryMobile] === CREAZIONE BOTTONE INDIETRO DA ZERO ===');
     
+    // Verifica che il viewerPanel sia visibile
+    const viewerPanel = document.getElementById('viewerPanel');
+    if (!viewerPanel || viewerPanel.hidden) {
+        console.warn('[InventoryMobile] ViewerPanel non visibile, aspetto...');
+        setTimeout(() => setupInventoryButtons(), 100);
+        return false;
+    }
+    
     // Trova l'header
     const header = document.getElementById('inventory-header-mobile');
     if (!header) {
         console.warn('[InventoryMobile] Header inventario non trovato, riprovo...');
+        setTimeout(() => setupInventoryButtons(), 100);
+        return false;
+    }
+    
+    // Verifica che l'header sia visibile
+    const headerStyle = window.getComputedStyle(header);
+    if (headerStyle.display === 'none' || headerStyle.visibility === 'hidden') {
+        console.warn('[InventoryMobile] Header non visibile, aspetto...');
         setTimeout(() => setupInventoryButtons(), 100);
         return false;
     }
