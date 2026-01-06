@@ -15,6 +15,10 @@ let originalWineData = null;
 let backButtonInitialized = false;
 let backButtonListeners = null;
 
+// Flag per evitare setup multipli del bottone salva
+let saveButtonInitialized = false;
+let saveButtonListener = null;
+
 
 /**
  * Inizializza l'inventario mobile
@@ -236,12 +240,104 @@ function setupWineListClickHandlers() {
 
 /**
  * Setup bottone salva modifiche
+ * BOTTONE STATICO IN HTML - solo attach handler, niente creazione dinamica
  */
 function setupSaveButton() {
-    const saveBtn = document.getElementById('inventory-save-btn-mobile');
-    if (!saveBtn) return;
+    // GUARDIA: evita setup multipli
+    if (saveButtonInitialized) {
+        console.log('[InventoryMobile] Bottone salva già inizializzato, skip');
+        return true;
+    }
     
-    saveBtn.addEventListener('click', handleSaveClick);
+    console.log('[InventoryMobile] === SETUP BOTTONE SALVA ===');
+    
+    // Verifica che viewerPanel sia visibile E che state-viewer sia attivo
+    const viewerPanel = document.getElementById('viewerPanel');
+    const mobileLayout = document.getElementById('mobile-layout');
+    
+    if (!viewerPanel || viewerPanel.hidden) {
+        console.log('[InventoryMobile] ViewerPanel non visibile, skip setup salva');
+        return false;
+    }
+    
+    // Verifica che state-viewer sia attivo
+    if (mobileLayout && !mobileLayout.classList.contains('state-viewer')) {
+        console.log('[InventoryMobile] state-viewer non attivo, skip setup salva');
+        return false;
+    }
+    
+    // Verifica che il bottone STATICO esista (non crearlo, solo trovarlo)
+    const saveBtn = document.getElementById('inventory-save-btn-mobile');
+    if (!saveBtn) {
+        console.log('[InventoryMobile] Bottone salva statico non trovato nel DOM');
+        return false;
+    }
+    
+    // Verifica che ci sia SOLO un bottone con quell'ID
+    const allButtons = document.querySelectorAll('#inventory-save-btn-mobile');
+    if (allButtons.length > 1) {
+        console.error(`[InventoryMobile] ❌ TROVATI ${allButtons.length} BOTTONI SALVA CON LO STESSO ID!`);
+    }
+    
+    console.log('[InventoryMobile] ✅ Bottone salva statico trovato nel DOM');
+    
+    // Rimuovi listener esistenti se presenti
+    if (saveButtonListener) {
+        saveBtn.removeEventListener('click', saveButtonListener, true);
+    }
+    
+    // Forza stili inline per garantire visibilità (con fix iOS Safari)
+    saveBtn.style.cssText = `
+        width: 100% !important;
+        padding: 14px 20px !important;
+        margin: 16px 0 !important;
+        background-color: #8B1538 !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-size: 16px !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        position: relative !important;
+        z-index: 9998 !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        box-shadow: 0 2px 8px rgba(139, 21, 56, 0.3) !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        -webkit-tap-highlight-color: rgba(139, 21, 56, 0.3) !important;
+        touch-action: manipulation !important;
+        -webkit-touch-callout: none !important;
+        transition: all 0.2s ease !important;
+    `;
+    
+    console.log('[InventoryMobile] ✅ Stili inline applicati al bottone salva');
+    
+    // Handler semplice
+    const handler = (e) => {
+        console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO sul bottone salva!');
+        e.preventDefault();
+        e.stopPropagation();
+        
+        try {
+            handleSaveClick();
+        } catch (err) {
+            console.error('[InventoryMobile] ❌ ERRORE in handler salva:', err);
+            showErrorPopup('Errore', `Errore durante il salvataggio: ${err.message}`);
+        }
+    };
+    
+    // UN SOLO LISTENER, SEMPLICE, con capture per intercettare prima di altri
+    saveBtn.addEventListener('click', handler, { capture: true });
+    
+    // Salva riferimento per rimozione futura
+    saveButtonListener = handler;
+    
+    saveButtonInitialized = true;
+    console.log('[InventoryMobile] ✅ Listener aggiunto al bottone salva statico');
+    return true;
 }
 
 /**
@@ -470,6 +566,13 @@ async function showWineDetails(wineId) {
         // Usa finalWineId invece di wineId per evitare problemi
         loadMovements(finalWineId);
         
+        // Setup bottone salva quando la schermata dettagli è pronta
+        // Reset flag per permettere re-setup quando si apre un nuovo vino
+        saveButtonInitialized = false;
+        setTimeout(() => {
+            setupSaveButton();
+        }, 100);
+        
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento dettagli vino:', error);
         const form = document.getElementById('inventory-wine-form-mobile');
@@ -640,44 +743,9 @@ async function handleSaveClick() {
         return;
     }
     
-    // Salva modifiche
-    try {
-        const authToken = getAuthToken();
-        if (!authToken) {
-            // Mostra popup errore invece di solo throw
-            showErrorPopup('Errore autenticazione', 'Token di autenticazione non disponibile. Effettua il login.');
-            throw new Error('Token di autenticazione non disponibile');
-        }
-        
-        const response = await fetch(`${window.API_BASE_URL || ''}/api/wines/${currentWineId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify(updateData)
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Errore salvataggio: ${response.status}`);
-        }
-        
-        const result = await response.json();
-        
-        // Aggiorna dati originali
-        originalWineData = { ...originalWineData, ...updateData };
-        
-        // Mostra messaggio successo
-        showSuccessPopup('Modifiche salvate', 'Le modifiche sono state salvate con successo');
-        
-        // Ricarica dati vino per aggiornare display
-        await showWineDetails(currentWineId);
-        
-    } catch (error) {
-        console.error('[InventoryMobile] Errore salvataggio:', error);
-        showErrorPopup('Errore salvataggio', `Errore durante il salvataggio: ${error.message}`);
-    }
+    // STEP 1: Mostra popup con dati prima/dopo per validare funzionamento
+    // NON salvare ancora, solo mostrare popup di anteprima
+    showChangesPreviewPopup(updateData, originalWineData);
 }
 
 /**
@@ -967,6 +1035,138 @@ function showSuccessPopup(title, message) {
 /**
  * Utility: Escape HTML
  */
+/**
+ * Mostra popup anteprima modifiche (prima/dopo)
+ * STEP 1: Solo per validare funzionamento bottone salva
+ */
+function showChangesPreviewPopup(updateData, originalData) {
+    // Mappa nomi campo per visualizzazione
+    const fieldLabels = {
+        'producer': 'Produttore',
+        'vintage': 'Annata',
+        'quantity': 'Quantità',
+        'selling_price': 'Prezzo di vendita',
+        'cost_price': 'Prezzo di acquisto',
+        'region': 'Regione',
+        'country': 'Paese',
+        'wine_type': 'Tipologia',
+        'supplier': 'Fornitore',
+        'grape_variety': 'Vitigno',
+        'classification': 'Classificazione',
+        'alcohol_content': 'Gradazione alcolica',
+        'description': 'Descrizione',
+        'notes': 'Note'
+    };
+    
+    // Formatta valore per visualizzazione
+    const formatValue = (value, field) => {
+        if (value === null || value === undefined || value === '') {
+            return '<em>vuoto</em>';
+        }
+        if (field === 'selling_price' || field === 'cost_price') {
+            return `€ ${parseFloat(value).toFixed(2)}`;
+        }
+        if (field === 'alcohol_content') {
+            return `${parseFloat(value).toFixed(1)}%`;
+        }
+        return String(value);
+    };
+    
+    // Crea lista modifiche
+    const changesList = Object.entries(updateData).map(([field, newValue]) => {
+        const label = fieldLabels[field] || field;
+        const oldValue = originalData?.[field] || '';
+        const oldFormatted = formatValue(oldValue, field);
+        const newFormatted = formatValue(newValue, field);
+        
+        return `
+            <div style="margin-bottom: 12px; padding: 12px; background: #f3f4f6; border-radius: 8px;">
+                <div style="font-weight: 600; color: #374151; margin-bottom: 4px;">${escapeHtml(label)}</div>
+                <div style="font-size: 13px; color: #6b7280;">
+                    <div style="margin-bottom: 2px;">
+                        <span style="color: #dc2626;">Prima:</span> ${oldFormatted}
+                    </div>
+                    <div>
+                        <span style="color: #16a34a;">Dopo:</span> ${newFormatted}
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Crea popup overlay
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    `;
+    
+    // Crea popup content
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    `;
+    
+    popup.innerHTML = `
+        <div style="margin-bottom: 20px;">
+            <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 20px; font-weight: 600;">
+                Anteprima Modifiche
+            </h3>
+            <p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px; line-height: 1.5;">
+                Dati che verranno modificati:
+            </p>
+            <div style="max-height: 300px; overflow-y: auto;">
+                ${changesList}
+            </div>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button type="button" id="preview-close-btn" style="
+                flex: 1;
+                padding: 12px;
+                background: #e5e7eb;
+                color: #374151;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: 600;
+                cursor: pointer;
+            ">Chiudi</button>
+        </div>
+    `;
+    
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    
+    // Gestione click
+    const closeBtn = popup.querySelector('#preview-close-btn');
+    
+    const closePopup = () => {
+        document.body.removeChild(overlay);
+    };
+    
+    closeBtn.addEventListener('click', closePopup);
+    overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+            closePopup();
+        }
+    });
+}
+
 function escapeHtml(text) {
     if (text == null) return '';
     const div = document.createElement('div');
