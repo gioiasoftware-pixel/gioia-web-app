@@ -300,7 +300,7 @@ function setupSaveButton() {
         cursor: pointer !important;
         pointer-events: auto !important;
         position: relative !important;
-        z-index: 9998 !important;
+        z-index: 9999 !important;
         display: block !important;
         visibility: visible !important;
         opacity: 1 !important;
