@@ -827,9 +827,12 @@ async function handleSaveClick() {
             if (backendKey === 'vintage' || backendKey === 'quantity') {
                 // Per vintage e quantity: invia null se vuoto, altrimenti numero
                 updateData[backendKey] = normalizedCurrent ? parseInt(normalizedCurrent) : null;
-            } else if (backendKey === 'selling_price' || backendKey === 'cost_price' || backendKey === 'alcohol_content') {
-                // Per prezzi e gradazione: invia null se vuoto, altrimenti float
+            } else if (backendKey === 'selling_price' || backendKey === 'cost_price') {
+                // Per prezzi: invia null se vuoto, altrimenti float
                 updateData[backendKey] = normalizedCurrent ? parseFloat(normalizedCurrent) : null;
+            } else if (backendKey === 'alcohol_content') {
+                // Per gradazione: backend si aspetta stringa, non float
+                updateData[backendKey] = normalizedCurrent || null;
             } else {
                 // Per stringhe (supplier, classification, description, notes, etc.):
                 // Se vuoto → invia null, altrimenti stringa (non stringa vuota)
