@@ -748,26 +748,18 @@ async function loadMovements(wineId) {
  * Gestisce click salva modifiche
  */
 async function handleSaveClick() {
-    // STEP 2: Verifica che la funzione venga chiamata e mostra popup
-    showErrorPopup('STEP 2', 'handleSaveClick() chiamato! Verifico dati...');
-    
     if (!currentWineId) {
         showErrorPopup('Errore', 'Nessun vino selezionato');
         return;
     }
     
-    const wineForm = document.getElementById('inventory-wine-form-mobile');
-    if (!wineForm) {
+    const form = document.getElementById('inventory-wine-form-mobile');
+    if (!form) {
         showErrorPopup('Errore', 'Form non trovato');
         return;
     }
     
-    // STEP 2: Mostra popup con info form trovato
-    showErrorPopup('STEP 2 OK', 'Form trovato! Procedo con raccolta dati...');
-    return;
-    
     // Raccogli dati form
-    const formData = new FormData(form);
     const updateData = {};
     
     // Mappa nomi campo frontend -> backend
@@ -815,8 +807,7 @@ async function handleSaveClick() {
         return;
     }
     
-    // STEP 1: Mostra popup con dati prima/dopo per validare funzionamento
-    // NON salvare ancora, solo mostrare popup di anteprima
+    // STEP 3: Mostra popup anteprima modifiche
     showChangesPreviewPopup(updateData, originalWineData);
 }
 
