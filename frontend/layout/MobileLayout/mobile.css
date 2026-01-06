@@ -361,6 +361,14 @@
 .mobileRoot .mApp.state-viewer .mOverlay {
     pointer-events: none !important;
     z-index: 0 !important; /* Sotto il viewer */
+    display: none !important; /* Nascondi completamente quando viewer è aperto */
+}
+
+/* Modal NON deve coprire il viewer quando è aperto */
+.mobileRoot .mApp.state-viewer .mModal {
+    pointer-events: none !important;
+    z-index: 0 !important; /* Sotto il viewer */
+    display: none !important; /* Nascondi completamente quando viewer è aperto */
 }
 
 /* ============================================

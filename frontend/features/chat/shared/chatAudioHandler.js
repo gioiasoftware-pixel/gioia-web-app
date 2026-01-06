@@ -422,6 +422,11 @@ function initAudioHandler(layout) {
 
     // Gestione click fuori per annullare (opzionale)
     document.addEventListener('click', (e) => {
+        // NON bloccare eventi verso l'inventario mobile
+        if (e.target.closest && e.target.closest('.inventory-header-mobile')) {
+            return; // NON interferire con inventario
+        }
+        
         if (recorder.isRecording && 
             !audioRecording.contains(e.target) && 
             !audioBtn.contains(e.target)) {
