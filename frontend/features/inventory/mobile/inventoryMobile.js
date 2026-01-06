@@ -685,28 +685,56 @@ function showInventoryScreen(screen) {
 
 /**
  * Gestisce click indietro
+ * - Nella pagina "lista" (prima pagina inventario) → torna alla chat/homepage (refresh browser)
+ * - Nella pagina dettagli vino → torna alla lista inventario
  */
 function handleBackClick() {
+    console.log('[InventoryMobile] handleBackClick chiamato');
+    
+    const listScreen = document.getElementById('inventory-screen-list');
     const detailsScreen = document.getElementById('inventory-screen-details');
     const chartScreen = document.getElementById('inventory-screen-chart');
     
-    // Se siamo in dettagli o chart, torna alla lista
-    if (detailsScreen && !detailsScreen.classList.contains('hidden')) {
+    // Verifica quale schermata è attualmente visibile
+    const isDetailsVisible = detailsScreen && !detailsScreen.classList.contains('hidden');
+    const isChartVisible = chartScreen && !chartScreen.classList.contains('hidden');
+    const isListVisible = listScreen && !listScreen.classList.contains('hidden');
+    
+    console.log('[InventoryMobile] Stato schermate - Lista:', isListVisible, 'Dettagli:', isDetailsVisible, 'Chart:', isChartVisible);
+    
+    // Se siamo nella pagina dettagli vino → torna alla lista inventario
+    if (isDetailsVisible) {
+        console.log('[InventoryMobile] Dalla pagina dettagli → torno alla lista inventario');
         showInventoryScreen('list');
         currentWineId = null;
         originalWineData = null;
-    } else if (chartScreen && !chartScreen.classList.contains('hidden')) {
+        return;
+    }
+    
+    // Se siamo nella pagina chart → torna ai dettagli
+    if (isChartVisible) {
+        console.log('[InventoryMobile] Dalla pagina chart → torno ai dettagli');
         showInventoryScreen('details');
-    } else {
-        // Se siamo in lista, chiudi inventario
-        const viewerPanel = document.getElementById('viewerPanel');
-        const mobileLayout = document.getElementById('mobile-layout');
-        
-        if (viewerPanel) viewerPanel.hidden = true;
-        if (mobileLayout) {
-            mobileLayout.classList.remove('state-viewer');
-            mobileLayout.classList.add('state-chat');
-        }
+        return;
+    }
+    
+    // Se siamo nella pagina lista (prima pagina inventario) → torna alla chat/homepage
+    // Facciamo un refresh del browser per tornare alla homepage
+    if (isListVisible) {
+        console.log('[InventoryMobile] Dalla pagina lista → refresh browser per tornare alla chat/homepage');
+        window.location.reload();
+        return;
+    }
+    
+    // Fallback: se non riusciamo a determinare la schermata, chiudi inventario
+    console.log('[InventoryMobile] Fallback: chiudo inventario');
+    const viewerPanel = document.getElementById('viewerPanel');
+    const mobileLayout = document.getElementById('mobile-layout');
+    
+    if (viewerPanel) viewerPanel.hidden = true;
+    if (mobileLayout) {
+        mobileLayout.classList.remove('state-viewer');
+        mobileLayout.classList.add('state-chat');
     }
 }
 
