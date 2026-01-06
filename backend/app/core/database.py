@@ -246,6 +246,7 @@ class DatabaseManager:
                     'region': row.region,
                     'country': row.country,
                     'wine_type': row.wine_type,
+                    'supplier': row.supplier if hasattr(row, 'supplier') else None,  # Campo supplier
                     'classification': row.classification,
                     'quantity': row.quantity,
                     'min_quantity': row.min_quantity if hasattr(row, 'min_quantity') else 0,
