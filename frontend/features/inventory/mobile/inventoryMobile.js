@@ -76,23 +76,32 @@ function initInventoryMobile() {
  * Crea il bottone indietro da zero con stile tondo
  */
 function setupInventoryButtons() {
-    console.log('[InventoryMobile] === SETUP BOTTONE INDIETRO ===');
+    console.log('[InventoryMobile] === SETUP BOTTONE INDIETRO (VERSIONE ROBUSTA) ===');
     
-    // Trova il bottone (ora è nell'HTML)
+    // Trova l'header (usiamo event delegation)
+    const header = document.getElementById('inventory-header-mobile');
+    if (!header) {
+        console.error('[InventoryMobile] ❌ Header non trovato nel DOM!');
+        return false;
+    }
+    
+    console.log('[InventoryMobile] ✅ Header trovato nel DOM');
+    
+    // Rimuovi listener esistenti sull'header clonandolo
+    const newHeader = header.cloneNode(true);
+    header.parentNode.replaceChild(newHeader, header);
+    
+    // Trova il bottone nel nuovo header
     const backBtn = document.getElementById('inventory-back-btn-mobile');
     if (!backBtn) {
-        console.error('[InventoryMobile] ❌ Bottone non trovato nel DOM!');
+        console.error('[InventoryMobile] ❌ Bottone non trovato dopo clone!');
         return false;
     }
     
     console.log('[InventoryMobile] ✅ Bottone trovato nel DOM');
     
-    // Rimuovi tutti i listener esistenti clonando il bottone
-    const newBtn = backBtn.cloneNode(true);
-    backBtn.parentNode.replaceChild(newBtn, backBtn);
-    
     // Forza stili inline per garantire visibilità
-    newBtn.style.cssText = `
+    backBtn.style.cssText = `
         width: 50px !important;
         height: 50px !important;
         min-width: 50px !important;
@@ -120,28 +129,84 @@ function setupInventoryButtons() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati');
     
-    // Aggiungi listener per click
-    newBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        console.log('[InventoryMobile] ✅✅✅ BOTTONE CLICCATO! ✅✅✅');
-        handleBackClick();
-    }, { capture: true });
+    // Funzione handler robusta con try-catch
+    const handleButtonAction = (eventType, e) => {
+        console.log(`[InventoryMobile] 🎯 EVENTO ${eventType} INTERCETTATO sul bottone!`);
+        console.log('[InventoryMobile] Event object:', e);
+        console.log('[InventoryMobile] Target:', e.target);
+        
+        try {
+            // NON usare preventDefault/stopPropagation qui - potrebbe interferire
+            console.log('[InventoryMobile] Verifico handleBackClick...');
+            console.log('[InventoryMobile] handleBackClick type:', typeof handleBackClick);
+            console.log('[InventoryMobile] handleBackClick value:', handleBackClick);
+            
+            // Verifica se handleBackClick è definita (può essere in scope diverso)
+            let backClickHandler = handleBackClick;
+            if (typeof backClickHandler !== 'function') {
+                // Prova a recuperarla da window.InventoryMobile
+                if (window.InventoryMobile && typeof window.InventoryMobile.handleBackClick === 'function') {
+                    backClickHandler = window.InventoryMobile.handleBackClick;
+                    console.log('[InventoryMobile] ✅ handleBackClick trovata in window.InventoryMobile');
+                } else {
+                    console.error('[InventoryMobile] ❌ handleBackClick non trovata!');
+                    // Fallback: refresh diretto
+                    console.log('[InventoryMobile] Fallback: refresh diretto');
+                    window.location.reload();
+                    return;
+                }
+            }
+            
+            console.log('[InventoryMobile] Chiamata handleBackClick...');
+            backClickHandler();
+            console.log('[InventoryMobile] ✅ handleBackClick eseguita con successo');
+        } catch (error) {
+            console.error('[InventoryMobile] ❌ ERRORE in handleButtonAction:', error);
+            console.error('[InventoryMobile] Stack trace:', error.stack);
+            // Fallback: refresh diretto in caso di errore
+            console.log('[InventoryMobile] Fallback dopo errore: refresh diretto');
+            try {
+                window.location.reload();
+            } catch (reloadError) {
+                console.error('[InventoryMobile] ❌ ERRORE anche nel reload:', reloadError);
+            }
+        }
+    };
     
-    // Aggiungi listener per touchstart (mobile)
-    newBtn.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        console.log('[InventoryMobile] ✅✅✅ BOTTONE TOCCATO (touchstart)! ✅✅✅');
-        handleBackClick();
-    }, { capture: true, passive: false });
+    // Aggiungi listener DIRETTI sul bottone (non capture, per evitare conflitti)
+    backBtn.addEventListener('click', (e) => {
+        handleButtonAction('CLICK', e);
+    }, false);
+    
+    backBtn.addEventListener('touchstart', (e) => {
+        handleButtonAction('TOUCHSTART', e);
+    }, { passive: false });
+    
+    backBtn.addEventListener('touchend', (e) => {
+        handleButtonAction('TOUCHEND', e);
+    }, { passive: false });
+    
+    // Aggiungi anche event delegation sull'header come backup
+    newHeader.addEventListener('click', (e) => {
+        if (e.target.id === 'inventory-back-btn-mobile' || e.target.closest('#inventory-back-btn-mobile')) {
+            console.log('[InventoryMobile] 🎯 CLICK intercettato via event delegation!');
+            handleButtonAction('CLICK-DELEGATION', e);
+        }
+    }, false);
+    
+    newHeader.addEventListener('touchstart', (e) => {
+        if (e.target.id === 'inventory-back-btn-mobile' || e.target.closest('#inventory-back-btn-mobile')) {
+            console.log('[InventoryMobile] 🎯 TOUCHSTART intercettato via event delegation!');
+            handleButtonAction('TOUCHSTART-DELEGATION', e);
+        }
+    }, { passive: false });
+    
+    console.log('[InventoryMobile] ✅ Listener aggiunti (diretti + delegation)');
     
     // Verifica visibilità
     setTimeout(() => {
-        const rect = newBtn.getBoundingClientRect();
-        const computed = window.getComputedStyle(newBtn);
+        const rect = backBtn.getBoundingClientRect();
+        const computed = window.getComputedStyle(backBtn);
         console.log('[InventoryMobile] === VERIFICA BOTTONE ===');
         console.log('[InventoryMobile] Posizione:', rect);
         console.log('[InventoryMobile] Display:', computed.display);
@@ -149,7 +214,6 @@ function setupInventoryButtons() {
         console.log('[InventoryMobile] Opacity:', computed.opacity);
         console.log('[InventoryMobile] Pointer-events:', computed.pointerEvents);
         console.log('[InventoryMobile] Z-index:', computed.zIndex);
-        console.log('[InventoryMobile] Background:', computed.backgroundColor);
         console.log('[InventoryMobile] Width:', computed.width);
         console.log('[InventoryMobile] Height:', computed.height);
         
