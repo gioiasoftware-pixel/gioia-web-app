@@ -362,38 +362,19 @@ function setupSaveButton() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati al bottone salva');
     
-    // Handler semplice - DEBUG ESTESO
+    // Handler semplice - STEP 1: Senza preventDefault/stopPropagation
     const handler = (e) => {
-        console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO sul bottone salva!');
-        console.log('[InventoryMobile] Evento:', e);
-        console.log('[InventoryMobile] Target:', e.target);
-        console.log('[InventoryMobile] CurrentTarget:', e.currentTarget);
-        
         // NON chiamare preventDefault/stopPropagation per evitare conflitti
-        // e.preventDefault();
-        // e.stopPropagation();
-        
+        // Test diretto: chiama handleSaveClick immediatamente
         try {
-            console.log('[InventoryMobile] Chiamata handleSaveClick()...');
-            const result = handleSaveClick();
-            console.log('[InventoryMobile] handleSaveClick() completato, risultato:', result);
+            handleSaveClick();
         } catch (err) {
-            console.error('[InventoryMobile] ❌ ERRORE in handler salva:', err);
-            console.error('[InventoryMobile] Stack trace:', err.stack);
             showErrorPopup('Errore', `Errore durante il salvataggio: ${err.message}`);
         }
     };
     
-    // UN SOLO LISTENER, SEMPLICE, SENZA capture per evitare conflitti
-    // Prova prima senza capture, poi con capture se necessario
+    // STEP 1: Listener semplice senza capture
     saveBtn.addEventListener('click', handler);
-    
-    // Aggiungi anche listener con capture come fallback
-    const handlerCapture = (e) => {
-        console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO (capture) sul bottone salva!');
-        handler(e);
-    };
-    saveBtn.addEventListener('click', handlerCapture, { capture: true });
     
     // Salva riferimento per rimozione futura
     saveButtonListener = handler;
@@ -769,12 +750,11 @@ async function loadMovements(wineId) {
  * Gestisce click salva modifiche
  */
 async function handleSaveClick() {
-    console.log('[InventoryMobile] ===== handleSaveClick() CHIAMATO =====');
-    console.log('[InventoryMobile] currentWineId:', currentWineId);
-    console.log('[InventoryMobile] originalWineData:', originalWineData);
+    // STEP 1: Test immediato - mostra popup per verificare che la funzione viene chiamata
+    showErrorPopup('Test', 'handleSaveClick() chiamato correttamente!');
+    return;
     
     if (!currentWineId) {
-        console.error('[InventoryMobile] ❌ Nessun vino selezionato');
         showErrorPopup('Errore', 'Nessun vino selezionato');
         return;
     }
