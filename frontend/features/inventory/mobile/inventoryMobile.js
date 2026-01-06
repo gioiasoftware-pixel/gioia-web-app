@@ -22,6 +22,7 @@ function initInventoryMobile() {
     }
     
     // Setup event listeners
+    // Nota: setupInventoryButtons() viene chiamato per primo per assicurarsi che il bottone indietro funzioni
     setupInventoryButtons();
     setupWineListClickHandlers();
     setupSaveButton();
@@ -30,6 +31,11 @@ function initInventoryMobile() {
     // Carica inventario iniziale
     loadInventory();
     
+    // Riprova a setup il bottone dopo un breve delay per gestire timing issues
+    setTimeout(() => {
+        setupInventoryButtons();
+    }, 200);
+    
     console.log('[InventoryMobile] Inizializzato');
 }
 
@@ -37,8 +43,42 @@ function initInventoryMobile() {
  * Setup bottoni inventario
  */
 function setupInventoryButtons() {
-    // Bottone indietro già gestito da ChatMobile.js
-    // Qui possiamo aggiungere altri bottoni se necessario
+    // Setup bottone indietro
+    const backBtn = document.getElementById('inventory-back-btn-mobile');
+    if (backBtn) {
+        // Rimuovi listener esistenti clonando il bottone
+        const newBtn = backBtn.cloneNode(true);
+        backBtn.parentNode.replaceChild(newBtn, backBtn);
+        
+        // Aggiungi listener per click
+        newBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[InventoryMobile] Bottone indietro cliccato');
+            handleBackClick();
+        });
+        
+        // Aggiungi listener per touchstart (mobile)
+        newBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[InventoryMobile] Bottone indietro toccato (touchstart)');
+            handleBackClick();
+        }, { passive: false });
+        
+        console.log('[InventoryMobile] Listener bottone indietro aggiunto con successo');
+        return true;
+    } else {
+        console.warn('[InventoryMobile] Bottone indietro non trovato nel DOM, riprovo tra poco...');
+        // Retry dopo un breve delay se il bottone non è ancora disponibile
+        setTimeout(() => {
+            const retryBtn = document.getElementById('inventory-back-btn-mobile');
+            if (retryBtn) {
+                setupInventoryButtons();
+            }
+        }, 100);
+        return false;
+    }
 }
 
 /**
@@ -800,7 +840,8 @@ if (typeof window !== 'undefined') {
         init: initInventoryMobile,
         handleBackClick: handleBackClick,
         loadInventory: loadInventory,
-        showWineDetails: showWineDetails
+        showWineDetails: showWineDetails,
+        setupInventoryButtons: setupInventoryButtons
     };
 }
 
