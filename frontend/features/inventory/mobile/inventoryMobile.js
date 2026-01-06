@@ -73,10 +73,18 @@ function setupInventoryButtons() {
     
     console.log('[InventoryMobile] === SETUP BOTTONE INDIETRO ===');
     
-    // Verifica che viewerPanel sia visibile
+    // Verifica che viewerPanel sia visibile E che state-viewer sia attivo
     const viewerPanel = document.getElementById('viewerPanel');
+    const mobileLayout = document.getElementById('mobile-layout');
+    
     if (!viewerPanel || viewerPanel.hidden) {
         console.log('[InventoryMobile] ViewerPanel non visibile, skip setup');
+        return false;
+    }
+    
+    // Verifica che state-viewer sia attivo
+    if (mobileLayout && !mobileLayout.classList.contains('state-viewer')) {
+        console.log('[InventoryMobile] state-viewer non attivo, skip setup');
         return false;
     }
     

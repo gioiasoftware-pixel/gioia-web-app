@@ -357,6 +357,12 @@
     pointer-events: auto !important;
 }
 
+/* Overlay NON deve coprire il viewer quando è aperto */
+.mobileRoot .mApp.state-viewer .mOverlay {
+    pointer-events: none !important;
+    z-index: 0 !important; /* Sotto il viewer */
+}
+
 /* ============================================
    SIDEBAR MOBILE (.mSidebar) - Drawer
    ============================================ */
@@ -1405,7 +1411,7 @@
 .mobileRoot .mApp.state-chat .mOverlay,
 .mobileRoot .mApp.state-chat .mViewer,
 .mobileRoot .mApp.state-chat .mModal {
-    pointer-events: none;
+    pointer-events: none !important;
 }
 
 .mobileRoot .mApp.state-chat #chatScroll {
@@ -1437,6 +1443,15 @@
 .mobileRoot .mApp.state-viewer .mViewer {
     pointer-events: auto !important;
     display: flex !important; /* Forza display quando nello stato viewer */
+}
+
+/* FORZA pointer-events su viewerPanel quando state-viewer è attivo (massima priorità) */
+.mobileRoot .mApp.state-viewer #viewerPanel:not([hidden]) {
+    pointer-events: auto !important;
+}
+
+.mobileRoot .mApp.state-viewer #viewerPanel:not([hidden]) .inventory-back-btn-mobile {
+    pointer-events: auto !important;
 }
 
 .mobileRoot .mApp.state-viewer .mSidebar,
