@@ -105,10 +105,17 @@ function setupInventoryButtons() {
     if (backButtonListeners) {
         backBtn.removeEventListener('click', backButtonListeners.click);
         backBtn.removeEventListener('pointerup', backButtonListeners.pointerup);
+        if (backButtonListeners.touchstart) {
+            backBtn.removeEventListener('touchstart', backButtonListeners.touchstart);
+        }
+        if (backButtonListeners.touchend) {
+            backBtn.removeEventListener('touchend', backButtonListeners.touchend);
+        }
         header.removeEventListener('click', backButtonListeners.delegation);
+        header.removeEventListener('touchend', backButtonListeners.delegation);
     }
     
-    // Forza stili inline per garantire visibilità
+    // Forza stili inline per garantire visibilità (con fix iOS Safari)
     backBtn.style.cssText = `
         width: 50px !important;
         height: 50px !important;
@@ -133,6 +140,11 @@ function setupInventoryButtons() {
         font-size: 24px !important;
         line-height: 1 !important;
         box-shadow: 0 4px 12px rgba(139, 21, 56, 0.4) !important;
+        user-select: none !important;
+        -webkit-user-select: none !important;
+        -webkit-tap-highlight-color: rgba(139, 21, 56, 0.3) !important;
+        touch-action: manipulation !important;
+        -webkit-touch-callout: none !important;
     `;
     
     console.log('[InventoryMobile] ✅ Stili inline applicati');
@@ -156,9 +168,34 @@ function setupInventoryButtons() {
         }
     };
     
-    // Listener UNICI: usa pointerup (funziona su mobile e desktop) + click come fallback
+    // Listener per iOS Safari: usa touchstart + touchend (iOS non sempre genera click da touch)
+    // IMPORTANTE: su iOS Safari, touchstart/touchend sono più affidabili di click
+    const handleTouchStart = (e) => {
+        // Non fare preventDefault qui - permette al browser di gestire il touch
+        console.log('[InventoryMobile] 🎯 TOUCHSTART su iOS Safari');
+    };
+    
+    const handleTouchEnd = (e) => {
+        console.log('[InventoryMobile] 🎯 TOUCHEND su iOS Safari');
+        // Previeni il click che verrà generato dopo touchend
+        e.preventDefault();
+        handleBackButton(e);
+    };
+    
+    // Listener per iOS Safari (touchstart/touchend)
+    backBtn.addEventListener('touchstart', handleTouchStart, { passive: true });
+    backBtn.addEventListener('touchend', handleTouchEnd, { passive: false });
+    
+    // Listener per desktop e altri browser (pointerup + click)
     backBtn.addEventListener('pointerup', handleBackButton, { passive: false });
-    backBtn.addEventListener('click', handleBackButton, { passive: false });
+    backBtn.addEventListener('click', (e) => {
+        // Su iOS, se touchend ha già gestito, ignora click
+        if (e.detail === 0) {
+            // Click generato da touch, già gestito da touchend
+            return;
+        }
+        handleBackButton(e);
+    }, { passive: false });
     
     // Event delegation come backup (solo se necessario)
     const delegationHandler = (e) => {
@@ -167,11 +204,14 @@ function setupInventoryButtons() {
         }
     };
     header.addEventListener('click', delegationHandler, { passive: false });
+    header.addEventListener('touchend', delegationHandler, { passive: false });
     
     // Salva riferimenti per rimozione futura
     backButtonListeners = {
         click: handleBackButton,
         pointerup: handleBackButton,
+        touchstart: handleTouchStart,
+        touchend: handleTouchEnd,
         delegation: delegationHandler
     };
     

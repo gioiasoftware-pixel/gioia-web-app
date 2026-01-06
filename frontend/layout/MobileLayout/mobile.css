@@ -522,6 +522,20 @@
     pointer-events: auto !important;
 }
 
+/* FIX iOS Safari: header deve avere pointer-events auto quando viewer è aperto */
+.mobileRoot .mApp.state-viewer .inventory-header-mobile {
+    pointer-events: auto !important;
+    -webkit-touch-callout: none !important;
+}
+
+/* FIX iOS Safari: previeni problemi di stacking context */
+.mobileRoot .mApp.state-viewer .mViewer .inventory-header-mobile {
+    position: relative !important;
+    z-index: 10000 !important; /* Più alto del bottone per garantire che l'header sia sopra */
+    transform: translateZ(0) !important; /* Crea nuovo stacking context su iOS */
+    -webkit-transform: translateZ(0) !important;
+}
+
 /* Header comune inventario */
 .mobileRoot .mViewer .inventory-header-mobile {
     flex-shrink: 0;
@@ -599,7 +613,10 @@
     z-index: 9999 !important;
     box-shadow: 0 4px 12px rgba(139, 21, 56, 0.4) !important;
     user-select: none !important;
-    -webkit-tap-highlight-color: transparent !important;
+    -webkit-user-select: none !important;
+    -webkit-tap-highlight-color: rgba(139, 21, 56, 0.3) !important; /* Highlight visibile su iOS */
+    touch-action: manipulation !important; /* Previene double-tap zoom e migliora responsiveness */
+    -webkit-touch-callout: none !important; /* Disabilita menu contestuale iOS */
     visibility: visible !important;
     opacity: 1 !important;
     line-height: 1 !important;
