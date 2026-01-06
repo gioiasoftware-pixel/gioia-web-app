@@ -1015,6 +1015,19 @@ async function handleSaveClick() {
         // Aggiorna dati originali
         originalWineData = { ...originalWineData, ...updateData };
         
+        // Se è stata modificata la quantità, ricarica i movimenti dopo un breve delay
+        // per permettere al backend di processare il movimento
+        if ('quantity' in updateData) {
+            console.log('[InventoryMobile] Quantità modificata, ricarico movimenti dopo salvataggio...');
+            // Piccolo delay per permettere al backend di processare il movimento
+            setTimeout(async () => {
+                const wineName = originalWineData?.name;
+                if (wineName) {
+                    await loadMovements(wineName);
+                }
+            }, 500); // 500ms delay per permettere al processor di creare il movimento
+        }
+        
         // Mostra messaggio successo
         showSuccessPopup('Modifiche salvate', 'Le modifiche sono state salvate con successo');
         
