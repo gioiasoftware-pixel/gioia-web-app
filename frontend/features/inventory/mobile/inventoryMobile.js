@@ -362,10 +362,13 @@ function setupSaveButton() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati al bottone salva');
     
-    // Handler semplice - TEST: Popup fisso per verificare se il click viene intercettato
+    // Handler semplice - STEP 2: Chiama handleSaveClick() e verifica che funzioni
     const handler = (e) => {
-        // Popup fisso immediato per test
-        showErrorPopup('TEST BOTTONE', 'Il bottone funziona! Click intercettato correttamente.');
+        try {
+            handleSaveClick();
+        } catch (err) {
+            showErrorPopup('Errore', `Errore durante il salvataggio: ${err.message}`);
+        }
     };
     
     // STEP 1: Listener semplice senza capture
@@ -745,17 +748,23 @@ async function loadMovements(wineId) {
  * Gestisce click salva modifiche
  */
 async function handleSaveClick() {
-    // STEP 1: Test immediato - mostra popup per verificare che la funzione viene chiamata
-    showErrorPopup('Test', 'handleSaveClick() chiamato correttamente!');
-    return;
+    // STEP 2: Verifica che la funzione venga chiamata e mostra popup
+    showErrorPopup('STEP 2', 'handleSaveClick() chiamato! Verifico dati...');
     
     if (!currentWineId) {
         showErrorPopup('Errore', 'Nessun vino selezionato');
         return;
     }
     
-    const form = document.getElementById('inventory-wine-form-mobile');
-    if (!form) return;
+    const wineForm = document.getElementById('inventory-wine-form-mobile');
+    if (!wineForm) {
+        showErrorPopup('Errore', 'Form non trovato');
+        return;
+    }
+    
+    // STEP 2: Mostra popup con info form trovato
+    showErrorPopup('STEP 2 OK', 'Form trovato! Procedo con raccolta dati...');
+    return;
     
     // Raccogli dati form
     const formData = new FormData(form);
