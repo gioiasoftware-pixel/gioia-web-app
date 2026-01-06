@@ -88,31 +88,27 @@ function setupInventoryButtons() {
         return false;
     }
     
-    const header = document.getElementById('inventory-header-mobile');
-    if (!header) {
-        console.error('[InventoryMobile] ❌ Header non trovato nel DOM!');
-        return false;
-    }
-    
-    // RIMUOVI CLONE - lavora direttamente sull'elemento
+    // Verifica che il bottone STATICO esista (non crearlo, solo trovarlo)
     const backBtn = document.getElementById('inventory-back-btn-mobile');
     if (!backBtn) {
-        console.error('[InventoryMobile] ❌ Bottone non trovato nel DOM!');
+        console.error('[InventoryMobile] ❌ Bottone statico non trovato nel DOM!');
+        console.error('[InventoryMobile] Verifica che esista in index.html con id="inventory-back-btn-mobile"');
         return false;
     }
     
+    // Verifica che ci sia SOLO un bottone con quell'ID
+    const allButtons = document.querySelectorAll('#inventory-back-btn-mobile');
+    if (allButtons.length > 1) {
+        console.error(`[InventoryMobile] ❌ TROVATI ${allButtons.length} BOTTONI CON LO STESSO ID!`);
+        console.error('[InventoryMobile] Questo può causare problemi - getElementById ritorna solo il primo');
+        // Continua comunque, ma logga il problema
+    }
+    
+    console.log('[InventoryMobile] ✅ Bottone statico trovato nel DOM');
+    
     // Rimuovi listener esistenti se presenti
-    if (backButtonListeners) {
-        backBtn.removeEventListener('click', backButtonListeners.click);
-        backBtn.removeEventListener('pointerup', backButtonListeners.pointerup);
-        if (backButtonListeners.touchstart) {
-            backBtn.removeEventListener('touchstart', backButtonListeners.touchstart);
-        }
-        if (backButtonListeners.touchend) {
-            backBtn.removeEventListener('touchend', backButtonListeners.touchend);
-        }
-        header.removeEventListener('click', backButtonListeners.delegation);
-        header.removeEventListener('touchend', backButtonListeners.delegation);
+    if (backButtonListeners && backButtonListeners.click) {
+        backBtn.removeEventListener('click', backButtonListeners.click, true);
     }
     
     // Forza stili inline per garantire visibilità (con fix iOS Safari)
@@ -149,137 +145,36 @@ function setupInventoryButtons() {
     
     console.log('[InventoryMobile] ✅ Stili inline applicati');
     
-    // Handler unificato
-    const handleBackButton = (e) => {
-        console.log('[InventoryMobile] 🎯 EVENTO INTERCETTATO sul bottone!');
-        e.stopPropagation(); // Previeni bubbling
+    // Handler semplice
+    const handler = (e) => {
+        console.log('[InventoryMobile] 🎯 CLICK INTERCETTATO sul bottone statico!');
+        e.preventDefault();
+        e.stopPropagation();
         
         try {
-            const handler = window.InventoryMobile?.handleBackClick || handleBackClick;
-            if (typeof handler === 'function') {
-                handler();
+            const backClickHandler = window.InventoryMobile?.handleBackClick || handleBackClick;
+            if (typeof backClickHandler === 'function') {
+                backClickHandler();
             } else {
                 console.error('[InventoryMobile] handleBackClick non trovata!');
                 window.location.reload();
             }
-        } catch (error) {
-            console.error('[InventoryMobile] ❌ ERRORE in handleBackButton:', error);
+        } catch (err) {
+            console.error('[InventoryMobile] ❌ ERRORE in handler:', err);
             window.location.reload();
         }
     };
     
-    // Listener per iOS Safari: usa touchstart + touchend (iOS non sempre genera click da touch)
-    // IMPORTANTE: su iOS Safari, touchstart/touchend sono più affidabili di click
-    const handleTouchStart = (e) => {
-        // Non fare preventDefault qui - permette al browser di gestire il touch
-        console.log('[InventoryMobile] 🎯 TOUCHSTART su iOS Safari');
-    };
+    // UN SOLO LISTENER, SEMPLICE, con capture per intercettare prima di altri
+    backBtn.addEventListener('click', handler, { capture: true });
     
-    const handleTouchEnd = (e) => {
-        console.log('[InventoryMobile] 🎯 TOUCHEND su iOS Safari');
-        // Previeni il click che verrà generato dopo touchend
-        e.preventDefault();
-        handleBackButton(e);
-    };
-    
-    // Listener per iOS Safari (touchstart/touchend)
-    backBtn.addEventListener('touchstart', handleTouchStart, { passive: true });
-    backBtn.addEventListener('touchend', handleTouchEnd, { passive: false });
-    
-    // Listener per desktop e altri browser (pointerup + click)
-    backBtn.addEventListener('pointerup', handleBackButton, { passive: false });
-    backBtn.addEventListener('click', (e) => {
-        // Su iOS, se touchend ha già gestito, ignora click
-        if (e.detail === 0) {
-            // Click generato da touch, già gestito da touchend
-            return;
-        }
-        handleBackButton(e);
-    }, { passive: false });
-    
-    // Event delegation come backup (solo se necessario)
-    const delegationHandler = (e) => {
-        if (e.target.id === 'inventory-back-btn-mobile' || e.target.closest('#inventory-back-btn-mobile')) {
-            handleBackButton(e);
-        }
-    };
-    header.addEventListener('click', delegationHandler, { passive: false });
-    header.addEventListener('touchend', delegationHandler, { passive: false });
-    
-    // Salva riferimenti per rimozione futura
+    // Salva riferimento per rimozione futura
     backButtonListeners = {
-        click: handleBackButton,
-        pointerup: handleBackButton,
-        touchstart: handleTouchStart,
-        touchend: handleTouchEnd,
-        delegation: delegationHandler
+        click: handler
     };
     
     backButtonInitialized = true;
-    console.log('[InventoryMobile] ✅ Bottone inizializzato con successo');
-    
-    // Verifica visibilità
-    setTimeout(() => {
-        const rect = backBtn.getBoundingClientRect();
-        const computed = window.getComputedStyle(backBtn);
-        console.log('[InventoryMobile] === VERIFICA BOTTONE ===');
-        console.log('=== VERIFICA BOTTONE ===', 'info');
-        console.log('[InventoryMobile] Posizione:', rect);
-        console.log(`Posizione: x=${rect.x}, y=${rect.y}, w=${rect.width}, h=${rect.height}`, 'info');
-        console.log('[InventoryMobile] Display:', computed.display);
-        console.log(`Display: ${computed.display}`, 'info');
-        console.log('[InventoryMobile] Visibility:', computed.visibility);
-        console.log(`Visibility: ${computed.visibility}`, 'info');
-        console.log('[InventoryMobile] Opacity:', computed.opacity);
-        console.log(`Opacity: ${computed.opacity}`, 'info');
-        console.log('[InventoryMobile] Pointer-events:', computed.pointerEvents);
-        console.log(`Pointer-events: ${computed.pointerEvents}`, 'info');
-        console.log('[InventoryMobile] Z-index:', computed.zIndex);
-        console.log(`Z-index: ${computed.zIndex}`, 'info');
-        console.log('[InventoryMobile] Width:', computed.width);
-        console.log('[InventoryMobile] Height:', computed.height);
-        
-        if (rect.width === 0 || rect.height === 0) {
-            console.error('[InventoryMobile] ❌❌❌ BOTTONE HA DIMENSIONI ZERO! ❌❌❌');
-            console.log('❌❌❌ PROBLEMA CRITICO: BOTTONE HA DIMENSIONI ZERO! ❌❌❌', 'error');
-            console.log('💡 CAUSA: Il bottone è nascosto da CSS (display:none) o ha width/height=0', 'error');
-            console.log('💡 SOLUZIONE: Verifica CSS - il bottone deve avere width/height > 0', 'error');
-            console.log('💡 VERIFICA: Controlla se .mViewer ha display:none o pointer-events:none', 'error');
-        } else {
-            console.log('[InventoryMobile] ✅ Bottone ha dimensioni valide');
-            console.log('✅ Bottone ha dimensioni valide', 'info');
-        }
-        
-        // Verifica aggiuntive
-        if (computed.pointerEvents === 'none') {
-            console.log('❌ PROBLEMA: pointer-events è "none"!', 'error');
-            console.log('💡 CAUSA: Un elemento parent ha pointer-events:none', 'error');
-            console.log('💡 SOLUZIONE: Verifica .mViewer e parent elements', 'error');
-        }
-        
-        if (computed.display === 'none') {
-            console.log('❌ PROBLEMA: display è "none"!', 'error');
-            console.log('💡 CAUSA: Il bottone è nascosto da CSS', 'error');
-        }
-        
-        if (computed.visibility === 'hidden') {
-            console.log('❌ PROBLEMA: visibility è "hidden"!', 'error');
-            console.log('💡 CAUSA: Il bottone è nascosto da CSS visibility', 'error');
-        }
-        
-        if (computed.opacity === '0') {
-            console.log('❌ PROBLEMA: opacity è "0"!', 'error');
-            console.log('💡 CAUSA: Il bottone è trasparente', 'error');
-        }
-        
-        if (parseInt(computed.zIndex) < 1000) {
-            console.log('⚠️ ATTENZIONE: z-index potrebbe essere troppo basso', 'warn');
-            console.log('💡 VERIFICA: Potrebbe esserci un overlay sopra il bottone', 'warn');
-        }
-        
-        console.log('📝 ANALISI COMPLETA: Se il bottone non funziona, controlla i log sopra', 'info');
-    }, 100);
-    
+    console.log('[InventoryMobile] ✅ Listener aggiunto al bottone statico');
     return true;
 }
 
