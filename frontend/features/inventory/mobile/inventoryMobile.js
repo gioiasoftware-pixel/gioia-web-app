@@ -618,6 +618,8 @@ async function showWineDetails(wineId) {
         updateWineBanner(wineData);
         // Carica movimenti usando il nome del vino (l'API si aspetta wine_name, non wine_id)
         loadMovements(wineData.name);
+        // Carica e renderizza grafico movimenti
+        loadAndRenderMovementsChartMobile(wineData.name);
         
         // Setup bottone salva quando la schermata dettagli è pronta
         // Reset flag per permettere re-setup quando si apre un nuovo vino
@@ -846,9 +848,356 @@ async function loadMovements(wineName) {
         
         console.log(`[InventoryMobile] ✅ Caricati ${movements.length} movimenti per vino: ${wineName}`);
         
+        // Salva movimenti per il grafico
+        window.currentWineMovements = movements;
+        
     } catch (error) {
         console.error('[InventoryMobile] Errore caricamento movimenti:', error);
         movementsLog.innerHTML = '<div class="inventory-loading">Errore caricamento movimenti</div>';
+    }
+}
+
+/**
+ * Carica e renderizza grafico movimenti per mobile
+ * @param {string} wineName - Nome del vino
+ */
+async function loadAndRenderMovementsChartMobile(wineName) {
+    console.log('[InventoryMobile] Caricamento grafico movimenti per:', wineName);
+    
+    // Se i movimenti sono già stati caricati, usali
+    let movements = window.currentWineMovements;
+    
+    if (!movements || movements.length === 0) {
+        // Carica movimenti se non disponibili
+        try {
+            const authToken = getAuthToken();
+            if (!authToken) {
+                console.warn('[InventoryMobile] Token non disponibile per caricamento grafico');
+                return;
+            }
+            
+            const response = await fetch(
+                `${window.API_BASE_URL || ''}/api/viewer/movements?wine_name=${encodeURIComponent(wineName)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                }
+            );
+            
+            if (!response.ok) {
+                console.error('[InventoryMobile] Errore caricamento movimenti per grafico');
+                return;
+            }
+            
+            const data = await response.json();
+            movements = data.movements || [];
+            window.currentWineMovements = movements;
+        } catch (error) {
+            console.error('[InventoryMobile] Errore caricamento movimenti per grafico:', error);
+            return;
+        }
+    }
+    
+    if (!movements || movements.length === 0) {
+        console.log('[InventoryMobile] Nessun movimento disponibile per il grafico');
+        const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+        if (previewContainer) {
+            previewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--color-gray);">Nessun movimento disponibile</div>';
+        }
+        return;
+    }
+    
+    // Renderizza grafico preview
+    renderMovementsChartPreview(movements);
+    
+    // Setup click handler per aprire grafico fullscreen
+    setupChartFullscreenHandler(wineName);
+}
+
+/**
+ * Renderizza grafico preview nella pagina dettagli
+ * @param {Array} movements - Array di movimenti
+ */
+function renderMovementsChartPreview(movements) {
+    const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+    if (!previewContainer) {
+        console.warn('[InventoryMobile] Container grafico preview non trovato');
+        return;
+    }
+    
+    // Verifica che Chart.js sia disponibile
+    if (typeof Chart === 'undefined') {
+        console.error('[InventoryMobile] Chart.js non disponibile');
+        previewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--color-gray);">Grafico non disponibile</div>';
+        return;
+    }
+    
+    // Verifica che le funzioni del grafico siano disponibili
+    if (typeof createAnchoredFlowStockChart === 'undefined') {
+        console.error('[InventoryMobile] createAnchoredFlowStockChart non disponibile');
+        previewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--color-gray);">Grafico non disponibile</div>';
+        return;
+    }
+    
+    try {
+        // Pulisci container
+        previewContainer.innerHTML = '';
+        
+        // Converti movimenti nel formato atteso
+        const chartMovements = movements.map(m => ({
+            at: m.at ? new Date(m.at) : new Date(),
+            delta: m.quantity_change || 0
+        }));
+        
+        // Calcola opening stock (primo movimento quantity_before o 0)
+        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+            ? movements[0].quantity_before 
+            : 0;
+        
+        // Calcola final stock (ultimo movimento quantity_after o opening stock)
+        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+            ? movements[movements.length - 1].quantity_after
+            : openingStock;
+        
+        // Crea grafico preview
+        const chart = createAnchoredFlowStockChart(previewContainer, chartMovements, {
+            now: new Date(),
+            preset: 'week', // Preview mostra ultima settimana
+            openingStock: Math.max(0, openingStock),
+            finalStock: finalStock,
+            responsive: true,
+            maintainAspectRatio: false
+        });
+        
+        if (chart) {
+            console.log('[InventoryMobile] ✅ Grafico preview renderizzato');
+            // Salva riferimento al chart per cleanup futuro
+            window.currentChartPreview = chart;
+        }
+    } catch (error) {
+        console.error('[InventoryMobile] Errore rendering grafico preview:', error);
+        previewContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--color-gray);">Errore caricamento grafico</div>';
+    }
+}
+
+/**
+ * Setup handler per aprire grafico fullscreen
+ * @param {string} wineName - Nome del vino
+ */
+function setupChartFullscreenHandler(wineName) {
+    const previewContainer = document.getElementById('inventory-graph-preview-mobile');
+    if (!previewContainer) return;
+    
+    // Rimuovi listener esistenti
+    previewContainer.removeEventListener('click', handleChartPreviewClick);
+    
+    // Aggiungi listener per click sul preview
+    previewContainer.addEventListener('click', handleChartPreviewClick);
+    
+    // Salva wineName per uso nel handler
+    previewContainer.dataset.wineName = wineName;
+}
+
+/**
+ * Handler click sul grafico preview - apre fullscreen
+ */
+function handleChartPreviewClick(e) {
+    const previewContainer = e.currentTarget;
+    const wineName = previewContainer.dataset.wineName;
+    
+    if (!wineName) {
+        console.warn('[InventoryMobile] Nome vino non disponibile per grafico fullscreen');
+        return;
+    }
+    
+    console.log('[InventoryMobile] Apertura grafico fullscreen per:', wineName);
+    
+    // Mostra schermata chart
+    const chartScreen = document.getElementById('inventory-screen-chart');
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    
+    if (!chartScreen || !detailsScreen) {
+        console.warn('[InventoryMobile] Schermate chart/dettagli non trovate');
+        return;
+    }
+    
+    // Nascondi dettagli, mostra chart
+    detailsScreen.classList.add('hidden');
+    chartScreen.classList.remove('hidden');
+    
+    // Aggiorna nome vino nel banner chart
+    const chartBanner = document.getElementById('inventory-wine-name-chart-mobile');
+    if (chartBanner) {
+        chartBanner.textContent = wineName;
+    }
+    
+    // Renderizza grafico fullscreen
+    renderMovementsChartFullscreen(wineName);
+    
+    // Setup filtri periodo
+    setupPeriodFilters(wineName);
+}
+
+/**
+ * Renderizza grafico fullscreen
+ * @param {string} wineName - Nome del vino
+ */
+function renderMovementsChartFullscreen(wineName) {
+    const chartContainer = document.getElementById('inventory-chart-container-mobile');
+    if (!chartContainer) {
+        console.warn('[InventoryMobile] Container grafico fullscreen non trovato');
+        return;
+    }
+    
+    // Usa movimenti già caricati o carica di nuovo
+    let movements = window.currentWineMovements;
+    
+    if (!movements || movements.length === 0) {
+        console.warn('[InventoryMobile] Nessun movimento disponibile per grafico fullscreen');
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Nessun movimento disponibile</div>';
+        return;
+    }
+    
+    // Verifica Chart.js
+    if (typeof Chart === 'undefined' || typeof createAnchoredFlowStockChart === 'undefined') {
+        console.error('[InventoryMobile] Chart.js o createAnchoredFlowStockChart non disponibile');
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Grafico non disponibile</div>';
+        return;
+    }
+    
+    try {
+        // Pulisci container
+        chartContainer.innerHTML = '';
+        
+        // Converti movimenti
+        const chartMovements = movements.map(m => ({
+            at: m.at ? new Date(m.at) : new Date(),
+            delta: m.quantity_change || 0
+        }));
+        
+        // Calcola opening/final stock
+        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+            ? movements[0].quantity_before 
+            : 0;
+        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+            ? movements[movements.length - 1].quantity_after
+            : openingStock;
+        
+        // Crea grafico fullscreen con preset settimana
+        const chart = createAnchoredFlowStockChart(chartContainer, chartMovements, {
+            now: new Date(),
+            preset: 'week',
+            openingStock: Math.max(0, openingStock),
+            finalStock: finalStock,
+            responsive: true,
+            maintainAspectRatio: false
+        });
+        
+        if (chart) {
+            console.log('[InventoryMobile] ✅ Grafico fullscreen renderizzato');
+            window.currentChartFullscreen = chart;
+        }
+    } catch (error) {
+        console.error('[InventoryMobile] Errore rendering grafico fullscreen:', error);
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Errore caricamento grafico</div>';
+    }
+}
+
+/**
+ * Setup filtri periodo per grafico fullscreen
+ * @param {string} wineName - Nome del vino
+ */
+function setupPeriodFilters(wineName) {
+    const periodButtons = document.querySelectorAll('.inventory-period-btn');
+    
+    periodButtons.forEach(btn => {
+        // Rimuovi listener esistenti
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        
+        // Aggiungi listener
+        newBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            
+            // Rimuovi active da tutti i bottoni
+            periodButtons.forEach(b => b.classList.remove('active'));
+            
+            // Aggiungi active al bottone cliccato
+            newBtn.classList.add('active');
+            
+            const period = newBtn.dataset.period;
+            console.log('[InventoryMobile] Cambio periodo grafico:', period);
+            
+            // Ricarica grafico con nuovo periodo
+            await renderMovementsChartFullscreenWithPeriod(wineName, period);
+        });
+    });
+}
+
+/**
+ * Renderizza grafico fullscreen con periodo specifico
+ * @param {string} wineName - Nome del vino
+ * @param {string} period - Periodo ('day', 'week', 'month', 'quarter', 'year')
+ */
+async function renderMovementsChartFullscreenWithPeriod(wineName, period) {
+    const chartContainer = document.getElementById('inventory-chart-container-mobile');
+    if (!chartContainer) return;
+    
+    // Distruggi chart esistente se presente
+    if (window.currentChartFullscreen && typeof window.currentChartFullscreen.destroy === 'function') {
+        window.currentChartFullscreen.destroy();
+        window.currentChartFullscreen = null;
+    }
+    
+    // Usa movimenti già caricati
+    let movements = window.currentWineMovements;
+    
+    if (!movements || movements.length === 0) {
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Nessun movimento disponibile</div>';
+        return;
+    }
+    
+    // Verifica Chart.js
+    if (typeof Chart === 'undefined' || typeof createAnchoredFlowStockChart === 'undefined') {
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Grafico non disponibile</div>';
+        return;
+    }
+    
+    try {
+        chartContainer.innerHTML = '';
+        
+        // Converti movimenti
+        const chartMovements = movements.map(m => ({
+            at: m.at ? new Date(m.at) : new Date(),
+            delta: m.quantity_change || 0
+        }));
+        
+        // Calcola opening/final stock
+        const openingStock = movements.length > 0 && movements[0].quantity_before !== undefined 
+            ? movements[0].quantity_before 
+            : 0;
+        const finalStock = movements.length > 0 && movements[movements.length - 1].quantity_after !== undefined
+            ? movements[movements.length - 1].quantity_after
+            : openingStock;
+        
+        // Crea grafico con periodo specificato
+        const chart = createAnchoredFlowStockChart(chartContainer, chartMovements, {
+            now: new Date(),
+            preset: period,
+            openingStock: Math.max(0, openingStock),
+            finalStock: finalStock,
+            responsive: true,
+            maintainAspectRatio: false
+        });
+        
+        if (chart) {
+            window.currentChartFullscreen = chart;
+        }
+    } catch (error) {
+        console.error('[InventoryMobile] Errore rendering grafico con periodo:', error);
+        chartContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--color-gray);">Errore caricamento grafico</div>';
     }
 }
 
