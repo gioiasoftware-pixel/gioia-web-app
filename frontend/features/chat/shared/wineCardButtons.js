@@ -238,16 +238,21 @@ function setupWineCardMovementButtons(messageElement) {
 }
 
 /**
- * Setup bottoni modifica e dettagli per wine card info su mobile
- * Aggiunge bottoni edit e hamburger alla wine card header
+ * Setup bottoni modifica e dettagli per wine card info su MOBILE
+ * Logica completamente separata da desktop per evitare conflitti
  */
-function setupWineCardInfoButtons(messageElement) {
+function setupWineCardInfoButtonsMobile(messageElement) {
     if (!messageElement) return;
     
     const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
                      document.documentElement.classList.contains('mobileRoot');
     
-    if (!isMobile) return; // Solo su mobile
+    if (!isMobile) {
+        window.AppDebug?.log('[WineCardButtons] ⏭️ setupWineCardInfoButtonsMobile: non è mobile, skip', 'warn');
+        return; // Solo su mobile
+    }
+    
+    window.AppDebug?.log('[WineCardButtons] 📱 Setup bottoni info MOBILE', 'info');
     
     const wineCards = messageElement.querySelectorAll('.wine-card');
     
@@ -276,11 +281,12 @@ function setupWineCardInfoButtons(messageElement) {
             header.appendChild(buttonsContainer);
         }
         
-        // Crea bottone modifica (matita)
+        // Crea bottone modifica (matita) - SOLO MOBILE
         const editButton = document.createElement('button');
         editButton.className = 'wine-card-button-mobile wine-card-button-edit';
         editButton.setAttribute('data-wine-id', wineId);
-        editButton.setAttribute('data-is-info-button', 'true'); // Flag per escludere da event delegation
+        editButton.setAttribute('data-layout', 'mobile'); // Flag per identificare che è mobile
+        editButton.setAttribute('data-button-type', 'info-edit'); // Tipo bottone
         editButton.setAttribute('aria-label', 'Modifica vino');
         editButton.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -290,11 +296,12 @@ function setupWineCardInfoButtons(messageElement) {
             </svg>
         `;
         
-        // Crea bottone dettagli (hamburger)
+        // Crea bottone dettagli (hamburger) - SOLO MOBILE
         const menuButton = document.createElement('button');
         menuButton.className = 'wine-card-button-mobile wine-card-button-menu';
         menuButton.setAttribute('data-wine-id', wineId);
-        menuButton.setAttribute('data-is-info-button', 'true'); // Flag per escludere da event delegation
+        menuButton.setAttribute('data-layout', 'mobile'); // Flag per identificare che è mobile
+        menuButton.setAttribute('data-button-type', 'info-details'); // Tipo bottone
         menuButton.setAttribute('aria-label', 'Dettagli vino');
         menuButton.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -304,14 +311,20 @@ function setupWineCardInfoButtons(messageElement) {
             </svg>
         `;
         
-        // Gestione click bottone modifica
-        // Aggiungi flag per prevenire che event delegation gestisca questo click
-        editButton.dataset.isInfoButton = 'true';
-        
+        // Gestione click bottone modifica - HANDLER MOBILE ISOLATO
         editButton.addEventListener('click', async (e) => {
+            // Blocca completamente la propagazione per evitare conflitti
             e.stopPropagation();
             e.preventDefault();
-            e.stopImmediatePropagation(); // Blocca anche altri listener sullo stesso elemento
+            e.stopImmediatePropagation();
+            
+            // Marca il bottone per prevenire doppia gestione
+            if (editButton.dataset.processing === 'true') {
+                window.AppDebug?.log('[WineCardButtons] ⏭️ Edit button già in processing, skip', 'warn');
+                return;
+            }
+            editButton.dataset.processing = 'true';
+            setTimeout(() => { editButton.dataset.processing = 'false'; }, 1000);
             
             window.AppDebug?.log(`[WineCardButtons] 🖊️ Bottone modifica cliccato per vino ID: ${wineId}`, 'info');
             
@@ -339,14 +352,20 @@ function setupWineCardInfoButtons(messageElement) {
             }
         });
         
-        // Gestione click bottone dettagli (hamburger)
-        // Aggiungi flag per prevenire che event delegation gestisca questo click
-        menuButton.dataset.isInfoButton = 'true';
-        
+        // Gestione click bottone dettagli (hamburger) - HANDLER MOBILE ISOLATO
         menuButton.addEventListener('click', async (e) => {
+            // Blocca completamente la propagazione per evitare conflitti
             e.stopPropagation();
             e.preventDefault();
-            e.stopImmediatePropagation(); // Blocca anche altri listener sullo stesso elemento
+            e.stopImmediatePropagation();
+            
+            // Marca il bottone per prevenire doppia gestione
+            if (menuButton.dataset.processing === 'true') {
+                window.AppDebug?.log('[WineCardButtons] ⏭️ Menu button già in processing, skip', 'warn');
+                return;
+            }
+            menuButton.dataset.processing = 'true';
+            setTimeout(() => { menuButton.dataset.processing = 'false'; }, 1000);
             
             window.AppDebug?.log(`[WineCardButtons] 🍔 Bottone dettagli cliccato per vino ID: ${wineId}`, 'info');
             
@@ -418,11 +437,46 @@ function setupWineCardInfoButtons(messageElement) {
     });
 }
 
+/**
+ * Setup bottoni modifica e dettagli per wine card info su DESKTOP
+ * Logica completamente separata da mobile
+ */
+function setupWineCardInfoButtonsDesktop(messageElement) {
+    if (!messageElement) return;
+    
+    const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
+                     document.documentElement.classList.contains('mobileRoot');
+    
+    if (isMobile) {
+        window.AppDebug?.log('[WineCardButtons] ⏭️ setupWineCardInfoButtonsDesktop: è mobile, skip', 'warn');
+        return; // Solo su desktop
+    }
+    
+    window.AppDebug?.log('[WineCardButtons] 🖥️ Setup bottoni info DESKTOP', 'info');
+    // TODO: Implementa logica desktop se necessaria
+}
+
+/**
+ * Wrapper che chiama la funzione corretta in base al layout
+ */
+function setupWineCardInfoButtons(messageElement) {
+    const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
+                     document.documentElement.classList.contains('mobileRoot');
+    
+    if (isMobile) {
+        setupWineCardInfoButtonsMobile(messageElement);
+    } else {
+        setupWineCardInfoButtonsDesktop(messageElement);
+    }
+}
+
 // Export per uso globale
 if (typeof window !== 'undefined') {
     window.WineCardButtons = {
         setup: setupWineCardMovementButtons,
-        setupInfoButtons: setupWineCardInfoButtons
+        setupInfoButtons: setupWineCardInfoButtons,
+        setupInfoButtonsMobile: setupWineCardInfoButtonsMobile,
+        setupInfoButtonsDesktop: setupWineCardInfoButtonsDesktop
     };
     
     // Auto-setup quando vengono aggiunti messaggi HTML con bottoni
@@ -503,14 +557,13 @@ if (typeof window !== 'undefined') {
     // Processa direttamente il click invece di aspettare setup
     function setupEventDelegation() {
         document.addEventListener('click', async (e) => {
-            // ESCLUDI bottoni info (edit e menu) - gestiti da setupWineCardInfoButtons
+            // ESCLUDI COMPLETAMENTE bottoni mobile info - hanno handler diretti isolati
             const clickedButton = e.target.closest?.('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
             if (clickedButton) {
-                // Se è un bottone info (edit o menu), lascia che il suo handler diretto gestisca il click
-                if (clickedButton.classList.contains('wine-card-button-mobile') || 
-                    clickedButton.dataset.isInfoButton === 'true') {
-                    window.AppDebug?.log('[WineCardButtons] ⏭️ Click su bottone info, skip delegation (gestito da handler diretto)', 'info');
-                    return;
+                // Se è un bottone mobile info (ha data-layout='mobile' e data-button-type), ESCLUDILO COMPLETAMENTE
+                if (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) {
+                    window.AppDebug?.log('[WineCardButtons] ⏭️ Click su bottone mobile info, skip delegation completamente (gestito da handler mobile isolato)', 'info');
+                    return; // Non processare, lascia che il handler mobile diretto gestisca
                 }
             }
             
