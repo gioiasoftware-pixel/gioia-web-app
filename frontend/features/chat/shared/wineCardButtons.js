@@ -614,18 +614,27 @@ if (typeof window !== 'undefined') {
             window.AppDebug?.log(`[WineCardButtons] Target: ${e.target?.tagName}, className: ${e.target?.className}`, 'info');
             
             // ESCLUDI COMPLETAMENTE bottoni mobile info - hanno handler diretti isolati
+            // Controlla PRIMA se è un bottone mobile info (edit o menu/hamburger)
             const clickedButton = e.target.closest?.('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
             if (clickedButton) {
                 window.AppDebug?.log(`[WineCardButtons] 🎯 Event delegation: bottone trovato, verifica esclusione...`, 'info');
                 window.AppDebug?.log(`[WineCardButtons]   - classe: ${clickedButton.className}`, 'info');
                 window.AppDebug?.log(`[WineCardButtons]   - data-layout: ${clickedButton.dataset.layout}`, 'info');
                 window.AppDebug?.log(`[WineCardButtons]   - data-button-type: ${clickedButton.dataset.buttonType}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons]   - contiene wine-card-button-edit: ${clickedButton.classList.contains('wine-card-button-edit')}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons]   - contiene wine-card-button-menu: ${clickedButton.classList.contains('wine-card-button-menu')}`, 'info');
                 
-                // Se è un bottone mobile info (ha data-layout='mobile' e data-button-type), ESCLUDILO COMPLETAMENTE
-                if (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) {
-                    window.AppDebug?.log('[WineCardButtons] ⏭️⏭️⏭️ Click su bottone mobile info, skip delegation completamente (gestito da handler mobile isolato)', 'info');
-                    // NON fermare la propagazione qui, lascia che arrivi all'handler diretto
-                    return; // Non processare, lascia che il handler mobile diretto gestisca
+                // ESCLUDI se è un bottone mobile info (edit o menu/hamburger)
+                // Controlla sia per data attributes che per classi
+                const isMobileInfoButton = 
+                    (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) ||
+                    clickedButton.classList.contains('wine-card-button-edit') ||
+                    clickedButton.classList.contains('wine-card-button-menu');
+                
+                if (isMobileInfoButton) {
+                    window.AppDebug?.log('[WineCardButtons] ⏭️⏭️⏭️ Click su bottone mobile info (edit/menu), skip delegation completamente (gestito da handler mobile isolato)', 'info');
+                    // NON processare, lascia che il handler mobile diretto gestisca
+                    return; // Esci immediatamente, non inviare messaggi
                 } else {
                     window.AppDebug?.log('[WineCardButtons] ✅ Bottone NON è mobile info, procedo con delegation', 'info');
                 }
