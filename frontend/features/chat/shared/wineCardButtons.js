@@ -5,146 +5,84 @@
 
 /**
  * Mostra popup di test per feedback visivo
- * SOLUZIONE ULTRA-ROBUSTA: supporta Shadow DOM, iframe, forza tutte le proprietà
+ * SOLUZIONE SHADOW DOM: isola completamente il popup da CSS esterni
  * 
  * @param {string} title - Titolo popup
  * @param {string} message - Messaggio popup
  * @param {string} type - Tipo: 'info', 'success', 'error'
- * @param {HTMLElement|Document} rootElement - Root element dove appendare (default: document.body)
+ * @param {HTMLElement} eventTarget - Target dell'evento click (per trovare root corretto)
  */
-function showWineCardTestPopup(title, message, type = 'info', rootElement = document.body) {
-    // Se rootElement è document, usa body
-    const root = rootElement?.body || rootElement || document.body;
-    const doc = root.ownerDocument || root.defaultView?.document || document;
+function showWineCardTestPopup(title, message, type = 'info', eventTarget = null) {
+    // 1) Individua il root corretto (anche shadow DOM / iframe)
+    const root = eventTarget?.getRootNode?.() || document;
     
-    console.log('[WineCardButtons] 🎯 Creazione popup:', {
-        rootElement,
+    console.log('[WineCardButtons] 🎯 Creazione popup Shadow DOM:', {
+        eventTarget,
         root,
-        doc,
         rootType: root.constructor.name,
-        isShadowRoot: root instanceof ShadowRoot
+        isShadowRoot: root instanceof ShadowRoot,
+        isDocument: root === document
     });
     
-    // Crea o recupera layer globale dedicato (fuori da stacking context)
-    let layer = doc.getElementById('global-popup-layer');
-    if (!layer) {
-        layer = doc.createElement('div');
-        layer.id = 'global-popup-layer';
-        // FORZA tutte le proprietà con !important inline
-        layer.setAttribute('style', `
-            all: unset;
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            z-index: 2147483647 !important;
-            pointer-events: none !important;
-            display: block !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-        `);
-        // Append al root corretto
-        root.appendChild(layer);
-        console.log('[WineCardButtons] ✅ Layer creato e appeso a:', root);
-    }
+    // 2) Crea host indipendente
+    const host = document.createElement('div');
+    host.style.position = 'fixed';
+    host.style.inset = '0';
+    host.style.zIndex = '2147483647';
+    host.style.pointerEvents = 'none';
     
-    // Crea popup
-    const popup = doc.createElement('div');
-    popup.className = 'wine-card-test-popup';
+    // 3) Shadow DOM isolato da QUALSIASI CSS esterno
+    const shadow = host.attachShadow({ mode: 'open' });
     
-    // Colori forzati (rosso per test di visibilità)
-    const bgColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6';
+    // 4) Popup reale (dentro shadow → nessun CSS lo tocca)
+    const popup = document.createElement('div');
     
-    // FORZA tutte le proprietà con !important inline
-    popup.setAttribute('style', `
-        all: unset;
-        position: absolute !important;
-        top: 20px !important;
-        left: 50% !important;
-        transform: translateX(-50%) !important;
-        background: ${bgColor} !important;
-        background-color: ${bgColor} !important;
-        color: white !important;
-        padding: 16px 24px !important;
-        border-radius: 8px !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
-        font-size: 14px !important;
-        font-weight: 500 !important;
-        max-width: 90% !important;
-        text-align: center !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        display: block !important;
-        pointer-events: auto !important;
-        z-index: 2147483647 !important;
-    `);
+    // Colore in base al tipo
+    const bgColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#2563eb';
     
-    popup.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 4px; color: white !important;">${title}</div>
-        <div style="font-size: 12px; opacity: 0.9; color: white !important;">${message}</div>
+    popup.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${bgColor};
+        color: white;
+        padding: 14px 22px;
+        font-size: 14px;
+        font-weight: 500;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        opacity: 1;
+        pointer-events: none;
+        max-width: 90%;
+        text-align: center;
     `;
     
-    // Append al layer globale (non al body diretto)
-    layer.appendChild(popup);
+    popup.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
+        <div style="font-size: 12px; opacity: 0.9;">${message}</div>
+    `;
     
-    // Debug: verifica completa
-    const rect = popup.getBoundingClientRect();
-    const computed = doc.defaultView?.getComputedStyle(popup) || window.getComputedStyle(popup);
+    // 5) Inserisci nel shadow
+    shadow.appendChild(popup);
     
-    console.log('[WineCardButtons] 🎯 Popup creato e verificato:', {
-        layerExists: !!layer,
-        layerInDOM: root.contains(layer),
-        popupInDOM: layer.contains(popup),
-        popupRect: {
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            visible: rect.width > 0 && rect.height > 0
-        },
-        computed: {
-            display: computed.display,
-            visibility: computed.visibility,
-            opacity: computed.opacity,
-            zIndex: computed.zIndex,
-            position: computed.position,
-            backgroundColor: computed.backgroundColor
-        },
-        popupStyle: popup.getAttribute('style').substring(0, 100)
+    // 6) Attacca al root corretto
+    const appendTarget = root === document ? document.body : root;
+    appendTarget.appendChild(host);
+    
+    console.log('[WineCardButtons] ✅ Popup Shadow DOM creato:', {
+        hostInDOM: appendTarget.contains(host),
+        shadowRoot: !!shadow,
+        popupInShadow: shadow.contains(popup),
+        appendTarget: appendTarget.constructor.name
     });
     
-    // Test visivo: se ancora non si vede, prova un overlay rosso fullscreen
+    // 7) Autodistruzione
     setTimeout(() => {
-        const testOverlay = doc.createElement('div');
-        testOverlay.id = 'test-overlay-visible';
-        testOverlay.setAttribute('style', `
-            position: fixed !important;
-            top: 0 !important;
-            left: 0 !important;
-            width: 100vw !important;
-            height: 100vh !important;
-            background: rgba(255, 0, 0, 0.3) !important;
-            z-index: 2147483646 !important;
-            pointer-events: none !important;
-            display: block !important;
-        `);
-        testOverlay.textContent = 'TEST OVERLAY - Se vedi questo, il problema è solo il popup';
-        root.appendChild(testOverlay);
-        
-        setTimeout(() => testOverlay.remove(), 1000);
-    }, 100);
-    
-    // Rimuovi dopo 3 secondi
-    setTimeout(() => {
-        if (popup.parentNode) {
-            popup.remove();
+        if (host.parentNode) {
+            host.remove();
         }
-        // Rimuovi layer se vuoto
-        if (layer && layer.children.length === 0) {
-            layer.remove();
-        }
-    }, 3000);
+    }, 2500);
 }
 
 /**
@@ -211,39 +149,26 @@ function setupWineCardMovementButtons(messageElement) {
                 rootNode: e.target?.getRootNode()
             });
             
-            // CRITICO: Usa il root del bottone cliccato (supporta Shadow DOM / iframe)
-            const rootNode = e.target?.getRootNode();
-            const doc = rootNode?.host ? rootNode : (rootNode?.defaultView || window).document || document;
-            const rootBody = doc.body || doc.documentElement || doc;
-            
-            console.log('[WineCardButtons] 🔍 Root detection:', {
-                hasRootNode: !!rootNode,
-                isShadowRoot: rootNode instanceof ShadowRoot,
-                isDocument: rootNode === document,
-                docBody: !!doc.body,
-                rootBody: !!rootBody
-            });
-            
             // Leggi data attributes al momento del click (per sicurezza)
             const clickWineId = newBtn.dataset.wineId || newBtn.getAttribute('data-wine-id');
             const clickWineText = newBtn.dataset.wineText || newBtn.getAttribute('data-wine-text');
             const clickMovementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
             const clickQuantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
             
-            // MOSTRA POPUP DI TEST (passa il root corretto)
+            // MOSTRA POPUP DI TEST (passa e.target per root detection)
             if (clickMovementType && clickQuantity && clickWineId) {
                 showWineCardTestPopup(
                     '✅ Movimento rilevato',
                     `${clickMovementType} di ${clickQuantity} bottiglie per vino ID: ${clickWineId}`,
                     'success',
-                    rootBody
+                    e.target
                 );
             } else {
                 showWineCardTestPopup(
                     '✅ Click rilevato',
                     `Ricerca info per: ${clickWineText || 'vino'}`,
                     'info',
-                    rootBody
+                    e.target
                 );
             }
             
