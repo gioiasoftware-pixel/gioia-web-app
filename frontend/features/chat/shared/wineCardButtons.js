@@ -4,88 +4,6 @@
  */
 
 /**
- * Mostra popup di test per feedback visivo
- * SOLUZIONE SHADOW DOM: isola completamente il popup da CSS esterni
- * 
- * @param {string} title - Titolo popup
- * @param {string} message - Messaggio popup
- * @param {string} type - Tipo: 'info', 'success', 'error'
- * @param {HTMLElement} eventTarget - Target dell'evento click (per trovare root corretto)
- */
-function showWineCardTestPopup(title, message, type = 'info', eventTarget = null) {
-    // 1) Individua il root corretto (anche shadow DOM / iframe)
-    const root = eventTarget?.getRootNode?.() || document;
-    
-    console.log('[WineCardButtons] 🎯 Creazione popup Shadow DOM:', {
-        eventTarget,
-        root,
-        rootType: root.constructor.name,
-        isShadowRoot: root instanceof ShadowRoot,
-        isDocument: root === document
-    });
-    
-    // 2) Crea host indipendente
-    const host = document.createElement('div');
-    host.style.position = 'fixed';
-    host.style.inset = '0';
-    host.style.zIndex = '2147483647';
-    host.style.pointerEvents = 'none';
-    
-    // 3) Shadow DOM isolato da QUALSIASI CSS esterno
-    const shadow = host.attachShadow({ mode: 'open' });
-    
-    // 4) Popup reale (dentro shadow → nessun CSS lo tocca)
-    const popup = document.createElement('div');
-    
-    // Colore in base al tipo
-    const bgColor = type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#2563eb';
-    
-    popup.style.cssText = `
-        position: fixed;
-        top: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: ${bgColor};
-        color: white;
-        padding: 14px 22px;
-        font-size: 14px;
-        font-weight: 500;
-        border-radius: 10px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.35);
-        opacity: 1;
-        pointer-events: none;
-        max-width: 90%;
-        text-align: center;
-    `;
-    
-    popup.innerHTML = `
-        <div style="font-weight: 600; margin-bottom: 4px;">${title}</div>
-        <div style="font-size: 12px; opacity: 0.9;">${message}</div>
-    `;
-    
-    // 5) Inserisci nel shadow
-    shadow.appendChild(popup);
-    
-    // 6) Attacca al root corretto
-    const appendTarget = root === document ? document.body : root;
-    appendTarget.appendChild(host);
-    
-    console.log('[WineCardButtons] ✅ Popup Shadow DOM creato:', {
-        hostInDOM: appendTarget.contains(host),
-        shadowRoot: !!shadow,
-        popupInShadow: shadow.contains(popup),
-        appendTarget: appendTarget.constructor.name
-    });
-    
-    // 7) Autodistruzione
-    setTimeout(() => {
-        if (host.parentNode) {
-            host.remove();
-        }
-    }, 2500);
-}
-
-/**
  * Setup listener per pulsanti di movimento integrati nelle wine cards
  * Gestisce .wines-list-item-button per movimenti multipli/singoli
  * 
@@ -155,20 +73,16 @@ function setupWineCardMovementButtons(messageElement) {
             const clickMovementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
             const clickQuantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
             
-            // MOSTRA POPUP DI TEST (passa e.target per root detection)
+            // LOG DEBUG (usa AppDebug overlay invece di popup)
             if (clickMovementType && clickQuantity && clickWineId) {
-                showWineCardTestPopup(
-                    '✅ Movimento rilevato',
-                    `${clickMovementType} di ${clickQuantity} bottiglie per vino ID: ${clickWineId}`,
-                    'success',
-                    e.target
+                window.AppDebug?.log(
+                    `[WineCardButtons] Movimento rilevato: ${clickMovementType} di ${clickQuantity} bottiglie per vino ID: ${clickWineId}`,
+                    'success'
                 );
             } else {
-                showWineCardTestPopup(
-                    '✅ Click rilevato',
-                    `Ricerca info per: ${clickWineText || 'vino'}`,
-                    'info',
-                    e.target
+                window.AppDebug?.log(
+                    `[WineCardButtons] Click rilevato: Ricerca info per ${clickWineText || 'vino'}`,
+                    'info'
                 );
             }
             
@@ -203,14 +117,14 @@ function setupWineCardMovementButtons(messageElement) {
                             addMessage('ai', response.message, false, false, null, response.is_html);
                         } else {
                             console.warn('[WineCardButtons] addMessage non disponibile per layout corrente');
-                            showWineCardTestPopup('⚠️ Errore', 'Funzione addMessage non disponibile', 'error');
+                            window.AppDebug?.log('[WineCardButtons] Errore: Funzione addMessage non disponibile', 'error');
                         }
                     } else {
-                        showWineCardTestPopup('⚠️ Nessuna risposta', 'Il server non ha risposto', 'error');
+                        window.AppDebug?.log('[WineCardButtons] Errore: Il server non ha risposto', 'error');
                     }
                 } catch (error) {
                     console.error('[WineCardButtons] ❌ Errore invio movimento:', error);
-                    showWineCardTestPopup('❌ Errore', `Errore invio: ${error.message}`, 'error');
+                    window.AppDebug?.log(`[WineCardButtons] Errore invio movimento: ${error.message}`, 'error');
                 }
             } else if (clickWineId || clickWineText) {
                 // Pulsante normale (ricerca vino)
@@ -237,18 +151,18 @@ function setupWineCardMovementButtons(messageElement) {
                             addMessage('ai', response.message, false, false, null, response.is_html);
                         } else {
                             console.warn('[WineCardButtons] addMessage non disponibile per layout corrente');
-                            showWineCardTestPopup('⚠️ Errore', 'Funzione addMessage non disponibile', 'error');
+                            window.AppDebug?.log('[WineCardButtons] Errore: Funzione addMessage non disponibile', 'error');
                         }
                     } else {
-                        showWineCardTestPopup('⚠️ Nessuna risposta', 'Il server non ha risposto', 'error');
+                        window.AppDebug?.log('[WineCardButtons] Errore: Il server non ha risposto', 'error');
                     }
                 } catch (error) {
                     console.error('[WineCardButtons] ❌ Errore ricerca vino:', error);
-                    showWineCardTestPopup('❌ Errore', `Errore ricerca: ${error.message}`, 'error');
+                    window.AppDebug?.log(`[WineCardButtons] Errore ricerca vino: ${error.message}`, 'error');
                 }
             } else {
                 console.warn('[WineCardButtons] ⚠️ Bottone senza data attributes validi');
-                showWineCardTestPopup('⚠️ Errore', 'Bottone senza dati validi', 'error');
+                window.AppDebug?.log('[WineCardButtons] Errore: Bottone senza data attributes validi', 'warn');
             }
         };
         
@@ -270,8 +184,7 @@ function setupWineCardMovementButtons(messageElement) {
 // Export per uso globale
 if (typeof window !== 'undefined') {
     window.WineCardButtons = {
-        setup: setupWineCardMovementButtons,
-        showPopup: showWineCardTestPopup
+        setup: setupWineCardMovementButtons
     };
 }
 
