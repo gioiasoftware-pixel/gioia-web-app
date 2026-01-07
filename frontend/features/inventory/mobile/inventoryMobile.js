@@ -1438,18 +1438,35 @@ async function handleSaveClick() {
  * Mostra schermata inventario specifica
  */
 function showInventoryScreen(screen) {
+    window.AppDebug?.log(`[InventoryMobile] 📺 showInventoryScreen chiamato con screen: "${screen}"`, 'info');
     const screens = ['list', 'details', 'chart'];
     
     screens.forEach(s => {
         const screenEl = document.getElementById(`inventory-screen-${s}`);
         if (screenEl) {
+            const wasHidden = screenEl.classList.contains('hidden');
             if (s === screen) {
                 screenEl.classList.remove('hidden');
+                window.AppDebug?.log(`[InventoryMobile] ✅ Schermata "${s}" VISIBILE (era hidden: ${wasHidden})`, 'success');
             } else {
                 screenEl.classList.add('hidden');
+                if (!wasHidden) {
+                    window.AppDebug?.log(`[InventoryMobile] 🔒 Schermata "${s}" NASCOSTA`, 'info');
+                }
             }
+        } else {
+            window.AppDebug?.log(`[InventoryMobile] ❌ Schermata "${s}" non trovata!`, 'error');
         }
     });
+    
+    // Log stato finale
+    const listScreen = document.getElementById('inventory-screen-list');
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    const chartScreen = document.getElementById('inventory-screen-chart');
+    window.AppDebug?.log(`[InventoryMobile] 📊 Stato finale schermate:`, 'info');
+    window.AppDebug?.log(`[InventoryMobile]   - Lista: ${listScreen ? (!listScreen.classList.contains('hidden') ? 'VISIBILE' : 'NASCOSTA') : 'NON TROVATA'}`, 'info');
+    window.AppDebug?.log(`[InventoryMobile]   - Dettagli: ${detailsScreen ? (!detailsScreen.classList.contains('hidden') ? 'VISIBILE' : 'NASCOSTA') : 'NON TROVATA'}`, 'info');
+    window.AppDebug?.log(`[InventoryMobile]   - Chart: ${chartScreen ? (!chartScreen.classList.contains('hidden') ? 'VISIBILE' : 'NASCOSTA') : 'NON TROVATA'}`, 'info');
 }
 
 /**

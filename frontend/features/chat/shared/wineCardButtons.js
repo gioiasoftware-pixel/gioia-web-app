@@ -354,10 +354,25 @@ function setupWineCardInfoButtonsMobile(messageElement) {
         
         // Gestione click bottone dettagli (hamburger) - HANDLER MOBILE ISOLATO
         menuButton.addEventListener('click', async (e) => {
+            window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - INIZIO`, 'info');
+            window.AppDebug?.log(`[WineCardButtons] WineId: ${wineId}`, 'info');
+            window.AppDebug?.log(`[WineCardButtons] Event: ${e.type}, target: ${e.target.tagName}, currentTarget: ${e.currentTarget?.tagName}`, 'info');
+            
+            // Verifica layout PRIMA di bloccare eventi
+            const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 
+                                 document.documentElement.classList.contains('mobileRoot');
+            window.AppDebug?.log(`[WineCardButtons] Layout verificato: ${isMobileLayout ? 'MOBILE' : 'DESKTOP'}`, isMobileLayout ? 'info' : 'error');
+            
+            if (!isMobileLayout) {
+                window.AppDebug?.log('[WineCardButtons] ❌ ERRORE: Bottone mobile cliccato su desktop! Skip', 'error');
+                return;
+            }
+            
             // Blocca completamente la propagazione per evitare conflitti
             e.stopPropagation();
             e.preventDefault();
             e.stopImmediatePropagation();
+            window.AppDebug?.log('[WineCardButtons] ✅ Eventi bloccati (stopPropagation, preventDefault, stopImmediatePropagation)', 'info');
             
             // Marca il bottone per prevenire doppia gestione
             if (menuButton.dataset.processing === 'true') {
@@ -370,58 +385,93 @@ function setupWineCardInfoButtonsMobile(messageElement) {
             window.AppDebug?.log(`[WineCardButtons] 🍔 Bottone dettagli cliccato per vino ID: ${wineId}`, 'info');
             
             // Apri schermata inventario mobile se non è già aperta
+            window.AppDebug?.log('[WineCardButtons] 🔍 Cercando viewerPanel e mobileLayout...', 'info');
             const viewerPanel = document.getElementById('viewerPanel');
             const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
             
+            window.AppDebug?.log(`[WineCardButtons] viewerPanel trovato: ${!!viewerPanel}, hidden: ${viewerPanel?.hidden}`, viewerPanel ? 'info' : 'error');
+            window.AppDebug?.log(`[WineCardButtons] mobileLayout trovato: ${!!mobileLayout}`, mobileLayout ? 'info' : 'error');
+            
             if (viewerPanel && mobileLayout) {
+                window.AppDebug?.log('[WineCardButtons] ✅ Elementi trovati, procedo con apertura', 'success');
                 // Assicurati che la schermata dettagli sia quella che verrà mostrata
                 // Nascondi la lista PRIMA di aprire il viewerPanel (previene che initInventoryMobile mostri la lista)
                 const listScreen = document.getElementById('inventory-screen-list');
                 const detailsScreen = document.getElementById('inventory-screen-details');
                 const chartScreen = document.getElementById('inventory-screen-chart');
                 
+                window.AppDebug?.log('[WineCardButtons] 🔍 Verifica schermate...', 'info');
+                window.AppDebug?.log(`[WineCardButtons] listScreen: ${!!listScreen}, hidden: ${listScreen?.classList.contains('hidden')}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons] detailsScreen: ${!!detailsScreen}, hidden: ${detailsScreen?.classList.contains('hidden')}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons] chartScreen: ${!!chartScreen}, hidden: ${chartScreen?.classList.contains('hidden')}`, 'info');
+                
                 // NASCONDI lista e chart PRIMA di aprire viewerPanel
                 if (listScreen) {
                     listScreen.classList.add('hidden');
-                    window.AppDebug?.log('[WineCardButtons] ✅ Lista inventario nascosta', 'info');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Lista inventario nascosta', 'success');
+                } else {
+                    window.AppDebug?.log('[WineCardButtons] ❌ listScreen non trovato!', 'error');
                 }
                 if (chartScreen) {
                     chartScreen.classList.add('hidden');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Chart nascosto', 'info');
                 }
                 // Mostra esplicitamente details screen PRIMA
                 if (detailsScreen) {
                     detailsScreen.classList.remove('hidden');
-                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli mostrata PRIMA di aprire viewerPanel', 'info');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli mostrata PRIMA di aprire viewerPanel', 'success');
+                } else {
+                    window.AppDebug?.log('[WineCardButtons] ❌ detailsScreen non trovato!', 'error');
                 }
                 
                 // POI mostra viewerPanel e attiva state-viewer
+                window.AppDebug?.log(`[WineCardButtons] Aprendo viewerPanel (hidden prima: ${viewerPanel.hidden})...`, 'info');
                 viewerPanel.hidden = false;
                 mobileLayout.classList.add('state-viewer');
+                window.AppDebug?.log(`[WineCardButtons] viewerPanel hidden dopo: ${viewerPanel.hidden}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons] state-viewer classe presente: ${mobileLayout.classList.contains('state-viewer')}`, 'info');
                 
                 window.AppDebug?.log('[WineCardButtons] ✅ ViewerPanel aperto con schermata dettagli già attiva', 'success');
+            } else {
+                window.AppDebug?.log('[WineCardButtons] ❌ ERRORE: viewerPanel o mobileLayout non trovati!', 'error');
             }
             
             // Naviga alla pagina dettagli vino mobile
+            window.AppDebug?.log('[WineCardButtons] 🔍 Verifica InventoryMobile.showWineDetails...', 'info');
+            window.AppDebug?.log(`[WineCardButtons] InventoryMobile disponibile: ${!!window.InventoryMobile}`, 'info');
+            window.AppDebug?.log(`[WineCardButtons] showWineDetails funzione disponibile: ${!!(window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function')}`, 'info');
+            
             if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
+                window.AppDebug?.log('[WineCardButtons] ⏳ Aspetto frame per assicurarmi che viewerPanel sia visibile...', 'info');
                 // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                
+                window.AppDebug?.log('[WineCardButtons] ✅ Frame completato, procedo con showWineDetails', 'info');
                 
                 // IMPORTANTE: Mostra esplicitamente la schermata dettagli PRIMA di chiamare showWineDetails
                 // Questo previene che loadInventory() o altri handler mostrino la lista
                 if (detailsScreen) {
                     detailsScreen.classList.remove('hidden');
-                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli esplicitamente mostrata', 'success');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli esplicitamente mostrata PRIMA di showWineDetails', 'success');
                 }
                 
-                window.AppDebug?.log(`[WineCardButtons] ✅ Chiamata showWineDetails(${wineId})`, 'info');
-                // showWineDetails chiamerà showInventoryScreen('details') internamente, ma è già fatto sopra
-                await window.InventoryMobile.showWineDetails(wineId);
+                window.AppDebug?.log(`[WineCardButtons] 🚀 CHIAMATA showWineDetails(${wineId})`, 'info');
+                try {
+                    // showWineDetails chiamerà showInventoryScreen('details') internamente, ma è già fatto sopra
+                    await window.InventoryMobile.showWineDetails(wineId);
+                    window.AppDebug?.log(`[WineCardButtons] ✅ showWineDetails(${wineId}) completata`, 'success');
+                } catch (error) {
+                    window.AppDebug?.log(`[WineCardButtons] ❌ Errore in showWineDetails: ${error.message}`, 'error');
+                    window.AppDebug?.log(`[WineCardButtons] Stack: ${error.stack}`, 'error');
+                }
             } else {
-                window.AppDebug?.log('[WineCardButtons] ⚠️ InventoryMobile.showWineDetails non disponibile, uso fallback', 'warn');
+                window.AppDebug?.log('[WineCardButtons] ❌ InventoryMobile.showWineDetails non disponibile!', 'error');
                 // Fallback: naviga direttamente senza inviare messaggio chat
                 // Per evitare che venga aggiunto un messaggio con wine card che apre il viewer desktop
                 window.AppDebug?.log('[WineCardButtons] ⚠️ Fallback: non disponibile - apri manualmente dettagli vino', 'error');
             }
+            
+            window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - FINE`, 'info');
         });
         
         // Aggiungi bottoni al container (solo se non esistono già)
