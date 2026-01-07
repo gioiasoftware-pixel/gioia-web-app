@@ -522,8 +522,12 @@ function renderWineList(wines) {
  * Mostra dettagli vino
  */
 async function showWineDetails(wineId) {
+    window.AppDebug?.log(`[InventoryMobile] 🍷🍷🍷 showWineDetails CHIAMATO`, 'info');
+    window.AppDebug?.log(`[InventoryMobile] wineId ricevuto: ${wineId}, tipo: ${typeof wineId}`, 'info');
+    
     // Validazione: assicurati che wineId sia un numero intero valido
     if (wineId === null || wineId === undefined) {
+        window.AppDebug?.log('[InventoryMobile] ❌ wineId è null o undefined', 'error');
         console.error('[InventoryMobile] wineId è null o undefined');
         showErrorPopup('Errore', 'ID vino non valido: valore nullo o indefinito');
         return;
@@ -561,11 +565,15 @@ async function showWineDetails(wineId) {
     
     // Forza a numero primitivo
     const finalWineId = Number(wineIdNum);
+    window.AppDebug?.log(`[InventoryMobile] ✅ wineId validato e convertito: ${finalWineId}`, 'success');
     
     currentWineId = finalWineId;
-    
+    window.AppDebug?.log(`[InventoryMobile] currentWineId impostato: ${currentWineId}`, 'info');
+
     // Mostra schermata dettagli
+    window.AppDebug?.log(`[InventoryMobile] 📺 Chiamata showInventoryScreen('details')...`, 'info');
     showInventoryScreen('details');
+    window.AppDebug?.log(`[InventoryMobile] ✅ showInventoryScreen('details') completata`, 'success');
     
     // Mostra loading
     const form = document.getElementById('inventory-wine-form-mobile');
