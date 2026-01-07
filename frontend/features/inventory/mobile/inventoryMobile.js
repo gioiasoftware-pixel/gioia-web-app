@@ -184,11 +184,14 @@ function setupInventoryButtons() {
                 backClickHandler();
             } else {
                 console.error('[InventoryMobile] handleBackClick non trovata!');
-                window.location.reload();
+                // Non fare reload automatico, solo log per evitare refresh indesiderati
+                // window.location.reload(); // RIMOSSO - può causare refresh su Android quando si apre la tastiera
             }
         } catch (err) {
             console.error('[InventoryMobile] ❌ ERRORE in handler:', err);
-            window.location.reload();
+            console.error('[InventoryMobile] Stack trace:', err.stack);
+            // Non fare reload automatico, solo log per evitare refresh indesiderati
+            // window.location.reload(); // RIMOSSO - può causare refresh su Android quando si apre la tastiera
         }
     };
     

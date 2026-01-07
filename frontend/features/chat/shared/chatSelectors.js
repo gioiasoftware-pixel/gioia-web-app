@@ -100,13 +100,76 @@ function resetChatSelectors() {
     currentSelectors = null;
 }
 
+/**
+ * Inizializza listener per prevenire refresh su Android quando si apre la tastiera
+ * CRITICO: Previene il problema di refresh pagina su Android verticale
+ */
+function initChatFormSubmitPrevention() {
+    // Attendi che il DOM sia pronto
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChatFormSubmitPrevention);
+        return;
+    }
+    
+    // Verifica se siamo su mobile
+    const isMobile = document.documentElement.classList.contains('mobileRoot') ||
+                     document.querySelector('[data-layout-root="mobile"]') !== null;
+    
+    if (!isMobile) {
+        return; // Solo per mobile
+    }
+    
+    // Trova il form chat mobile
+    const chatForm = document.getElementById('chat-form-mobile');
+    if (!chatForm) {
+        // Riprova dopo un breve delay se il form non è ancora disponibile
+        setTimeout(initChatFormSubmitPrevention, 100);
+        return;
+    }
+    
+    // Listener esplicito con capture e preventDefault per prevenire submit implicito su Android
+    // Questo previene il refresh della pagina quando la tastiera si apre
+    chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('[ChatSelectors] Submit prevenuto (previene refresh Android)');
+        return false;
+    }, { capture: true, passive: false });
+    
+    // Aggiungi anche listener sull'input per prevenire comportamenti indesiderati
+    const chatInput = document.getElementById('chat-input-mobile');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+        
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        });
+    }
+    
+    console.log('[ChatSelectors] Listener submit prevenzione aggiunti per Android');
+}
+
 // Export per uso globale
 if (typeof window !== 'undefined') {
     window.ChatSelectors = {
         get: getChatSelectors,
         reset: resetChatSelectors,
-        create: createChatSelectors
+        create: createChatSelectors,
+        initFormSubmitPrevention: initChatFormSubmitPrevention
     };
+    
+    // Auto-inizializza la prevenzione submit quando il file viene caricato
+    initChatFormSubmitPrevention();
 }
+
 
 
