@@ -353,8 +353,9 @@ function setupWineCardInfoButtonsMobile(messageElement) {
         });
         
         // Gestione click bottone dettagli (hamburger) - HANDLER MOBILE ISOLATO
+        // IMPORTANTE: Usa capture phase per intercettare PRIMA dell'event delegation
         menuButton.addEventListener('click', async (e) => {
-            window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - INIZIO`, 'info');
+            window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - INIZIO (capture)`, 'info');
             window.AppDebug?.log(`[WineCardButtons] WineId: ${wineId}`, 'info');
             window.AppDebug?.log(`[WineCardButtons] Event: ${e.type}, target: ${e.target.tagName}, currentTarget: ${e.currentTarget?.tagName}`, 'info');
             
@@ -368,11 +369,12 @@ function setupWineCardInfoButtonsMobile(messageElement) {
                 return;
             }
             
-            // Blocca completamente la propagazione per evitare conflitti
+            // Blocca completamente la propagazione PER PRIMO (capture phase)
+            // Questo previene che l'event delegation o altri handler processino il click
             e.stopPropagation();
             e.preventDefault();
             e.stopImmediatePropagation();
-            window.AppDebug?.log('[WineCardButtons] ✅ Eventi bloccati (stopPropagation, preventDefault, stopImmediatePropagation)', 'info');
+            window.AppDebug?.log('[WineCardButtons] ✅ Eventi bloccati PRIMA di altri handler (stopPropagation, preventDefault, stopImmediatePropagation)', 'success');
             
             // Marca il bottone per prevenire doppia gestione
             if (menuButton.dataset.processing === 'true') {
@@ -472,7 +474,7 @@ function setupWineCardInfoButtonsMobile(messageElement) {
             }
             
             window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - FINE`, 'info');
-        });
+        }, true); // IMPORTANTE: usa capture phase per intercettare PRIMA
         
         // Aggiungi bottoni al container (solo se non esistono già)
         if (!buttonsContainer.querySelector('.wine-card-button-edit')) {
