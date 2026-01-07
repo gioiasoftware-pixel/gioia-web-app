@@ -334,19 +334,31 @@ function setupWineCardInfoButtons(messageElement) {
         });
         
         // Gestione click bottone dettagli (hamburger)
-        menuButton.addEventListener('click', (e) => {
+        menuButton.addEventListener('click', async (e) => {
             e.stopPropagation();
             e.preventDefault();
             
             window.AppDebug?.log(`[WineCardButtons] 🍔 Bottone dettagli cliccato per vino ID: ${wineId}`, 'info');
             
+            // Apri schermata inventario mobile se non è già aperta
+            const viewerPanel = document.getElementById('viewerPanel');
+            const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
+            
+            if (viewerPanel && mobileLayout) {
+                // Mostra viewerPanel e attiva state-viewer
+                viewerPanel.hidden = false;
+                mobileLayout.classList.add('state-viewer');
+                window.AppDebug?.log('[WineCardButtons] ✅ Schermata inventario mobile aperta', 'success');
+            }
+            
             // Naviga alla pagina dettagli vino mobile
             if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
+                // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
+                await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                window.AppDebug?.log(`[WineCardButtons] ✅ Chiamata showWineDetails(${wineId})`, 'info');
                 window.InventoryMobile.showWineDetails(wineId);
-            } else if (window.showWineDetailsMobile) {
-                window.showWineDetailsMobile(wineId);
             } else {
-                window.AppDebug?.log('[WineCardButtons] ⚠️ Funzione showWineDetails non disponibile, uso fallback', 'warn');
+                window.AppDebug?.log('[WineCardButtons] ⚠️ InventoryMobile.showWineDetails non disponibile, uso fallback', 'warn');
                 // Fallback: invia messaggio chat per dettagli
                 const searchMessage = `[wine_id:${wineId}]`;
                 if (window.ChatAPI && window.ChatAPI.sendMessage) {
