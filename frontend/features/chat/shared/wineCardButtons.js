@@ -280,6 +280,7 @@ function setupWineCardInfoButtons(messageElement) {
         const editButton = document.createElement('button');
         editButton.className = 'wine-card-button-mobile wine-card-button-edit';
         editButton.setAttribute('data-wine-id', wineId);
+        editButton.setAttribute('data-is-info-button', 'true'); // Flag per escludere da event delegation
         editButton.setAttribute('aria-label', 'Modifica vino');
         editButton.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -304,9 +305,13 @@ function setupWineCardInfoButtons(messageElement) {
         `;
         
         // Gestione click bottone modifica
+        // Aggiungi flag per prevenire che event delegation gestisca questo click
+        editButton.dataset.isInfoButton = 'true';
+        
         editButton.addEventListener('click', async (e) => {
             e.stopPropagation();
             e.preventDefault();
+            e.stopImmediatePropagation(); // Blocca anche altri listener sullo stesso elemento
             
             window.AppDebug?.log(`[WineCardButtons] 🖊️ Bottone modifica cliccato per vino ID: ${wineId}`, 'info');
             
