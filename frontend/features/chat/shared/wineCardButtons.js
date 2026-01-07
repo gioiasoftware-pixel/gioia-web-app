@@ -237,10 +237,152 @@ function setupWineCardMovementButtons(messageElement) {
     window.AppDebug?.log(`[WineCardButtons] ✅ Setup completato: ${buttonElements.length} bottoni collegati`, 'success');
 }
 
+/**
+ * Setup bottoni modifica e dettagli per wine card info su mobile
+ * Aggiunge bottoni edit e hamburger alla wine card header
+ */
+function setupWineCardInfoButtons(messageElement) {
+    if (!messageElement) return;
+    
+    const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
+                     document.documentElement.classList.contains('mobileRoot');
+    
+    if (!isMobile) return; // Solo su mobile
+    
+    const wineCards = messageElement.querySelectorAll('.wine-card');
+    
+    wineCards.forEach((wineCard) => {
+        // Evita setup multiplo
+        if (wineCard.dataset.infoButtonsSetup === 'true') return;
+        
+        const wineId = wineCard.dataset.wineId || wineCard.getAttribute('data-wine-id');
+        if (!wineId) return;
+        
+        const header = wineCard.querySelector('.wine-card-header');
+        if (!header) return;
+        
+        // Verifica se i bottoni esistono già
+        let buttonsContainer = wineCard.querySelector('.wine-card-buttons-mobile');
+        if (!buttonsContainer) {
+            // Crea container bottoni
+            buttonsContainer = document.createElement('div');
+            buttonsContainer.className = 'wine-card-buttons-mobile';
+            
+            // Assicura che header sia position: relative per il posizionamento assoluto dei bottoni
+            if (window.getComputedStyle(header).position === 'static') {
+                header.style.position = 'relative';
+            }
+            
+            header.appendChild(buttonsContainer);
+        }
+        
+        // Crea bottone modifica (matita)
+        const editButton = document.createElement('button');
+        editButton.className = 'wine-card-button-mobile wine-card-button-edit';
+        editButton.setAttribute('data-wine-id', wineId);
+        editButton.setAttribute('aria-label', 'Modifica vino');
+        editButton.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12.75 2.25C13.05 1.95 13.5 1.95 13.8 2.25L15.75 4.2C16.05 4.5 16.05 4.95 15.75 5.25L8.325 12.675L5.25 13.5L6.075 10.425L13.5 3C13.8 2.7 14.25 2.7 14.55 3L12.75 2.25Z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M11.25 3.75L14.25 6.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3.75 15.75H15.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        
+        // Crea bottone dettagli (hamburger)
+        const menuButton = document.createElement('button');
+        menuButton.className = 'wine-card-button-mobile wine-card-button-menu';
+        menuButton.setAttribute('data-wine-id', wineId);
+        menuButton.setAttribute('aria-label', 'Dettagli vino');
+        menuButton.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 4.5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 9H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 13.5H15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        `;
+        
+        // Gestione click bottone modifica
+        editButton.addEventListener('click', async (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            window.AppDebug?.log(`[WineCardButtons] 🖊️ Bottone modifica cliccato per vino ID: ${wineId}`, 'info');
+            
+            // Chiama funzione modifica se disponibile
+            if (window.handleWineCardEdit) {
+                await window.handleWineCardEdit(wineCard, wineId);
+            } else {
+                window.AppDebug?.log('[WineCardButtons] ⚠️ handleWineCardEdit non disponibile', 'warn');
+                // Fallback: invia messaggio chat per modifica
+                const searchMessage = `[wine_id:${wineId}]`;
+                if (window.ChatAPI && window.ChatAPI.sendMessage) {
+                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    try {
+                        const response = await window.ChatAPI.sendMessage(`Modifica vino ${searchMessage}`, conversationId);
+                        if (response && response.message) {
+                            const addMessage = window.ChatMobile?.addMessage || window.ChatDesktop?.addMessage;
+                            if (addMessage) {
+                                addMessage('ai', response.message, false, false, null, response.is_html);
+                            }
+                        }
+                    } catch (error) {
+                        window.AppDebug?.log(`[WineCardButtons] ❌ Errore modifica vino: ${error.message}`, 'error');
+                    }
+                }
+            }
+        });
+        
+        // Gestione click bottone dettagli (hamburger)
+        menuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            
+            window.AppDebug?.log(`[WineCardButtons] 🍔 Bottone dettagli cliccato per vino ID: ${wineId}`, 'info');
+            
+            // Naviga alla pagina dettagli vino mobile
+            if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
+                window.InventoryMobile.showWineDetails(wineId);
+            } else if (window.showWineDetailsMobile) {
+                window.showWineDetailsMobile(wineId);
+            } else {
+                window.AppDebug?.log('[WineCardButtons] ⚠️ Funzione showWineDetails non disponibile, uso fallback', 'warn');
+                // Fallback: invia messaggio chat per dettagli
+                const searchMessage = `[wine_id:${wineId}]`;
+                if (window.ChatAPI && window.ChatAPI.sendMessage) {
+                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    window.ChatAPI.sendMessage(searchMessage, conversationId).then(response => {
+                        if (response && response.message) {
+                            const addMessage = window.ChatMobile?.addMessage || window.ChatDesktop?.addMessage;
+                            if (addMessage) {
+                                addMessage('ai', response.message, false, false, null, response.is_html);
+                            }
+                        }
+                    }).catch(error => {
+                        window.AppDebug?.log(`[WineCardButtons] ❌ Errore dettagli vino: ${error.message}`, 'error');
+                    });
+                }
+            }
+        });
+        
+        // Aggiungi bottoni al container (solo se non esistono già)
+        if (!buttonsContainer.querySelector('.wine-card-button-edit')) {
+            buttonsContainer.appendChild(editButton);
+        }
+        if (!buttonsContainer.querySelector('.wine-card-button-menu')) {
+            buttonsContainer.appendChild(menuButton);
+        }
+        
+        wineCard.dataset.infoButtonsSetup = 'true';
+        window.AppDebug?.log(`[WineCardButtons] ✅ Bottoni info aggiunti a wine card ID: ${wineId}`, 'success');
+    });
+}
+
 // Export per uso globale
 if (typeof window !== 'undefined') {
     window.WineCardButtons = {
-        setup: setupWineCardMovementButtons
+        setup: setupWineCardMovementButtons,
+        setupInfoButtons: setupWineCardInfoButtons
     };
     
     // Auto-setup quando vengono aggiunti messaggi HTML con bottoni
@@ -251,6 +393,23 @@ if (typeof window !== 'undefined') {
                 if (node.nodeType === 1) { // Element node
                     // Cerca bottoni wine card nei nuovi nodi
                     const buttons = node.querySelectorAll?.('.chat-button, .wines-list-item-button');
+                    const wineCards = node.querySelectorAll?.('.wine-card');
+                    
+                    // Se ci sono wine cards, setup bottoni info
+                    if (wineCards && wineCards.length > 0) {
+                        let messageElement = node;
+                        if (!messageElement.classList?.contains('chat-message')) {
+                            messageElement = node.closest?.('.chat-message') || 
+                                           node.querySelector?.('.chat-message') ||
+                                           (node.parentElement?.closest?.('.chat-message'));
+                        }
+                        if (messageElement) {
+                            setTimeout(() => {
+                                setupWineCardInfoButtons(messageElement);
+                            }, 100);
+                        }
+                    }
+                    
                     if (buttons && buttons.length > 0) {
                         window.AppDebug?.log(`[WineCardButtons] 🔍 Observer: Trovati ${buttons.length} bottoni in nodo aggiunto (nodeType: ${node.nodeName}, classes: ${node.className})`, 'info');
                         
@@ -270,6 +429,7 @@ if (typeof window !== 'undefined') {
                                 window.AppDebug?.log(`[WineCardButtons] 🔍 Auto-setup: Trovati ${buttons.length} bottoni in nuovo messaggio HTML`, 'info');
                                 setTimeout(() => {
                                     setupWineCardMovementButtons(messageElement);
+                                    setupWineCardInfoButtons(messageElement); // Setup anche bottoni info su mobile
                                     messageElement.dataset.wineButtonsSetup = 'true';
                                 }, 150); // Aumentato a 150ms per dare tempo a ChatMobile
                             } else {
@@ -283,6 +443,7 @@ if (typeof window !== 'undefined') {
                                     window.AppDebug?.log(`[WineCardButtons] 🔍 Auto-setup: Trovati ${foundButtons.length} bottoni nel messaggio`, 'info');
                                     setTimeout(() => {
                                         setupWineCardMovementButtons(node);
+                                        setupWineCardInfoButtons(node); // Setup anche bottoni info su mobile
                                         node.dataset.wineButtonsSetup = 'true';
                                     }, 150);
                                 }
@@ -501,8 +662,15 @@ if (typeof window !== 'undefined') {
                     if (buttons && buttons.length > 0) {
                         window.AppDebug?.log(`[WineCardButtons] 🔍 Setup messaggio esistente con ${buttons.length} bottoni`, 'info');
                         setupWineCardMovementButtons(msg);
+                        setupWineCardInfoButtons(msg); // Setup anche bottoni info
                         msg.dataset.wineButtonsSetup = 'true';
                     }
+                }
+                
+                // Setup anche wine cards info senza bottoni movimento
+                const wineCards = msg.querySelectorAll('.wine-card');
+                if (wineCards && wineCards.length > 0) {
+                    setupWineCardInfoButtons(msg);
                 }
             });
         }, 300);

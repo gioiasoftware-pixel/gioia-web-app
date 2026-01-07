@@ -97,6 +97,7 @@ function addChatMessageDesktop(role, content, isLoading = false, isError = false
     if (isHtml && role === 'ai' && messageElement && window.WineCardButtons) {
         setTimeout(() => {
             window.WineCardButtons.setup(messageElement);
+            window.WineCardButtons.setupInfoButtons(messageElement); // Setup anche bottoni info su mobile
         }, 100);
     }
     
