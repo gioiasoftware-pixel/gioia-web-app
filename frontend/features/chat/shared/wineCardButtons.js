@@ -348,7 +348,18 @@ function setupWineCardInfoButtons(messageElement) {
                 // Mostra viewerPanel e attiva state-viewer
                 viewerPanel.hidden = false;
                 mobileLayout.classList.add('state-viewer');
-                window.AppDebug?.log('[WineCardButtons] ✅ Schermata inventario mobile aperta', 'success');
+                
+                // Assicurati che la schermata dettagli sia quella che verrà mostrata
+                // Nascondi la lista e mostra i dettagli (showWineDetails lo farà, ma facciamolo subito)
+                const listScreen = document.getElementById('inventory-screen-list');
+                const detailsScreen = document.getElementById('inventory-screen-details');
+                const chartScreen = document.getElementById('inventory-screen-chart');
+                
+                if (listScreen) listScreen.classList.add('hidden');
+                if (chartScreen) chartScreen.classList.add('hidden');
+                // detailsScreen verrà mostrato da showWineDetails
+                
+                window.AppDebug?.log('[WineCardButtons] ✅ Schermata inventario mobile aperta, preparato per dettagli', 'success');
             }
             
             // Naviga alla pagina dettagli vino mobile
@@ -356,7 +367,8 @@ function setupWineCardInfoButtons(messageElement) {
                 // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
                 window.AppDebug?.log(`[WineCardButtons] ✅ Chiamata showWineDetails(${wineId})`, 'info');
-                window.InventoryMobile.showWineDetails(wineId);
+                // showWineDetails chiamerà showInventoryScreen('details') internamente
+                await window.InventoryMobile.showWineDetails(wineId);
             } else {
                 window.AppDebug?.log('[WineCardButtons] ⚠️ InventoryMobile.showWineDetails non disponibile, uso fallback', 'warn');
                 // Fallback: invia messaggio chat per dettagli
