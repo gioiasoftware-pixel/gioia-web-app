@@ -244,6 +244,8 @@ if (typeof window !== 'undefined') {
                     // Cerca bottoni wine card nei nuovi nodi
                     const buttons = node.querySelectorAll?.('.chat-button, .wines-list-item-button');
                     if (buttons && buttons.length > 0) {
+                        window.AppDebug?.log(`[WineCardButtons] 🔍 Observer: Trovati ${buttons.length} bottoni in nodo aggiunto (nodeType: ${node.nodeName}, classes: ${node.className})`, 'info');
+                        
                         // Trova l'elemento messaggio contenitore
                         let messageElement = node;
                         if (!messageElement.classList?.contains('chat-message')) {
@@ -252,6 +254,8 @@ if (typeof window !== 'undefined') {
                                            (node.parentElement?.closest?.('.chat-message'));
                         }
                         
+                        window.AppDebug?.log(`[WineCardButtons] 🔍 Observer: messageElement trovato: ${!!messageElement}, è il nodo stesso: ${messageElement === node}`, 'info');
+                        
                         if (messageElement && messageElement !== node) {
                             // Verifica che non sia già stato processato
                             if (!messageElement.dataset.wineButtonsSetup) {
@@ -259,7 +263,9 @@ if (typeof window !== 'undefined') {
                                 setTimeout(() => {
                                     setupWineCardMovementButtons(messageElement);
                                     messageElement.dataset.wineButtonsSetup = 'true';
-                                }, 50);
+                                }, 150); // Aumentato a 150ms per dare tempo a ChatMobile
+                            } else {
+                                window.AppDebug?.log(`[WineCardButtons] ⏭️ Messaggio già processato (dataset flag presente)`, 'warn');
                             }
                         } else if (node.classList?.contains?.('chat-message')) {
                             // Il nodo stesso è il messaggio
@@ -270,9 +276,13 @@ if (typeof window !== 'undefined') {
                                     setTimeout(() => {
                                         setupWineCardMovementButtons(node);
                                         node.dataset.wineButtonsSetup = 'true';
-                                    }, 50);
+                                    }, 150);
                                 }
+                            } else {
+                                window.AppDebug?.log(`[WineCardButtons] ⏭️ Messaggio già processato (dataset flag presente)`, 'warn');
                             }
+                        } else {
+                            window.AppDebug?.log(`[WineCardButtons] ⚠️ Observer: Bottoni trovati ma nessun chat-message contenitore identificato`, 'warn');
                         }
                     }
                 }
@@ -280,26 +290,93 @@ if (typeof window !== 'undefined') {
         });
     });
     
+    // Event delegation per intercettare click sui bottoni (anche se clonati/sostituiti)
+    function setupEventDelegation() {
+        document.addEventListener('click', (e) => {
+            // Cerca se il click è su un bottone wine card
+            const button = e.target.closest?.('.chat-button, .wines-list-item-button');
+            if (button && (button.classList.contains('wines-list-item-button') || button.classList.contains('chat-button'))) {
+                const wineId = button.dataset.wineId || button.getAttribute('data-wine-id');
+                const wineText = button.dataset.wineText || button.getAttribute('data-wine-text');
+                
+                // Verifica che sia un bottone wine card (ha almeno wineId o wineText)
+                if (wineId || wineText) {
+                    window.AppDebug?.log(`[WineCardButtons] 🎯 CLICK DELEGATION: Bottone wine card cliccato (wineId: ${wineId || 'N/A'}, wineText: ${wineText || 'N/A'})`, 'info');
+                    
+                    // Se non ha listener già collegati, chiama setup
+                    const messageElement = button.closest?.('.chat-message');
+                    if (messageElement && !messageElement.dataset.wineButtonsSetup) {
+                        window.AppDebug?.log('[WineCardButtons] 🔧 Setup tardivo: collegando listener dopo click', 'warn');
+                        setupWineCardMovementButtons(messageElement);
+                        messageElement.dataset.wineButtonsSetup = 'true';
+                        // Re-trigger il click dopo setup
+                        setTimeout(() => {
+                            button.click();
+                        }, 10);
+                    }
+                }
+            }
+        }, true); // Usa capture phase per intercettare prima
+    }
+    
     // Avvia observer quando DOM è pronto
     function startAutoSetup() {
-        // Cerca container chat mobile e desktop
-        const mobileContainer = document.querySelector('.mobileRoot .chat-messages, .chat-messages-mobile');
-        const desktopContainer = document.querySelector('.desktopRoot .chat-messages, .chat-messages-desktop');
+        // Setup event delegation
+        setupEventDelegation();
+        window.AppDebug?.log('[WineCardButtons] ✅ Event delegation attivo', 'success');
+        // Cerca container chat mobile e desktop con più selettori
+        const selectors = [
+            '.mobileRoot .chat-messages',
+            '.mobileRoot #chat-messages',
+            '.chat-messages-mobile',
+            '#chat-messages-mobile',
+            '.desktopRoot .chat-messages',
+            '.desktopRoot #chat-messages',
+            '.chat-messages-desktop',
+            '#chat-messages-desktop',
+            '.chat-messages', // Generico
+            '#chat-messages'  // Generico
+        ];
         
-        const containers = [mobileContainer, desktopContainer].filter(Boolean);
+        const containers = [];
+        selectors.forEach(sel => {
+            const found = document.querySelector(sel);
+            if (found && !containers.includes(found)) {
+                containers.push(found);
+            }
+        });
+        
+        window.AppDebug?.log(`[WineCardButtons] 🔍 Ricerca container chat: trovati ${containers.length} container`, 'info');
         
         if (containers.length > 0) {
-            containers.forEach(container => {
+            containers.forEach((container, idx) => {
                 setupObserver.observe(container, {
                     childList: true,
                     subtree: true
                 });
+                window.AppDebug?.log(`[WineCardButtons] ✅ Observer attivo su container ${idx + 1}: ${container.className || container.id || 'sconosciuto'}`, 'success');
             });
-            window.AppDebug?.log('[WineCardButtons] ✅ Auto-setup observer avviato', 'success');
         } else {
+            window.AppDebug?.log('[WineCardButtons] ⚠️ Nessun container chat trovato, retry tra 500ms', 'warn');
             // Retry dopo 500ms se container non trovati
             setTimeout(startAutoSetup, 500);
         }
+        
+        // Setup anche su tutti i messaggi già presenti
+        setTimeout(() => {
+            const existingMessages = document.querySelectorAll('.chat-message');
+            window.AppDebug?.log(`[WineCardButtons] 🔍 Setup messaggi esistenti: trovati ${existingMessages.length} messaggi`, 'info');
+            existingMessages.forEach(msg => {
+                if (!msg.dataset.wineButtonsSetup) {
+                    const buttons = msg.querySelectorAll('.chat-button, .wines-list-item-button');
+                    if (buttons && buttons.length > 0) {
+                        window.AppDebug?.log(`[WineCardButtons] 🔍 Setup messaggio esistente con ${buttons.length} bottoni`, 'info');
+                        setupWineCardMovementButtons(msg);
+                        msg.dataset.wineButtonsSetup = 'true';
+                    }
+                }
+            });
+        }, 300);
     }
     
     if (document.readyState === 'loading') {
