@@ -323,6 +323,25 @@ if (typeof window !== 'undefined') {
                     const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
                                      document.documentElement.classList.contains('mobileRoot');
                     
+                    // Verifica se il click è già stato gestito (evita doppia gestione)
+                    if (button.dataset.clickHandled === 'true') {
+                        window.AppDebug?.log('[WineCardButtons] ⏭️ Click già gestito, skip', 'warn');
+                        return;
+                    }
+                    
+                    // Marca come gestito PRIMA di processare (evita race condition)
+                    button.dataset.clickHandled = 'true';
+                    
+                    // Ferma la propagazione per evitare che ChatMobile gestisca anche questo click
+                    e.stopPropagation();
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    
+                    // Reset flag dopo 500ms (permetti nuovo click)
+                    setTimeout(() => {
+                        button.dataset.clickHandled = 'false';
+                    }, 500);
+                    
                     // Processa direttamente il click
                     if (movementType && quantity && wineId) {
                         window.AppDebug?.log(
@@ -372,7 +391,18 @@ if (typeof window !== 'undefined') {
                             'info'
                         );
                         
-                        const searchMessage = wineText || `Vino ID: ${wineId}`;
+                        // Usa direttamente wineId se disponibile (ricerca più veloce e precisa)
+                        // Formato: [wine_id:123] per ricerca diretta per ID
+                        let searchMessage;
+                        if (wineId) {
+                            // Usa formato speciale per ricerca per ID (più veloce)
+                            searchMessage = `[wine_id:${wineId}]`;
+                            window.AppDebug?.log(`[WineCardButtons] 🔍 Ricerca per ID: ${wineId} (formato rapido)`, 'info');
+                        } else {
+                            // Fallback: usa wineText se non abbiamo ID
+                            searchMessage = wineText || 'Vino';
+                            window.AppDebug?.log(`[WineCardButtons] 🔍 Ricerca per nome: "${searchMessage}" (fallback)`, 'info');
+                        }
                         window.AppDebug?.log(`[WineCardButtons] 🔍 Messaggio ricerca costruito: "${searchMessage}"`, 'info');
                         
                         try {
