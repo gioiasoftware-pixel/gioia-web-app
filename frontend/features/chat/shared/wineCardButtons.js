@@ -20,7 +20,7 @@ function showWineCardTestPopup(title, message, type = 'info') {
         padding: 16px 24px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 10000;
+        z-index: 99999;
         font-size: 14px;
         font-weight: 500;
         max-width: 90%;
