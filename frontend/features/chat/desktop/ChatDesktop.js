@@ -93,13 +93,13 @@ function addChatMessageDesktop(role, content, isLoading = false, isError = false
     // oppure crea una versione desktop-specifica se necessario
     const messageElement = addChatMessage(role, content, isLoading, isError, wineData, isHtml);
     
-    // Setup bottoni wine card se è HTML con wine card
-    if (isHtml && role === 'ai' && messageElement && window.WineCardButtons) {
-        setTimeout(() => {
-            window.WineCardButtons.setup(messageElement);
-            window.WineCardButtons.setupInfoButtons(messageElement); // Setup anche bottoni info su mobile
-        }, 100);
-    }
+            // Setup bottoni wine card se è HTML con wine card
+            if (isHtml && role === 'ai' && messageElement && window.WineCardButtons) {
+                setTimeout(() => {
+                    window.WineCardButtons.setup(messageElement); // Setup bottoni movimento
+                    window.WineCardButtons.setupInfoButtonsDesktop(messageElement); // Setup bottoni info DESKTOP (funzione wrapper sceglie automaticamente)
+                }, 100);
+            }
     
     return messageElement;
 }
