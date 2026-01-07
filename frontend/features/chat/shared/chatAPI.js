@@ -36,7 +36,7 @@ async function sendChatMessage(message, conversationId = null) {
     if (finalConversationId !== null && finalConversationId !== undefined) {
         requestBody.conversation_id = finalConversationId;
     }
-    const apiEndpoint = `${apiUrl}/api/chat`;
+    const apiEndpoint = `${apiUrl}/api/chat/message`;
     
     console.log('[ChatAPI] 📤 Invio messaggio:', {
         endpoint: apiEndpoint,
