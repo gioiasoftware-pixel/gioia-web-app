@@ -166,6 +166,14 @@ function initChatFormSubmitPrevention() {
             };
             window.AppDebug?.log('[ChatSelectors] 🎯 INPUT FOCUS - Tastiera potrebbe aprirsi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
+            
+            // Prevenzione aggiuntiva: scrolla l'input in view senza causare resize
+            setTimeout(() => {
+                if (chatInput && document.activeElement === chatInput) {
+                    chatInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
+                }
+            }, 100);
         }, { passive: true });
         
         chatInput.addEventListener('blur', (e) => {
@@ -206,6 +214,8 @@ function initChatFormSubmitPrevention() {
     // Monitora cambi viewport (potrebbe indicare apertura/chiusura tastiera)
     let lastViewportHeight = window.innerHeight;
     let resizeTimeout = null;
+    let isKeyboardOpen = false;
+    let keyboardOpenTime = null;
     
     window.addEventListener('resize', () => {
         const currentHeight = window.innerHeight;
@@ -218,6 +228,17 @@ function initChatFormSubmitPrevention() {
             
             if (Math.abs(heightDiff) > 100) {
                 window.AppDebug?.log(`[ChatSelectors] ⚠️ Cambio viewport significativo (${Math.abs(heightDiff)}px) - potrebbe essere tastiera`, 'warn');
+                
+                // Se il viewport si riduce drasticamente, probabilmente è la tastiera che si apre
+                if (heightDiff > 100) {
+                    isKeyboardOpen = true;
+                    keyboardOpenTime = Date.now();
+                    window.AppDebug?.log('[ChatSelectors] 🎹 TASTIERA APERTA - attivo protezione anti-refresh', 'warn');
+                } else if (heightDiff < -100) {
+                    isKeyboardOpen = false;
+                    keyboardOpenTime = null;
+                    window.AppDebug?.log('[ChatSelectors] 🎹 TASTIERA CHIUSA', 'info');
+                }
             }
             
             lastViewportHeight = currentHeight;
@@ -247,14 +268,76 @@ function initChatFormSubmitPrevention() {
         window.AppDebug?.log(`[ChatSelectors] 👁️ VISIBILITY CHANGE: ${document.visibilityState}`, 'warn');
         if (document.visibilityState === 'hidden') {
             window.AppDebug?.log('[ChatSelectors] ⚠️ Pagina nascosta - possibile refresh?', 'warn');
+            // Se la tastiera è aperta, potrebbe essere un refresh indesiderato
+            if (isKeyboardOpen) {
+                window.AppDebug?.log('[ChatSelectors] 🛑 Tastiera aperta durante visibility change - possibile refresh indesiderato!', 'error');
+            }
         }
     }, { passive: true });
     
-    // Monitora beforeunload (solo per log, non bloccare)
-    window.addEventListener('beforeunload', (e) => {
-        window.AppDebug?.log('[ChatSelectors] 🚪 BEFOREUNLOAD - pagina sta per ricaricarsi!', 'error');
-        window.AppDebug?.log('[ChatSelectors] ⚠️ Questo potrebbe essere causato da refresh indesiderato su Android', 'error');
+    // Monitora pagehide (Android Chrome potrebbe usare questo invece di beforeunload)
+    window.addEventListener('pagehide', (e) => {
+        const timeSinceKeyboardOpen = keyboardOpenTime ? Date.now() - keyboardOpenTime : Infinity;
+        window.AppDebug?.log('[ChatSelectors] 🚪 PAGEHIDE - pagina sta per essere nascosta!', 'error');
+        window.AppDebug?.log(`[ChatSelectors] Tastiera aperta: ${isKeyboardOpen}, tempo trascorso: ${timeSinceKeyboardOpen}ms`, 'error');
+        
+        if (isKeyboardOpen && timeSinceKeyboardOpen < 2000) {
+            window.AppDebug?.log('[ChatSelectors] 🛑 PAGEHIDE causato da tastiera - salvo stato', 'error');
+            // Salva lo stato
+            if (chatInput) {
+                const inputValue = chatInput.value;
+                if (inputValue) {
+                    sessionStorage.setItem('chat-input-backup', inputValue);
+                    sessionStorage.setItem('chat-input-backup-time', Date.now().toString());
+                    window.AppDebug?.log('[ChatSelectors] 💾 Valore input salvato in sessionStorage', 'info');
+                }
+            }
+        }
     }, { passive: true });
+    
+    // Ripristina valore input se c'è un backup (dopo un refresh indesiderato)
+    window.addEventListener('pageshow', (e) => {
+        if (e.persisted) {
+            window.AppDebug?.log('[ChatSelectors] 📄 PAGESHOW - pagina ripristinata da cache', 'info');
+            const backup = sessionStorage.getItem('chat-input-backup');
+            const backupTime = sessionStorage.getItem('chat-input-backup-time');
+            if (backup && backupTime && Date.now() - parseInt(backupTime) < 5000) {
+                if (chatInput) {
+                    chatInput.value = backup;
+                    window.AppDebug?.log('[ChatSelectors] ✅ Valore input ripristinato da backup', 'success');
+                    sessionStorage.removeItem('chat-input-backup');
+                    sessionStorage.removeItem('chat-input-backup-time');
+                }
+            }
+        }
+    }, { passive: true });
+    
+    // Monitora beforeunload - PREVIENI se è causato dalla tastiera
+    window.addEventListener('beforeunload', (e) => {
+        const timeSinceKeyboardOpen = keyboardOpenTime ? Date.now() - keyboardOpenTime : Infinity;
+        
+        window.AppDebug?.log('[ChatSelectors] 🚪 BEFOREUNLOAD - pagina sta per ricaricarsi!', 'error');
+        window.AppDebug?.log(`[ChatSelectors] Tastiera aperta: ${isKeyboardOpen}, tempo trascorso: ${timeSinceKeyboardOpen}ms`, 'error');
+        
+        // Se la tastiera è appena stata aperta (negli ultimi 2 secondi), previeni il reload
+        if (isKeyboardOpen && timeSinceKeyboardOpen < 2000) {
+            window.AppDebug?.log('[ChatSelectors] 🛑 PREVENGO RELOAD - causato da apertura tastiera!', 'error');
+            // Previeni il reload solo se è causato dalla tastiera
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // Salva lo stato per evitare perdita dati
+            if (chatInput) {
+                const inputValue = chatInput.value;
+                if (inputValue) {
+                    sessionStorage.setItem('chat-input-backup', inputValue);
+                    window.AppDebug?.log('[ChatSelectors] 💾 Valore input salvato in sessionStorage', 'info');
+                }
+            }
+            return false;
+        }
+        
+        window.AppDebug?.log('[ChatSelectors] ⚠️ Questo potrebbe essere causato da refresh indesiderato su Android', 'error');
+    }, { capture: true });
     
     // Monitoraggio: intercetta qualsiasi tentativo di navigazione/reload per logging
     // Su Android, quando la tastiera si apre, il browser potrebbe tentare di navigare
