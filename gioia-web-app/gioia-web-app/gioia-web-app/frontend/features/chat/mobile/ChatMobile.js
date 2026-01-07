@@ -24,7 +24,30 @@ function initChatMobile() {
     // Setup form submit
     const form = selectors.form();
     if (form) {
-        form.addEventListener('submit', handleChatSubmitMobile);
+        // Previeni comportamento di default del form (evita refresh pagina su Android)
+        form.setAttribute('onsubmit', 'return false;');
+        form.addEventListener('submit', handleChatSubmitMobile, { passive: false });
+    }
+    
+    // Setup input keydown - IMPORTANTE per Android: previene refresh quando si preme Invio
+    const input = selectors.input();
+    if (input) {
+        input.addEventListener('keydown', (e) => {
+            // Su Android, Enter può causare submit del form e refresh pagina
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+                form?.dispatchEvent(new Event('submit'));
+            }
+        }, { passive: false });
+        
+        // Previeni anche keypress per maggiore sicurezza su Android
+        input.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, { passive: false });
     }
     
     // Setup send button
@@ -32,8 +55,9 @@ function initChatMobile() {
     if (sendButton) {
         sendButton.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
             form?.dispatchEvent(new Event('submit'));
-        });
+        }, { passive: false });
     }
     
     // Setup header action buttons
@@ -52,7 +76,10 @@ function initChatMobile() {
  * Gestisce il submit del form chat mobile
  */
 async function handleChatSubmitMobile(e) {
+    // Previeni comportamento di default (refresh pagina) - CRITICO per Android
     e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
     
     const selectors = window.ChatSelectors?.get();
     const input = selectors?.input();
@@ -60,11 +87,13 @@ async function handleChatSubmitMobile(e) {
     
     if (!input || !form) {
         console.error('[ChatMobile] Input o form non trovati');
-        return;
+        return false; // Previeni submit
     }
     
     const message = input.value.trim();
-    if (!message) return;
+    if (!message) {
+        return false; // Previeni submit se messaggio vuoto
+    }
     
     // Pulisci input
     input.value = '';
@@ -82,6 +111,8 @@ async function handleChatSubmitMobile(e) {
         console.error('[ChatMobile] Errore invio messaggio:', error);
         addChatMessageMobile('ai', 'Errore invio messaggio', false, true);
     }
+    
+    return false; // Previeni submit
 }
 
 /**
