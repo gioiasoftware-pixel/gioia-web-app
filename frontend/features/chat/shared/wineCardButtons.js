@@ -5,13 +5,33 @@
 
 /**
  * Mostra popup di test per feedback visivo
+ * SOLUZIONE ROBUSTA: usa layer globale fuori da stacking context
  */
 function showWineCardTestPopup(title, message, type = 'info') {
-    // Crea popup temporaneo
+    // Crea o recupera layer globale dedicato (fuori da stacking context)
+    let layer = document.getElementById('global-popup-layer');
+    if (!layer) {
+        layer = document.createElement('div');
+        layer.id = 'global-popup-layer';
+        layer.style.cssText = `
+            position: fixed;
+            inset: 0;
+            z-index: 2147483647;
+            pointer-events: none;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        `;
+        // Append al body direttamente (non dentro altri container)
+        document.body.appendChild(layer);
+    }
+    
+    // Crea popup
     const popup = document.createElement('div');
     popup.className = 'wine-card-test-popup';
     popup.style.cssText = `
-        position: fixed;
+        position: absolute;
         top: 20px;
         left: 50%;
         transform: translateX(-50%);
@@ -20,13 +40,13 @@ function showWineCardTestPopup(title, message, type = 'info') {
         padding: 16px 24px;
         border-radius: 8px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        z-index: 99999;
         font-size: 14px;
         font-weight: 500;
         max-width: 90%;
         text-align: center;
+        opacity: 1;
+        pointer-events: auto;
         animation: slideDownPopup 0.3s ease-out;
-        pointer-events: none;
     `;
     
     popup.innerHTML = `
@@ -53,16 +73,31 @@ function showWineCardTestPopup(title, message, type = 'info') {
         document.head.appendChild(style);
     }
     
-    document.body.appendChild(popup);
+    // Append al layer globale (non al body diretto)
+    layer.appendChild(popup);
+    
+    // Debug: log per verifica
+    console.log('[WineCardButtons] 🎯 Popup creato:', {
+        layerExists: !!layer,
+        popupInDOM: document.body.contains(layer),
+        popupRect: popup.getBoundingClientRect(),
+        computedStyle: window.getComputedStyle(popup).getPropertyValue('opacity')
+    });
     
     // Rimuovi dopo 3 secondi
     setTimeout(() => {
-        popup.style.animation = 'slideDownPopup 0.3s ease-out reverse';
-        setTimeout(() => {
-            if (popup.parentNode) {
-                popup.remove();
-            }
-        }, 300);
+        if (popup.parentNode) {
+            popup.style.animation = 'slideDownPopup 0.3s ease-out reverse';
+            setTimeout(() => {
+                if (popup.parentNode) {
+                    popup.remove();
+                }
+                // Rimuovi layer se vuoto
+                if (layer && layer.children.length === 0) {
+                    layer.remove();
+                }
+            }, 300);
+        }
     }, 3000);
 }
 
