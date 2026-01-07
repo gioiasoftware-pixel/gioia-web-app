@@ -325,11 +325,14 @@
         log(message, level = 'info') {
             if (!isEnabled) return;
             
-            // Log anche in console normale per compatibilità
-            const consoleMethod = level === 'error' ? console.error 
-                                : level === 'warn' ? console.warn 
-                                : console.log;
-            consoleMethod(`[AppDebug]`, message);
+            // Log anche in console normale per compatibilità (usa metodo originale per evitare loop)
+            const originalConsole = window.AppDebug?._originalConsole;
+            if (originalConsole) {
+                const consoleMethod = level === 'error' ? originalConsole.error 
+                                    : level === 'warn' ? originalConsole.warn 
+                                    : originalConsole.log;
+                consoleMethod(`[AppDebug]`, message);
+            }
             
             // Aggiungi all'overlay
             addLogLine(message, level);
@@ -366,20 +369,110 @@
         }
     };
     
+    /**
+     * Intercetta tutti i log della console e li reindirizza all'overlay
+     */
+    function interceptConsoleLogs() {
+        // Salva metodi originali
+        const originalConsole = {
+            log: console.log.bind(console),
+            warn: console.warn.bind(console),
+            error: console.error.bind(console),
+            info: console.info.bind(console),
+            debug: console.debug.bind(console)
+        };
+        
+        /**
+         * Formatta argomenti console per overlay
+         */
+        function formatConsoleArgs(args) {
+            return args.map(arg => {
+                if (arg === null) return 'null';
+                if (arg === undefined) return 'undefined';
+                if (typeof arg === 'object') {
+                    try {
+                        // Limita profondità per oggetti molto grandi
+                        return JSON.stringify(arg, null, 0).substring(0, 500);
+                    } catch (e) {
+                        return `[Object: ${arg.constructor?.name || 'Object'}]`;
+                    }
+                }
+                return String(arg);
+            }).join(' ');
+        }
+        
+        // Wrapper per console.log
+        console.log = function(...args) {
+            originalConsole.log(...args);
+            if (window.AppDebug && window.AppDebug.isInitialized()) {
+                const message = formatConsoleArgs(args);
+                window.AppDebug.log(message, 'info');
+            }
+        };
+        
+        // Wrapper per console.warn
+        console.warn = function(...args) {
+            originalConsole.warn(...args);
+            if (window.AppDebug && window.AppDebug.isInitialized()) {
+                const message = formatConsoleArgs(args);
+                window.AppDebug.log(message, 'warn');
+            }
+        };
+        
+        // Wrapper per console.error
+        console.error = function(...args) {
+            originalConsole.error(...args);
+            if (window.AppDebug && window.AppDebug.isInitialized()) {
+                const message = formatConsoleArgs(args);
+                window.AppDebug.log(message, 'error');
+            }
+        };
+        
+        // Wrapper per console.info
+        console.info = function(...args) {
+            originalConsole.info(...args);
+            if (window.AppDebug && window.AppDebug.isInitialized()) {
+                const message = formatConsoleArgs(args);
+                window.AppDebug.log(message, 'info');
+            }
+        };
+        
+        // Wrapper per console.debug
+        console.debug = function(...args) {
+            originalConsole.debug(...args);
+            if (window.AppDebug && window.AppDebug.isInitialized()) {
+                const message = formatConsoleArgs(args);
+                window.AppDebug.log(message, 'info');
+            }
+        };
+        
+        // Salva riferimento ai metodi originali per uso futuro se necessario
+        window.AppDebug._originalConsole = originalConsole;
+        
+        console.log('[AppDebug] ✅ Intercettazione console.log/warn/error/info/debug attiva');
+    }
+    
     // Inizializza quando DOM è pronto
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initDebugOverlay);
+        document.addEventListener('DOMContentLoaded', () => {
+            initDebugOverlay();
+            // Intercetta console dopo che l'overlay è pronto
+            setTimeout(interceptConsoleLogs, 200);
+        });
     } else {
         // DOM già pronto
         initDebugOverlay();
+        // Intercetta console dopo che l'overlay è pronto
+        setTimeout(interceptConsoleLogs, 200);
     }
     
     // Log iniziale
     setTimeout(() => {
-        if (window.AppDebug.isInitialized()) {
+        if (window.AppDebug && window.AppDebug.isInitialized()) {
             window.AppDebug.log('AppDebug overlay inizializzato', 'success');
+            window.AppDebug.log('Tutti i console.log/warn/error/info/debug verranno mostrati qui', 'info');
         }
-    }, 100);
+    }, 300);
     
 })();
 
