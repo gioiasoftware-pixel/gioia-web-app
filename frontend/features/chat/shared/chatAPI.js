@@ -29,24 +29,50 @@ async function sendChatMessage(message, conversationId = null) {
         throw new Error('API_BASE_URL non disponibile');
     }
     
-    const response = await fetch(`${apiUrl}/api/chat`, {
+    // Costruisci body - non includere conversation_id se è null
+    const requestBody = {
+        message: message
+    };
+    if (finalConversationId !== null && finalConversationId !== undefined) {
+        requestBody.conversation_id = finalConversationId;
+    }
+    const apiEndpoint = `${apiUrl}/api/chat`;
+    
+    console.log('[ChatAPI] 📤 Invio messaggio:', {
+        endpoint: apiEndpoint,
+        message: message.substring(0, 50),
+        conversation_id: finalConversationId,
+        hasToken: !!token
+    });
+    
+    const response = await fetch(apiEndpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-            message: message,
-            conversation_id: finalConversationId
-        })
+        body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
         const errorText = await response.text().catch(() => '');
+        console.error('[ChatAPI] ❌ Errore risposta:', {
+            status: response.status,
+            statusText: response.statusText,
+            url: response.url,
+            errorText: errorText.substring(0, 200)
+        });
         throw new Error(`Errore invio messaggio: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
     }
     
-    return await response.json();
+    const result = await response.json();
+    console.log('[ChatAPI] ✅ Messaggio inviato con successo:', {
+        hasMessage: !!result.message,
+        hasMetadata: !!result.metadata,
+        conversationId: result.conversation_id
+    });
+    
+    return result;
 }
 
 /**
