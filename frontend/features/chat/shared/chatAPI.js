@@ -7,27 +7,43 @@
 /**
  * Invia un messaggio alla chat
  * @param {string} message - Testo del messaggio
+ * @param {number|null} conversationId - ID conversazione (opzionale, usa window.currentConversationId se non fornito)
  * @returns {Promise<Object>} Risposta dell'API
  */
-async function sendChatMessage(message) {
-    if (!authToken) {
+async function sendChatMessage(message, conversationId = null) {
+    // Usa conversationId passato, altrimenti prova a recuperarlo da variabili globali
+    const finalConversationId = conversationId || 
+                                (typeof window !== 'undefined' && window.currentConversationId) ||
+                                (typeof currentConversationId !== 'undefined' ? currentConversationId : null);
+    
+    const token = (typeof window !== 'undefined' && window.authToken) || 
+                  (typeof authToken !== 'undefined' ? authToken : null);
+    const apiUrl = (typeof window !== 'undefined' && window.API_BASE_URL) || 
+                   (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : null);
+    
+    if (!token) {
         throw new Error('Token di autenticazione non disponibile');
     }
     
-    const response = await fetch(`${API_BASE_URL}/api/chat`, {
+    if (!apiUrl) {
+        throw new Error('API_BASE_URL non disponibile');
+    }
+    
+    const response = await fetch(`${apiUrl}/api/chat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
+            'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
             message: message,
-            conversation_id: currentConversationId
+            conversation_id: finalConversationId
         })
     });
     
     if (!response.ok) {
-        throw new Error(`Errore invio messaggio: ${response.status}`);
+        const errorText = await response.text().catch(() => '');
+        throw new Error(`Errore invio messaggio: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
     }
     
     return await response.json();

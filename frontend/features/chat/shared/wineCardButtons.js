@@ -125,8 +125,12 @@ function setupWineCardMovementButtons(messageElement) {
                         throw new Error('ChatAPI.sendMessage non disponibile');
                     }
                     
+                    // Recupera conversationId da variabili globali
+                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
+                    
                     window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio...', 'info');
-                    const response = await window.ChatAPI.sendMessage(message);
+                    const response = await window.ChatAPI.sendMessage(message, conversationId);
                     
                     window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricevuta dal server (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                     console.log('[WineCardButtons] ✅ Risposta ricevuta:', response);
@@ -171,8 +175,12 @@ function setupWineCardMovementButtons(messageElement) {
                         throw new Error('ChatAPI.sendMessage non disponibile');
                     }
                     
+                    // Recupera conversationId da variabili globali
+                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
+                    
                     window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio ricerca...', 'info');
-                    const response = await window.ChatAPI.sendMessage(searchMessage);
+                    const response = await window.ChatAPI.sendMessage(searchMessage, conversationId);
                     
                     window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricerca ricevuta (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                     console.log('[WineCardButtons] ✅ Risposta ricerca ricevuta:', response);
@@ -331,8 +339,12 @@ if (typeof window !== 'undefined') {
                                 throw new Error('ChatAPI.sendMessage non disponibile');
                             }
                             
+                            // Recupera conversationId da variabili globali
+                            const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                            window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
+                            
                             window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio...', 'info');
-                            const response = await window.ChatAPI.sendMessage(message);
+                            const response = await window.ChatAPI.sendMessage(message, conversationId);
                             
                             window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricevuta dal server (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                             
@@ -369,8 +381,12 @@ if (typeof window !== 'undefined') {
                                 throw new Error('ChatAPI.sendMessage non disponibile');
                             }
                             
+                            // Recupera conversationId da variabili globali
+                            const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                            window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
+                            
                             window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio ricerca...', 'info');
-                            const response = await window.ChatAPI.sendMessage(searchMessage);
+                            const response = await window.ChatAPI.sendMessage(searchMessage, conversationId);
                             
                             window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricerca ricevuta (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                             
