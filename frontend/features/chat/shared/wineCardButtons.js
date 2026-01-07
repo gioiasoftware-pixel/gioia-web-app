@@ -10,8 +10,11 @@
  * @param {HTMLElement} messageElement - Elemento messaggio contenente i bottoni
  */
 function setupWineCardMovementButtons(messageElement) {
+    window.AppDebug?.log('[WineCardButtons] 🚀 Setup avviato (setupWineCardMovementButtons chiamata)', 'info');
+    
     if (!messageElement) {
         console.warn('[WineCardButtons] messageElement non fornito');
+        window.AppDebug?.log('[WineCardButtons] ERRORE: messageElement non fornito', 'error');
         return;
     }
     
@@ -20,10 +23,12 @@ function setupWineCardMovementButtons(messageElement) {
     
     if (buttonElements.length === 0) {
         console.log('[WineCardButtons] Nessun bottone movimento trovato nel messaggio');
+        window.AppDebug?.log('[WineCardButtons] Nessun bottone movimento trovato', 'warn');
         return;
     }
     
     console.log(`[WineCardButtons] ✅ Trovati ${buttonElements.length} bottoni movimento da collegare`);
+    window.AppDebug?.log(`[WineCardButtons] Setup: Trovati ${buttonElements.length} bottoni da collegare`, 'info');
     
     // Determina layout (mobile o desktop)
     const isMobile = window.LayoutBoundary?.isMobileNamespace() || 
@@ -40,21 +45,29 @@ function setupWineCardMovementButtons(messageElement) {
         const movementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
         const quantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
         
-        console.log(`[WineCardButtons] 🔗 Collegamento listener bottone ${index + 1}:`, {
+        const buttonInfo = {
             wineId,
-            wineText,
+            wineText: wineText?.substring(0, 30),
             movementType,
             quantity,
             hasMovementData: !!(movementType && quantity && wineId),
             isMobile,
             buttonClass: newBtn.className,
             buttonText: newBtn.textContent?.trim().substring(0, 30)
-        });
+        };
+        
+        console.log(`[WineCardButtons] 🔗 Collegamento listener bottone ${index + 1}:`, buttonInfo);
+        window.AppDebug?.log(
+            `[WineCardButtons] Bottone ${index + 1}: ${wineText || wineId || 'N/A'} | Tipo: ${movementType || 'ricerca'} | Qty: ${quantity || 'N/A'}`,
+            buttonInfo.hasMovementData ? 'success' : 'info'
+        );
         
         // Aggiungi listener - supporta sia click che pointerup per mobile
         const handleClick = async (e) => {
             e.stopPropagation();
             e.preventDefault();
+            
+            window.AppDebug?.log(`[WineCardButtons] 🎯 CLICK RILEVATO (event: ${e.type})`, 'info');
             
             console.log('[WineCardButtons] 🎯 CLICK RILEVATO sul bottone movimento!', {
                 wineId,
@@ -73,15 +86,20 @@ function setupWineCardMovementButtons(messageElement) {
             const clickMovementType = newBtn.dataset.movementType || newBtn.getAttribute('data-movement-type');
             const clickQuantity = newBtn.dataset.quantity || newBtn.getAttribute('data-quantity');
             
+            window.AppDebug?.log(
+                `[WineCardButtons] Dati estratti: wineId=${clickWineId || 'N/A'}, wineText="${clickWineText || 'N/A'}", movementType=${clickMovementType || 'N/A'}, quantity=${clickQuantity || 'N/A'}`,
+                'info'
+            );
+            
             // LOG DEBUG (usa AppDebug overlay invece di popup)
             if (clickMovementType && clickQuantity && clickWineId) {
                 window.AppDebug?.log(
-                    `[WineCardButtons] Movimento rilevato: ${clickMovementType} di ${clickQuantity} bottiglie per vino ID: ${clickWineId}`,
+                    `[WineCardButtons] ✅ Tipo azione: MOVIMENTO | ${clickMovementType} | ${clickQuantity} bottiglie | Vino: ${clickWineId}`,
                     'success'
                 );
             } else {
                 window.AppDebug?.log(
-                    `[WineCardButtons] Click rilevato: Ricerca info per ${clickWineText || 'vino'}`,
+                    `[WineCardButtons] 🔍 Tipo azione: RICERCA INFO | Vino: "${clickWineText || clickWineId || 'N/A'}"`,
                     'info'
                 );
             }
@@ -97,14 +115,20 @@ function setupWineCardMovementButtons(messageElement) {
                 // Costruisci messaggio movimento
                 const message = `[movement:${clickMovementType}] [wine_id:${clickWineId}] [quantity:${clickQuantity}]`;
                 console.log('[WineCardButtons] 📨 Messaggio da inviare:', message);
+                window.AppDebug?.log(`[WineCardButtons] 📨 Messaggio costruito: "${message}"`, 'info');
                 
                 // Invia messaggio usando ChatAPI
                 try {
+                    window.AppDebug?.log('[WineCardButtons] Verifica ChatAPI disponibilità...', 'info');
+                    
                     if (!window.ChatAPI || !window.ChatAPI.sendMessage) {
                         throw new Error('ChatAPI.sendMessage non disponibile');
                     }
                     
+                    window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio...', 'info');
                     const response = await window.ChatAPI.sendMessage(message);
+                    
+                    window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricevuta dal server (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                     console.log('[WineCardButtons] ✅ Risposta ricevuta:', response);
                     
                     if (response && response.message) {
@@ -113,31 +137,44 @@ function setupWineCardMovementButtons(messageElement) {
                             ? window.ChatMobile?.addMessage 
                             : window.ChatDesktop?.addMessage;
                         
+                        window.AppDebug?.log(`[WineCardButtons] Verifica addMessage (mobile: ${isMobile})...`, 'info');
+                        
                         if (addMessage) {
+                            window.AppDebug?.log(`[WineCardButtons] ✅ addMessage disponibile, aggiungo risposta AI (html: ${!!response.is_html})`, 'success');
                             addMessage('ai', response.message, false, false, null, response.is_html);
+                            window.AppDebug?.log('[WineCardButtons] ✅ Messaggio AI aggiunto alla chat', 'success');
                         } else {
                             console.warn('[WineCardButtons] addMessage non disponibile per layout corrente');
-                            window.AppDebug?.log('[WineCardButtons] Errore: Funzione addMessage non disponibile', 'error');
+                            window.AppDebug?.log(`[WineCardButtons] ❌ Errore: addMessage non disponibile (mobile: ${isMobile}, ChatMobile: ${!!window.ChatMobile}, ChatDesktop: ${!!window.ChatDesktop})`, 'error');
                         }
                     } else {
-                        window.AppDebug?.log('[WineCardButtons] Errore: Il server non ha risposto', 'error');
+                        window.AppDebug?.log(`[WineCardButtons] ❌ Errore: Il server non ha risposto (response: ${JSON.stringify(response)})`, 'error');
                     }
                 } catch (error) {
                     console.error('[WineCardButtons] ❌ Errore invio movimento:', error);
-                    window.AppDebug?.log(`[WineCardButtons] Errore invio movimento: ${error.message}`, 'error');
+                    window.AppDebug?.log(`[WineCardButtons] ❌ Errore invio movimento: ${error.message}`, 'error');
+                    if (error.stack) {
+                        window.AppDebug?.log(`[WineCardButtons] Stack: ${error.stack.substring(0, 200)}`, 'error');
+                    }
                 }
             } else if (clickWineId || clickWineText) {
                 // Pulsante normale (ricerca vino)
                 console.log('[WineCardButtons] 🔍 Click pulsante ricerca vino:', clickWineText);
                 
                 const searchMessage = clickWineText || `Vino ID: ${clickWineId}`;
+                window.AppDebug?.log(`[WineCardButtons] 🔍 Messaggio ricerca costruito: "${searchMessage}"`, 'info');
                 
                 try {
+                    window.AppDebug?.log('[WineCardButtons] Verifica ChatAPI disponibilità...', 'info');
+                    
                     if (!window.ChatAPI || !window.ChatAPI.sendMessage) {
                         throw new Error('ChatAPI.sendMessage non disponibile');
                     }
                     
+                    window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio ricerca...', 'info');
                     const response = await window.ChatAPI.sendMessage(searchMessage);
+                    
+                    window.AppDebug?.log(`[WineCardButtons] ✅ Risposta ricerca ricevuta (hasMessage: ${!!response?.message}, isHtml: ${!!response?.is_html})`, 'success');
                     console.log('[WineCardButtons] ✅ Risposta ricerca ricevuta:', response);
                     
                     if (response && response.message) {
@@ -146,23 +183,31 @@ function setupWineCardMovementButtons(messageElement) {
                             ? window.ChatMobile?.addMessage 
                             : window.ChatDesktop?.addMessage;
                         
+                        window.AppDebug?.log(`[WineCardButtons] Verifica addMessage (mobile: ${isMobile})...`, 'info');
+                        
                         if (addMessage) {
+                            window.AppDebug?.log('[WineCardButtons] ✅ addMessage disponibile, aggiungo messaggi (user + AI)', 'success');
                             addMessage('user', searchMessage);
                             addMessage('ai', response.message, false, false, null, response.is_html);
+                            window.AppDebug?.log('[WineCardButtons] ✅ Messaggi aggiunti alla chat', 'success');
                         } else {
                             console.warn('[WineCardButtons] addMessage non disponibile per layout corrente');
-                            window.AppDebug?.log('[WineCardButtons] Errore: Funzione addMessage non disponibile', 'error');
+                            window.AppDebug?.log(`[WineCardButtons] ❌ Errore: addMessage non disponibile (mobile: ${isMobile}, ChatMobile: ${!!window.ChatMobile}, ChatDesktop: ${!!window.ChatDesktop})`, 'error');
                         }
                     } else {
-                        window.AppDebug?.log('[WineCardButtons] Errore: Il server non ha risposto', 'error');
+                        window.AppDebug?.log(`[WineCardButtons] ❌ Errore: Il server non ha risposto (response: ${JSON.stringify(response)})`, 'error');
                     }
                 } catch (error) {
                     console.error('[WineCardButtons] ❌ Errore ricerca vino:', error);
-                    window.AppDebug?.log(`[WineCardButtons] Errore ricerca vino: ${error.message}`, 'error');
+                    window.AppDebug?.log(`[WineCardButtons] ❌ Errore ricerca vino: ${error.message}`, 'error');
+                    if (error.stack) {
+                        window.AppDebug?.log(`[WineCardButtons] Stack: ${error.stack.substring(0, 200)}`, 'error');
+                    }
                 }
             } else {
                 console.warn('[WineCardButtons] ⚠️ Bottone senza data attributes validi');
-                window.AppDebug?.log('[WineCardButtons] Errore: Bottone senza data attributes validi', 'warn');
+                window.AppDebug?.log('[WineCardButtons] ⚠️ Bottone senza data attributes validi (mancano wineId e wineText)', 'warn');
+                window.AppDebug?.log(`[WineCardButtons] Data attuali: wineId=${clickWineId || 'N/A'}, wineText=${clickWineText || 'N/A'}`, 'warn');
             }
         };
         
@@ -176,9 +221,12 @@ function setupWineCardMovementButtons(messageElement) {
                 e.stopPropagation();
             }, { passive: false });
         }
+        
+        window.AppDebug?.log(`[WineCardButtons] ✅ Listener collegato al bottone ${index + 1} (click + pointerup${isMobile ? ' + touchstart' : ''})`, 'success');
     });
     
     console.log('[WineCardButtons] ✅ Setup bottoni movimento completato');
+    window.AppDebug?.log(`[WineCardButtons] ✅ Setup completato: ${buttonElements.length} bottoni collegati`, 'success');
 }
 
 // Export per uso globale
