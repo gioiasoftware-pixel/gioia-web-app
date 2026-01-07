@@ -91,7 +91,16 @@ function addChatMessageDesktop(role, content, isLoading = false, isError = false
     
     // Usa la funzione esistente addChatMessage che gestisce entrambi i layout
     // oppure crea una versione desktop-specifica se necessario
-    return addChatMessage(role, content, isLoading, isError, wineData, isHtml);
+    const messageElement = addChatMessage(role, content, isLoading, isError, wineData, isHtml);
+    
+    // Setup bottoni wine card se è HTML con wine card
+    if (isHtml && role === 'ai' && messageElement && window.WineCardButtons) {
+        setTimeout(() => {
+            window.WineCardButtons.setup(messageElement);
+        }, 100);
+    }
+    
+    return messageElement;
 }
 
 // Export per uso globale
