@@ -624,12 +624,13 @@ if (typeof window !== 'undefined') {
                 window.AppDebug?.log(`[WineCardButtons]   - contiene wine-card-button-edit: ${clickedButton.classList.contains('wine-card-button-edit')}`, 'info');
                 window.AppDebug?.log(`[WineCardButtons]   - contiene wine-card-button-menu: ${clickedButton.classList.contains('wine-card-button-menu')}`, 'info');
                 
-                // ESCLUDI se è un bottone mobile info (edit o menu/hamburger)
+                // ESCLUDI se è un bottone mobile info (edit o menu/hamburger/inventory)
                 // Controlla sia per data attributes che per classi
                 const isMobileInfoButton = 
                     (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) ||
                     clickedButton.classList.contains('wine-card-button-edit') ||
-                    clickedButton.classList.contains('wine-card-button-menu');
+                    clickedButton.classList.contains('wine-card-button-menu') ||
+                    clickedButton.classList.contains('wine-card-button-inventory'); // Bottone hamburger/inventory
                 
                 if (isMobileInfoButton) {
                     window.AppDebug?.log('[WineCardButtons] ⏭️⏭️⏭️ Click su bottone mobile info (edit/menu), skip delegation completamente (gestito da handler mobile isolato)', 'info');
