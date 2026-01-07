@@ -345,29 +345,47 @@ function setupWineCardInfoButtons(messageElement) {
             const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
             
             if (viewerPanel && mobileLayout) {
-                // Mostra viewerPanel e attiva state-viewer
-                viewerPanel.hidden = false;
-                mobileLayout.classList.add('state-viewer');
-                
                 // Assicurati che la schermata dettagli sia quella che verrà mostrata
-                // Nascondi la lista e mostra i dettagli (showWineDetails lo farà, ma facciamolo subito)
+                // Nascondi la lista PRIMA di aprire il viewerPanel (previene che initInventoryMobile mostri la lista)
                 const listScreen = document.getElementById('inventory-screen-list');
                 const detailsScreen = document.getElementById('inventory-screen-details');
                 const chartScreen = document.getElementById('inventory-screen-chart');
                 
-                if (listScreen) listScreen.classList.add('hidden');
-                if (chartScreen) chartScreen.classList.add('hidden');
-                // detailsScreen verrà mostrato da showWineDetails
+                // NASCONDI lista e chart PRIMA di aprire viewerPanel
+                if (listScreen) {
+                    listScreen.classList.add('hidden');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Lista inventario nascosta', 'info');
+                }
+                if (chartScreen) {
+                    chartScreen.classList.add('hidden');
+                }
+                // Mostra esplicitamente details screen PRIMA
+                if (detailsScreen) {
+                    detailsScreen.classList.remove('hidden');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli mostrata PRIMA di aprire viewerPanel', 'info');
+                }
                 
-                window.AppDebug?.log('[WineCardButtons] ✅ Schermata inventario mobile aperta, preparato per dettagli', 'success');
+                // POI mostra viewerPanel e attiva state-viewer
+                viewerPanel.hidden = false;
+                mobileLayout.classList.add('state-viewer');
+                
+                window.AppDebug?.log('[WineCardButtons] ✅ ViewerPanel aperto con schermata dettagli già attiva', 'success');
             }
             
             // Naviga alla pagina dettagli vino mobile
             if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
                 // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
                 await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+                
+                // IMPORTANTE: Mostra esplicitamente la schermata dettagli PRIMA di chiamare showWineDetails
+                // Questo previene che loadInventory() o altri handler mostrino la lista
+                if (detailsScreen) {
+                    detailsScreen.classList.remove('hidden');
+                    window.AppDebug?.log('[WineCardButtons] ✅ Schermata dettagli esplicitamente mostrata', 'success');
+                }
+                
                 window.AppDebug?.log(`[WineCardButtons] ✅ Chiamata showWineDetails(${wineId})`, 'info');
-                // showWineDetails chiamerà showInventoryScreen('details') internamente
+                // showWineDetails chiamerà showInventoryScreen('details') internamente, ma è già fatto sopra
                 await window.InventoryMobile.showWineDetails(wineId);
             } else {
                 window.AppDebug?.log('[WineCardButtons] ⚠️ InventoryMobile.showWineDetails non disponibile, uso fallback', 'warn');
@@ -487,6 +505,11 @@ if (typeof window !== 'undefined') {
     // Processa direttamente il click invece di aspettare setup
     function setupEventDelegation() {
         document.addEventListener('click', async (e) => {
+            // ESCLUDI bottoni info (edit e menu) - gestiti da setupWineCardInfoButtons
+            if (e.target.closest?.('.wine-card-button-mobile')) {
+                return; // Lascia che il loro handler gestisca il click
+            }
+            
             // Cerca se il click è su un bottone wine card
             const button = e.target.closest?.('.chat-button, .wines-list-item-button');
             if (button && (button.classList.contains('wines-list-item-button') || button.classList.contains('chat-button'))) {
