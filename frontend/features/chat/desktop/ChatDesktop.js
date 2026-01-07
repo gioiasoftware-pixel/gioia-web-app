@@ -89,8 +89,8 @@ function addChatMessageDesktop(role, content, isLoading = false, isError = false
         return null;
     }
     
+    // Desktop: NON trasforma HTML (il transformer trasforma solo su mobile)
     // Usa la funzione esistente addChatMessage che gestisce entrambi i layout
-    // oppure crea una versione desktop-specifica se necessario
     const messageElement = addChatMessage(role, content, isLoading, isError, wineData, isHtml);
     
             // Setup bottoni wine card se è HTML con wine card
