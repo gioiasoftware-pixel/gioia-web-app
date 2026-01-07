@@ -293,6 +293,7 @@ function setupWineCardInfoButtons(messageElement) {
         const menuButton = document.createElement('button');
         menuButton.className = 'wine-card-button-mobile wine-card-button-menu';
         menuButton.setAttribute('data-wine-id', wineId);
+        menuButton.setAttribute('data-is-info-button', 'true'); // Flag per escludere da event delegation
         menuButton.setAttribute('aria-label', 'Dettagli vino');
         menuButton.innerHTML = `
             <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -334,9 +335,13 @@ function setupWineCardInfoButtons(messageElement) {
         });
         
         // Gestione click bottone dettagli (hamburger)
+        // Aggiungi flag per prevenire che event delegation gestisca questo click
+        menuButton.dataset.isInfoButton = 'true';
+        
         menuButton.addEventListener('click', async (e) => {
             e.stopPropagation();
             e.preventDefault();
+            e.stopImmediatePropagation(); // Blocca anche altri listener sullo stesso elemento
             
             window.AppDebug?.log(`[WineCardButtons] 🍔 Bottone dettagli cliccato per vino ID: ${wineId}`, 'info');
             
@@ -389,21 +394,9 @@ function setupWineCardInfoButtons(messageElement) {
                 await window.InventoryMobile.showWineDetails(wineId);
             } else {
                 window.AppDebug?.log('[WineCardButtons] ⚠️ InventoryMobile.showWineDetails non disponibile, uso fallback', 'warn');
-                // Fallback: invia messaggio chat per dettagli
-                const searchMessage = `[wine_id:${wineId}]`;
-                if (window.ChatAPI && window.ChatAPI.sendMessage) {
-                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
-                    window.ChatAPI.sendMessage(searchMessage, conversationId).then(response => {
-                        if (response && response.message) {
-                            const addMessage = window.ChatMobile?.addMessage || window.ChatDesktop?.addMessage;
-                            if (addMessage) {
-                                addMessage('ai', response.message, false, false, null, response.is_html);
-                            }
-                        }
-                    }).catch(error => {
-                        window.AppDebug?.log(`[WineCardButtons] ❌ Errore dettagli vino: ${error.message}`, 'error');
-                    });
-                }
+                // Fallback: naviga direttamente senza inviare messaggio chat
+                // Per evitare che venga aggiunto un messaggio con wine card che apre il viewer desktop
+                window.AppDebug?.log('[WineCardButtons] ⚠️ Fallback: non disponibile - apri manualmente dettagli vino', 'error');
             }
         });
         
@@ -506,8 +499,14 @@ if (typeof window !== 'undefined') {
     function setupEventDelegation() {
         document.addEventListener('click', async (e) => {
             // ESCLUDI bottoni info (edit e menu) - gestiti da setupWineCardInfoButtons
-            if (e.target.closest?.('.wine-card-button-mobile')) {
-                return; // Lascia che il loro handler gestisca il click
+            const clickedButton = e.target.closest?.('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
+            if (clickedButton) {
+                // Se è un bottone info (edit o menu), lascia che il suo handler diretto gestisca il click
+                if (clickedButton.classList.contains('wine-card-button-mobile') || 
+                    clickedButton.dataset.isInfoButton === 'true') {
+                    window.AppDebug?.log('[WineCardButtons] ⏭️ Click su bottone info, skip delegation (gestito da handler diretto)', 'info');
+                    return;
+                }
             }
             
             // Cerca se il click è su un bottone wine card
