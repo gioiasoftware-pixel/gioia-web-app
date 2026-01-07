@@ -606,15 +606,29 @@ if (typeof window !== 'undefined') {
     // Event delegation per intercettare click sui bottoni (anche se clonati/sostituiti)
     // Processa direttamente il click invece di aspettare setup
     function setupEventDelegation() {
+        // USA CAPTURE PHASE per intercettare PRIMA degli handler diretti
         document.addEventListener('click', async (e) => {
+            window.AppDebug?.log(`[WineCardButtons] 🎯🎯🎯 EVENT DELEGATION - INIZIO (capture phase)`, 'info');
+            window.AppDebug?.log(`[WineCardButtons] Target: ${e.target?.tagName}, className: ${e.target?.className}`, 'info');
+            
             // ESCLUDI COMPLETAMENTE bottoni mobile info - hanno handler diretti isolati
             const clickedButton = e.target.closest?.('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
             if (clickedButton) {
+                window.AppDebug?.log(`[WineCardButtons] 🎯 Event delegation: bottone trovato, verifica esclusione...`, 'info');
+                window.AppDebug?.log(`[WineCardButtons]   - classe: ${clickedButton.className}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons]   - data-layout: ${clickedButton.dataset.layout}`, 'info');
+                window.AppDebug?.log(`[WineCardButtons]   - data-button-type: ${clickedButton.dataset.buttonType}`, 'info');
+                
                 // Se è un bottone mobile info (ha data-layout='mobile' e data-button-type), ESCLUDILO COMPLETAMENTE
                 if (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) {
-                    window.AppDebug?.log('[WineCardButtons] ⏭️ Click su bottone mobile info, skip delegation completamente (gestito da handler mobile isolato)', 'info');
+                    window.AppDebug?.log('[WineCardButtons] ⏭️⏭️⏭️ Click su bottone mobile info, skip delegation completamente (gestito da handler mobile isolato)', 'info');
+                    // NON fermare la propagazione qui, lascia che arrivi all'handler diretto
                     return; // Non processare, lascia che il handler mobile diretto gestisca
+                } else {
+                    window.AppDebug?.log('[WineCardButtons] ✅ Bottone NON è mobile info, procedo con delegation', 'info');
                 }
+            } else {
+                window.AppDebug?.log(`[WineCardButtons] ⚠️ Nessun bottone wine card trovato nel click`, 'info');
             }
             
             // Cerca se il click è su un bottone wine card
