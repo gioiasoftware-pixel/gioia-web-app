@@ -167,13 +167,57 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log('[ChatSelectors] 🎯 INPUT FOCUS - Tastiera potrebbe aprirsi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
-            // Prevenzione aggiuntiva: scrolla l'input in view senza causare resize
-            setTimeout(() => {
-                if (chatInput && document.activeElement === chatInput) {
-                    chatInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
+            // FIX: Scrolla l'input in view quando la tastiera si apre
+            // Con interactive-widget=overlays-content, la tastiera sovrappone il contenuto
+            // quindi dobbiamo scrollare per mostrare l'input sopra la tastiera
+            const scrollInputIntoView = () => {
+                if (!chatInput || document.activeElement !== chatInput) return;
+                
+                // Usa visualViewport se disponibile (Android Chrome moderno)
+                if (window.visualViewport) {
+                    const vvp = window.visualViewport;
+                    const inputRect = chatInput.getBoundingClientRect();
+                    const inputTop = inputRect.top;
+                    const inputBottom = inputRect.bottom;
+                    const viewportHeight = vvp.height;
+                    const viewportTop = vvp.offsetTop;
+                    
+                    // Calcola se l'input è visibile nella viewport visibile (sopra la tastiera)
+                    const inputVisibleTop = inputTop - viewportTop;
+                    const inputVisibleBottom = inputBottom - viewportTop;
+                    
+                    // Se l'input è sotto la viewport visibile, scrolla
+                    if (inputVisibleBottom > viewportHeight) {
+                        const scrollAmount = inputVisibleBottom - viewportHeight + 20; // 20px di padding
+                        window.scrollBy({
+                            top: scrollAmount,
+                            behavior: 'smooth'
+                        });
+                        window.AppDebug?.log(`[ChatSelectors] 📜 Scrollato di ${scrollAmount}px usando visualViewport`, 'info');
+                    } else if (inputVisibleTop < 0) {
+                        // Se l'input è sopra la viewport, scrolla verso l'alto
+                        window.scrollBy({
+                            top: inputVisibleTop - 20, // 20px di padding
+                            behavior: 'smooth'
+                        });
+                        window.AppDebug?.log(`[ChatSelectors] 📜 Scrollato verso l'alto per mostrare input`, 'info');
+                    }
+                } else {
+                    // Fallback: scrolla l'input in view
+                    // Usa block: 'end' per posizionarlo in basso (sopra la tastiera)
+                    chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                    window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view (fallback)', 'info');
                 }
-            }, 100);
+            };
+            
+            // Scrolla immediatamente
+            scrollInputIntoView();
+            
+            // Scrolla anche dopo che la tastiera si è aperta (delay per Android)
+            // Con overlays-content, la tastiera potrebbe impiegare più tempo ad apparire
+            setTimeout(scrollInputIntoView, 200);
+            setTimeout(scrollInputIntoView, 400);
+            setTimeout(scrollInputIntoView, 600);
         }, { passive: true });
         
         chatInput.addEventListener('blur', (e) => {
@@ -250,6 +294,38 @@ function initChatFormSubmitPrevention() {
         window.visualViewport.addEventListener('resize', () => {
             const vvp = window.visualViewport;
             window.AppDebug?.log(`[ChatSelectors] 👁️ Visual Viewport resize: ${vvp.width}x${vvp.height} (scale: ${vvp.scale})`, 'info');
+            
+            // FIX: Quando la tastiera si apre (viewport si riduce), scrolla l'input in view
+            // Con overlays-content, la tastiera sovrappone il contenuto ma non riduce window.innerHeight
+            // Quindi dobbiamo usare visualViewport per capire l'area visibile sopra la tastiera
+            if (chatInput && document.activeElement === chatInput) {
+                const inputRect = chatInput.getBoundingClientRect();
+                const inputTop = inputRect.top;
+                const inputBottom = inputRect.bottom;
+                const viewportHeight = vvp.height;
+                const viewportTop = vvp.offsetTop;
+                
+                // Calcola posizione input rispetto alla viewport visibile (sopra la tastiera)
+                const inputVisibleTop = inputTop - viewportTop;
+                const inputVisibleBottom = inputBottom - viewportTop;
+                
+                // Se l'input è sotto la viewport visibile, scrolla
+                if (inputVisibleBottom > viewportHeight) {
+                    const scrollAmount = inputVisibleBottom - viewportHeight + 20; // 20px di padding
+                    window.scrollBy({
+                        top: scrollAmount,
+                        behavior: 'smooth'
+                    });
+                    window.AppDebug?.log(`[ChatSelectors] 📜 Auto-scrollato di ${scrollAmount}px (tastiera aperta)`, 'info');
+                } else if (inputVisibleTop < 0) {
+                    // Se l'input è sopra la viewport, scrolla verso l'alto
+                    window.scrollBy({
+                        top: inputVisibleTop - 20, // 20px di padding
+                        behavior: 'smooth'
+                    });
+                    window.AppDebug?.log(`[ChatSelectors] 📜 Auto-scrollato verso l'alto per mostrare input`, 'info');
+                }
+            }
         }, { passive: true });
         
         window.visualViewport.addEventListener('scroll', () => {

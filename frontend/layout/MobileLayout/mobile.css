@@ -298,6 +298,9 @@
    COMPOSER MOBILE (.mComposer) - Sticky
    ============================================ */
 .mobileRoot .mComposer {
+    /* FIX: position: sticky mantiene l'input visibile quando si scrolla
+       Con interactive-widget=overlays-content, la tastiera sovrappone il contenuto
+       Lo scroll automatico in JS gestisce il posizionamento quando la tastiera si apre */
     position: sticky !important;
     bottom: 0 !important;
     z-index: var(--z-composer) !important;
