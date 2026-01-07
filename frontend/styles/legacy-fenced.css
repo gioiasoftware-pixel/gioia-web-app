@@ -80,9 +80,14 @@ body.dark-theme {
 
 .mobileRoot html,
 .mobileRoot body {
-    /* NO overflow/height qui - gestito da mobile.css */
+    /* FIX ANDROID: Permettere scroll al body invece che a container custom
+       Previene refresh quando tastiera si apre */
     width: 100%;
     min-width: 100%;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background-color: var(--color-off-white);
     color: var(--color-text-primary);
@@ -92,6 +97,8 @@ body.dark-theme {
     /* Mobile-safe touch */
     -webkit-tap-highlight-color: transparent;
     touch-action: pan-y pinch-zoom;
+    /* Previeni overscroll che potrebbe causare problemi */
+    overscroll-behavior: contain;
 }
 
 .mobileRoot button,
@@ -166,5 +173,6 @@ body.dark-theme {
    TODO: Migrare gradualmente le regole da styles.css nei file
    layout-specific (layout/MobileLayout/mobile.css / layout/DesktopLayout/desktop.css)
    ============================================ */
+
 
 

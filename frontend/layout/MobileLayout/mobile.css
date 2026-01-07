@@ -27,20 +27,20 @@
    MOBILE APP CONTAINER (.mApp)
    ============================================ */
 .mobileRoot .mApp {
-    /* Usa 100vh invece di 100dvh per evitare che il layout cambi quando si apre la tastiera
-       Questo previene il refresh forzato su Android Chrome */
-    height: 100vh !important;
-    max-height: 100vh !important;
+    /* FIX ANDROID: Rimossi vincoli full-height e overflow hidden
+       Android Chrome forza refresh quando layout è full-height con overflow bloccato
+       e la tastiera riduce viewport di >300px
+       Soluzione: permettere scroll al body invece che a container custom */
+    height: auto !important;
+    min-height: 100vh !important;
     width: 100vw !important;
     max-width: 100vw !important;
     display: grid !important;
     grid-template-rows: auto 1fr auto !important; /* Header, Main, Composer */
-    overflow: hidden !important;
+    /* RIMOSSO overflow: hidden - permette scroll al body */
     position: relative !important;
     background-color: var(--color-off-white) !important;
     box-sizing: border-box !important;
-    /* Previeni che il browser scrolli quando si apre la tastiera */
-    overscroll-behavior: none !important;
 }
 
 /* ============================================
@@ -260,7 +260,7 @@
    ============================================ */
 .mobileRoot .mMain {
     flex: 1 !important;
-    overflow: hidden !important;
+    /* RIMOSSO overflow: hidden - permette scroll al body invece che a container custom */
     display: flex !important;
     flex-direction: column !important;
     min-height: 0 !important;
@@ -272,9 +272,9 @@
 .mobileRoot .mScroller,
 .mobileRoot #chatScroll {
     flex: 1 !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    -webkit-overflow-scrolling: touch !important;
+    /* FIX ANDROID: Rimosso overflow-y: auto - ora lo scroll è sul body
+       Questo previene il refresh quando la tastiera si apre */
+    overflow: visible !important;
     min-height: 0 !important;
     padding: clamp(12px, 3vw, 16px) !important;
     box-sizing: border-box !important;
