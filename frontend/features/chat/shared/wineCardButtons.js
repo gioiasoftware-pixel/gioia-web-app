@@ -760,6 +760,8 @@ if (typeof window !== 'undefined') {
                     // Ma aggiungi un piccolo delay per assicurarsi che i nostri log appaiano
                 }
             }
+            
+            window.AppDebug?.log(`[WineCardButtons] 🎯🎯🎯 EVENT DELEGATION - FINE`, 'info');
         }, true); // Usa capture phase per intercettare PRIMA di ChatMobile
     }
     
