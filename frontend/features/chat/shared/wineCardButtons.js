@@ -376,6 +376,13 @@ function setupWineCardInfoButtonsMobile(messageElement) {
                 `[WineCardButtons] 🧭 AZIONE: DETTAGLI (mobile) wineId=${wineId}`,
                 'info'
             );
+
+            // Se per qualche motivo il viewer desktop è aperto, chiudilo.
+            const desktopViewer = document.getElementById('viewer-panel');
+            if (desktopViewer?.classList.contains('open')) {
+                desktopViewer.classList.remove('open');
+                window.AppDebug?.log('[WineCardButtons] 🧹 Chiuso viewer desktop aperto', 'warn');
+            }
             
             // Verifica layout PRIMA di bloccare eventi
             const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 

@@ -189,6 +189,13 @@ function createMobileInventoryButton(wineId) {
             `[WineCardTransformer] 🧭 AZIONE: DETTAGLI (mobile) wineId=${wineId}`,
             'info'
         );
+
+        // Se per qualche motivo il viewer desktop è aperto, chiudilo.
+        const desktopViewer = document.getElementById('viewer-panel');
+        if (desktopViewer?.classList.contains('open')) {
+            desktopViewer.classList.remove('open');
+            window.AppDebug?.log('[WineCardTransformer] 🧹 Chiuso viewer desktop aperto', 'warn');
+        }
         
         // Verifica layout
         const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 
