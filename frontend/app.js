@@ -2219,25 +2219,39 @@ async function handleWineCardEdit(wineCard, wineId) {
         editForm.dataset.originalValues = JSON.stringify(originalValues);
         
         // Estrai valori esistenti dalla card
-        const cardBody = wineCard.querySelector('.wine-card-body');
+        const cardBody = wineCard.querySelector('.wine-card-body') || wineCard.querySelector('.wine-card-mobile-body');
         const fields = {};
-        cardBody.querySelectorAll('.wine-card-field').forEach(field => {
-            const label = field.querySelector('.wine-card-field-label')?.textContent.trim();
-            const value = field.querySelector('.wine-card-field-value')?.textContent.trim();
-            
-            if (label === 'Quantità') {
+        const fieldNodes = cardBody
+            ? cardBody.querySelectorAll('.wine-card-field, .wine-card-mobile-field')
+            : [];
+
+        fieldNodes.forEach(field => {
+            const labelEl = field.querySelector('.wine-card-field-label, .wine-card-mobile-label');
+            const valueEl = field.querySelector('.wine-card-field-value, .wine-card-mobile-value');
+            const label = labelEl?.textContent.trim() || '';
+            const value = valueEl?.textContent.trim() || '';
+            const labelNorm = label.toLowerCase();
+
+            const parseNumber = (raw) => {
+                if (!raw) return null;
+                const normalized = raw.replace(/[^0-9,.-]/g, '').replace(',', '.');
+                const parsed = parseFloat(normalized);
+                return Number.isNaN(parsed) ? null : parsed;
+            };
+
+            if (labelNorm.includes('quantit')) {
                 fields.quantity = parseInt(value) || null;
-            } else if (label === 'Prezzo Vendita') {
-                fields.selling_price = parseFloat(value.replace('€', '').trim()) || null;
-            } else if (label === 'Prezzo Acquisto') {
-                fields.cost_price = parseFloat(value.replace('€', '').trim()) || null;
-            } else if (label === 'Annata') {
+            } else if (labelNorm.includes('prezzo vendita')) {
+                fields.selling_price = parseNumber(value);
+            } else if (labelNorm.includes('prezzo acquisto')) {
+                fields.cost_price = parseNumber(value);
+            } else if (labelNorm.includes('annata')) {
                 fields.vintage = value || null;
-            } else if (label === 'Regione') {
+            } else if (labelNorm.includes('regione')) {
                 fields.region = value || null;
-            } else if (label === 'Paese') {
+            } else if (labelNorm.includes('paese')) {
                 fields.country = value || null;
-            } else if (label === 'Tipo') {
+            } else if (labelNorm.includes('tipo')) {
                 fields.wine_type = value || null;
             }
         });
@@ -4873,4 +4887,7 @@ function handleWindowResize() {
         }
     }
 }
+
+
+
 
