@@ -1655,58 +1655,124 @@
 }
 
 /* ============================================
-   WINE CARD BUTTONS MOBILE - Bottoni circolari grigi dentro la card
+   WINE CARD MOBILE - REDESIGN
    ============================================ */
-.mobileRoot .wine-card-buttons-mobile {
-    position: absolute !important;
-    right: 8px !important;
-    top: 8px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 6px !important;
-    z-index: 10 !important;
-    pointer-events: auto !important;
+.mobileRoot .wine-card-mobile-redesign {
+    border: 2px solid var(--color-granaccia) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 6px 18px rgba(154, 24, 46, 0.15) !important;
+    overflow: hidden !important;
+    background: var(--color-white) !important;
 }
 
-.mobileRoot .wine-card-button-mobile {
-    width: 40px !important;
-    height: 40px !important;
-    border-radius: 50% !important;
-    background-color: var(--color-light-gray) !important;
+.mobileRoot .wine-card-mobile-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 14px !important;
+}
+
+.mobileRoot .wine-card-mobile-header {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.mobileRoot .wine-card-mobile-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+}
+
+.mobileRoot .wine-card-mobile-producer {
+    font-size: 13px !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.mobileRoot .wine-card-mobile-badge {
+    align-self: flex-start !important;
+    margin-top: 6px !important;
+    background: rgba(154, 24, 46, 0.1) !important;
+    color: var(--color-granaccia) !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 4px 8px !important;
+    border-radius: 999px !important;
+}
+
+.mobileRoot .wine-card-mobile-alert {
+    padding: 8px 10px !important;
+    background: rgba(154, 24, 46, 0.08) !important;
+    color: var(--color-granaccia) !important;
+    border-radius: 10px !important;
+    font-size: 12px !important;
+}
+
+.mobileRoot .wine-card-mobile-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+.mobileRoot .wine-card-mobile-field {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    font-size: 13px !important;
+    border-bottom: 1px dashed rgba(154, 24, 46, 0.2) !important;
+    padding-bottom: 6px !important;
+}
+
+.mobileRoot .wine-card-mobile-field:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+}
+
+.mobileRoot .wine-card-mobile-label {
+    color: var(--color-text-secondary) !important;
+    font-weight: 600 !important;
+}
+
+.mobileRoot .wine-card-mobile-value {
+    color: var(--color-text-primary) !important;
+    font-weight: 600 !important;
+    text-align: right !important;
+}
+
+.mobileRoot .wine-card-mobile-actions {
+    display: flex !important;
+    gap: 10px !important;
+    justify-content: flex-end !important;
+    padding-top: 6px !important;
+}
+
+.mobileRoot .wine-card-action-btn {
+    height: 36px !important;
+    min-width: 42px !important;
+    border-radius: 10px !important;
+    background: var(--color-light-gray) !important;
     color: var(--color-granaccia) !important;
     border: 2px solid var(--color-granaccia) !important;
-    display: flex !important;
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
     transition: all 0.2s ease !important;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
-    padding: 0 !important;
-    flex-shrink: 0 !important;
+    padding: 0 10px !important;
 }
 
-.mobileRoot .wine-card-button-mobile:hover,
-.mobileRoot .wine-card-button-mobile:active {
-    background-color: var(--color-granaccia) !important;
+.mobileRoot .wine-card-action-btn:active,
+.mobileRoot .wine-card-action-btn:hover {
+    background: var(--color-granaccia) !important;
     color: var(--color-white) !important;
-    transform: scale(1.05) !important;
-    box-shadow: 0 3px 6px rgba(154, 24, 46, 0.3) !important;
+    transform: translateY(-1px) !important;
 }
 
-.mobileRoot .wine-card-button-mobile svg {
+.mobileRoot .wine-card-action-btn svg {
     width: 18px !important;
     height: 18px !important;
-    stroke: var(--color-granaccia) !important;
+    stroke: currentColor !important;
     fill: none !important;
-}
-
-.mobileRoot .wine-card-button-mobile:hover svg,
-.mobileRoot .wine-card-button-mobile:active svg {
-    stroke: var(--color-white) !important;
-}
-
-.mobileRoot .wine-card-button-mobile:active {
-    transform: scale(0.95) !important;
 }
 
 /* Nascondi bookmarks desktop su mobile */

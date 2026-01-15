@@ -266,6 +266,7 @@ function setupWineCardInfoButtonsMobile(messageElement) {
     
     wineCards.forEach((wineCard) => {
         // Evita setup multiplo
+        if (wineCard.dataset.mobileRedesign === 'true') return;
         if (wineCard.dataset.infoButtonsSetup === 'true') return;
         
         const wineId = wineCard.dataset.wineId || wineCard.getAttribute('data-wine-id');
@@ -427,9 +428,9 @@ function setupWineCardInfoButtons(messageElement) {
 if (typeof window !== 'undefined') {
     function describeMobileButton(btn) {
         const label = btn.getAttribute('aria-label') || btn.getAttribute('title') || btn.textContent?.trim() || '';
-        const icon = btn.classList.contains('wine-card-button-edit')
+        const icon = btn.classList.contains('wine-card-action-edit') || btn.classList.contains('wine-card-button-edit')
             ? 'matita'
-            : (btn.classList.contains('wine-card-button-menu') || btn.classList.contains('wine-card-button-inventory'))
+            : (btn.classList.contains('wine-card-action-details') || btn.classList.contains('wine-card-button-menu') || btn.classList.contains('wine-card-button-inventory'))
                 ? 'hamburger'
                 : 'unknown';
         return `type=${btn.dataset.buttonType || 'n/a'} class=${btn.className} label="${label}" icon=${icon}`;
@@ -449,7 +450,7 @@ if (typeof window !== 'undefined') {
         cards.forEach((card, idx) => {
             const wineId = card.getAttribute('data-wine-id') || 'N/A';
             const title = card.querySelector('.wine-card-title')?.textContent?.trim() || '';
-            const buttons = card.querySelectorAll('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
+            const buttons = card.querySelectorAll('.wine-card-action-btn, .wine-card-button-mobile, .chat-button, .wines-list-item-button');
             window.AppDebug?.log(
                 `[WineCardButtons]   - Card#${idx + 1} wineId=${wineId} title="${title}" buttons=${buttons.length}`,
                 'info'
