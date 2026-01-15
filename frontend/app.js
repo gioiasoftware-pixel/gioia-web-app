@@ -267,8 +267,9 @@ function addUniversalEventListener(element, handler, options = {}) {
     };
     
     const TOUCH_DELAY = 400; // ms - tempo massimo per considerare un tap valido
-    const SWIPE_THRESHOLD = 10; // px - movimento minimo per considerare uno swipeconst elementIsScrollable = isScrollable();
+    const SWIPE_THRESHOLD = 10; // px - movimento minimo per considerare uno swipe
     const unifiedHandler = (e) => {
+        const elementIsScrollable = isScrollable();
         const eventType = e.type;
         const now = Date.now();
         const state = getTouchState();
@@ -360,7 +361,7 @@ function addUniversalEventListener(element, handler, options = {}) {
     if (isTouchDevice()) {
         // Touch events per mobile e tablet
         // Su elementi scrollabili, usa passive: true per migliorare performance scroll
-        const passiveForTouch = elementIsScrollable ? true : false;
+        const passiveForTouch = isScrollable() ? true : false;
         element.addEventListener('touchstart', unifiedHandler, { passive: passiveForTouch, ...options });
         element.addEventListener('touchend', unifiedHandler, { passive: passiveForTouch, ...options });
         // Click come fallback per browser che non supportano touch events correttamente
@@ -4885,6 +4886,7 @@ function handleWindowResize() {
         }
     }
 }
+
 
 
 
