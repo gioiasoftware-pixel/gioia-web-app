@@ -267,13 +267,11 @@ function addUniversalEventListener(element, handler, options = {}) {
     };
     
     const TOUCH_DELAY = 400; // ms - tempo massimo per considerare un tap valido
-    const SWIPE_THRESHOLD = 10; // px - movimento minimo per considerare uno swipe
-    
+    const SWIPE_THRESHOLD = 10; // px - movimento minimo per considerare uno swipeconst elementIsScrollable = isScrollable();
     const unifiedHandler = (e) => {
         const eventType = e.type;
         const now = Date.now();
-        const state = getTouchState();
-        const elementIsScrollable = isScrollable();
+        const state = getTouchState();
         
         // Se è un evento touchstart
         if (eventType === 'touchstart') {
@@ -4887,6 +4885,13 @@ function handleWindowResize() {
         }
     }
 }
+
+
+
+
+
+
+
 
 
 
