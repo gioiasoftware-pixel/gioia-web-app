@@ -96,7 +96,11 @@ function transformWineCardsForMobile(htmlContent) {
         }
         
         header.appendChild(buttonsContainer);
-        window.AppDebug?.log(`[WineCardTransformer] ✅ Bottoni mobile aggiunti a wine card ${index + 1}`, 'success');
+    const totalButtons = wineCard.querySelectorAll('.wine-card-button-mobile').length;
+    window.AppDebug?.log(
+        `[WineCardTransformer] ✅ Bottoni mobile aggiunti a wine card ${index + 1} (buttons=${totalButtons})`,
+        'success'
+    );
     });
     
     // Ritorna HTML trasformato

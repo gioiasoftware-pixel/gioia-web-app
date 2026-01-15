@@ -658,7 +658,14 @@ if (typeof window !== 'undefined') {
                     window.AppDebug?.log('[WineCardButtons] ✅ Bottone NON è mobile info, procedo con delegation', 'info');
                 }
             } else {
-                window.AppDebug?.log(`[WineCardButtons] ⚠️ Nessun bottone wine card trovato nel click`, 'info');
+                const clickedWineCard = e.target.closest?.('.wine-card');
+                const buttonsCount = clickedWineCard
+                    ? clickedWineCard.querySelectorAll('.wine-card-button-mobile, .chat-button, .wines-list-item-button').length
+                    : 0;
+                window.AppDebug?.log(
+                    `[WineCardButtons] ⚠️ Nessun bottone wine card trovato nel click (wineCard=${!!clickedWineCard}, buttons=${buttonsCount})`,
+                    'info'
+                );
             }
             
             // Cerca se il click è su un bottone wine card
