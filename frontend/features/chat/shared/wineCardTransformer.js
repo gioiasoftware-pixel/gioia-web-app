@@ -155,8 +155,8 @@ function createMobileEditButton(wineId) {
 }
 
 /**
- * Crea bottone hamburger/inventory per mobile
- * Questo bottone apre direttamente il viewer mobile con dettagli vino
+ * Crea bottone hamburger placeholder per mobile
+ * Bottoncino vuoto (verrà collegato ai dettagli vino in seguito)
  */
 function createMobileInventoryButton(wineId) {
     const btn = document.createElement('button');
@@ -164,7 +164,7 @@ function createMobileInventoryButton(wineId) {
     btn.setAttribute('data-wine-id', wineId);
     btn.setAttribute('data-layout', 'mobile');
     btn.setAttribute('data-button-type', 'info-details');
-    btn.setAttribute('aria-label', 'Dettagli vino');
+    btn.setAttribute('aria-label', 'Azione futura');
     
     btn.innerHTML = `
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -174,90 +174,16 @@ function createMobileInventoryButton(wineId) {
         </svg>
     `;
     
-    // Handler diretto isolato (capture phase) - NON invia messaggi alla chat
-    btn.addEventListener('click', async (e) => {
-        window.AppDebug?.log(`[WineCardTransformer] 🍔🍔🍔 BOTTONE INVENTORY CLICK - INIZIO (ID: ${wineId})`, 'info');
-        
-        // Blocca completamente la propagazione PER PRIMO (capture phase)
+    // Handler placeholder isolato (capture phase) - non esegue azioni
+    btn.addEventListener('click', (e) => {
         e.stopPropagation();
         e.preventDefault();
         e.stopImmediatePropagation();
-        
-        window.AppDebug?.log('[WineCardTransformer] ✅ Eventi bloccati PRIMA di altri handler', 'success');
-
         window.AppDebug?.log(
-            `[WineCardTransformer] 🧭 AZIONE: DETTAGLI (mobile) wineId=${wineId}`,
+            `[WineCardTransformer] ℹ️ Bottone dettagli placeholder (mobile) wineId=${wineId} - nessuna azione`,
             'info'
         );
-
-        // Se per qualche motivo il viewer desktop è aperto, chiudilo.
-        const desktopViewer = document.getElementById('viewer-panel');
-        if (desktopViewer?.classList.contains('open')) {
-            desktopViewer.classList.remove('open');
-            window.AppDebug?.log('[WineCardTransformer] 🧹 Chiuso viewer desktop aperto', 'warn');
-        }
-        
-        // Verifica layout
-        const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 
-                             document.documentElement.classList.contains('mobileRoot');
-        
-        if (!isMobileLayout) {
-            window.AppDebug?.log('[WineCardTransformer] ❌ ERRORE: Bottone mobile cliccato su desktop!', 'error');
-            return;
-        }
-        
-        // Prepara schermate
-        const viewerPanel = document.getElementById('viewerPanel');
-        const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
-        const listScreen = document.getElementById('inventory-screen-list');
-        const detailsScreen = document.getElementById('inventory-screen-details');
-        const chartScreen = document.getElementById('inventory-screen-chart');
-        
-        window.AppDebug?.log(`[WineCardTransformer] Elementi trovati: viewerPanel=${!!viewerPanel}, mobileLayout=${!!mobileLayout}`, 'info');
-        
-        if (!viewerPanel || !mobileLayout) {
-            window.AppDebug?.log('[WineCardTransformer] ❌ viewerPanel o mobileLayout non trovati', 'error');
-            return;
-        }
-        
-        // NASCONDI lista e chart PRIMA di aprire viewerPanel
-        if (listScreen) {
-            listScreen.classList.add('hidden');
-            window.AppDebug?.log('[WineCardTransformer] ✅ Lista inventario nascosta', 'info');
-        }
-        if (chartScreen) {
-            chartScreen.classList.add('hidden');
-        }
-        
-        // Mostra esplicitamente details screen PRIMA
-        if (detailsScreen) {
-            detailsScreen.classList.remove('hidden');
-            window.AppDebug?.log('[WineCardTransformer] ✅ Schermata dettagli mostrata PRIMA di aprire viewerPanel', 'info');
-        }
-        
-        // POI mostra viewerPanel e attiva state-viewer
-        viewerPanel.hidden = false;
-        mobileLayout.classList.add('state-viewer');
-        window.AppDebug?.log('[WineCardTransformer] ✅ ViewerPanel aperto con schermata dettagli attiva', 'success');
-        
-        // Naviga alla pagina dettagli vino mobile
-        if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
-            // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
-            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-            
-            window.AppDebug?.log(`[WineCardTransformer] 🚀 Chiamata showWineDetails(${wineId})`, 'info');
-            try {
-                await window.InventoryMobile.showWineDetails(wineId);
-                window.AppDebug?.log(`[WineCardTransformer] ✅ showWineDetails(${wineId}) completata`, 'success');
-            } catch (error) {
-                window.AppDebug?.log(`[WineCardTransformer] ❌ Errore in showWineDetails: ${error.message}`, 'error');
-            }
-        } else {
-            window.AppDebug?.log('[WineCardTransformer] ❌ InventoryMobile.showWineDetails non disponibile', 'error');
-        }
-        
-        window.AppDebug?.log(`[WineCardTransformer] 🍔🍔🍔 BOTTONE INVENTORY CLICK - FINE`, 'info');
-    }, true); // IMPORTANTE: Capture phase per intercettare PRIMA
+    }, true);
     
     return btn;
 }
