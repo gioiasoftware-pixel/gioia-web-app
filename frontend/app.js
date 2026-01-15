@@ -46,11 +46,7 @@ let conversations = [];
  * @returns {boolean} true se mobile (<= 768px), false se desktop
  */
 function isMobileView() {
-    const ua = navigator.userAgent || '';
-    const isMobileUa = /Mobi|Android|iPhone|iPad|iPod|Mobile/i.test(ua);
-    const isSmallScreen = window.matchMedia ? window.matchMedia('(max-width: 768px)').matches : window.innerWidth <= 768;
-    const isTouch = navigator.maxTouchPoints > 0;
-    return isSmallScreen || (isTouch && window.innerWidth <= 1024) || isMobileUa;
+    return window.innerWidth <= 768;
 }
 
 /**
@@ -809,12 +805,6 @@ function setupEventListeners() {
     if (viewerToggle) {
         viewerToggle.addEventListener('pointerup', (e) => {
             e.stopPropagation();
-            const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-                document.documentElement.classList.contains('mobileRoot') ||
-                window.innerWidth <= 768;
-            if (isMobile) {
-                return;
-            }
             toggleViewer();
         });
     }
@@ -1191,9 +1181,7 @@ function showChatPage() {
 // ============================================
 
 function diagnoseChatScroll() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         return; // Diagnostica solo su desktop
@@ -1518,9 +1506,7 @@ function diagnoseChatScroll() {
 
 // Funzione dedicata per attaccare listener sidebar (chiamata sia in setupEventListeners che in showChatPage)
 function attachSidebarToggleListeners() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     let sidebarToggle = null;
     
     if (isMobile) {
@@ -1701,9 +1687,7 @@ async function sendChatMessage(message, showUserMessage = true) {
 
 async function handleChatSubmit(e) {
     e.preventDefault();
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     // NUOVA ARCHITETTURA MOBILE: Gestisci sia form desktop che mobile
     const input = isMobile 
@@ -1728,9 +1712,7 @@ async function handleChatSubmit(e) {
 
 function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
     // NUOVA ARCHITETTURA MOBILE: Usa .mScroller su mobile, altrimenti wrapper desktop
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     let scrollWrapper;
     if (isMobile) {
         scrollWrapper = document.getElementById('chatScroll') || document.querySelector('.mScroller');
@@ -1966,9 +1948,7 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                     
                     // Pulsante normale: ricerca vino con ID
                     // Gestisci sia desktop che mobile
-                    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+                    const isMobile = window.innerWidth <= 768;
                     const inputId = isMobile ? 'chat-input-mobile' : 'chat-input';
                     const formId = isMobile ? 'chat-form-mobile' : 'chat-form';
                     
@@ -3089,9 +3069,7 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
 // ============================================
 
 function toggleViewer() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
@@ -3112,6 +3090,16 @@ function toggleViewer() {
             // Apri viewer: rimuovi hidden
             viewerMobile.removeAttribute('hidden');
             if (toggleBtn) toggleBtn.setAttribute('hidden', '');
+            
+            // Copia contenuto dal viewer desktop al viewer mobile se necessario
+            if (viewerDesktop && viewerDesktop.querySelector('.viewer-content')) {
+                const desktopContent = viewerDesktop.querySelector('.viewer-content');
+                const mobileContent = viewerMobile.querySelector('.viewer-content');
+                if (!mobileContent && desktopContent) {
+                    viewerMobile.innerHTML = desktopContent.outerHTML;
+                }
+            }
+            
             loadViewerData();
         }
     } else {
@@ -3130,9 +3118,7 @@ function toggleViewer() {
 }
 
 function closeViewer() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // NUOVA ARCHITETTURA MOBILE: Usa hidden
@@ -3461,9 +3447,7 @@ function renderViewerTable(rows) {
     const mobileCardsContainer = document.getElementById('viewer-mobile-cards');
     const panel = document.getElementById('viewer-panel');
     const isFullscreen = panel && panel.classList.contains('fullscreen');
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (rows.length === 0) {
         const colspan = isFullscreen ? 7 : 6;
@@ -4754,9 +4738,7 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // DELEGA al nuovo codice mobile (ChatMobile.js)
@@ -4792,9 +4774,7 @@ function toggleSidebar() {
 // NUOVA ARCHITETTURA: Overlay gestito da ChatMobile.js
 // Questa funzione legacy viene chiamata ma delega a ChatMobile se disponibile
 function setupSidebarOverlay() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // Su mobile, ChatMobile.js gestisce già l'overlay in setupSidebarOverlay()
@@ -4818,9 +4798,7 @@ function setupSidebarOverlay() {
 
 // Carica stato sidebar al caricamento pagina
 function loadSidebarState() {
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // MOBILE: Gestito da ChatMobile.js
@@ -4875,9 +4853,7 @@ function closeSidebarOnOverlayClick() {
 // Gestisci resize window per cambiare comportamento mobile/desktop
 function handleWindowResize() {
     const sidebar = document.getElementById('chat-sidebar');
-    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
-        document.documentElement.classList.contains('mobileRoot') ||
-        window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
     
     if (isMobile) {
         // Passato a mobile: rimuovi collapsed, chiudi sempre sidebar
@@ -4897,14 +4873,4 @@ function handleWindowResize() {
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
 
