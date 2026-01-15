@@ -801,14 +801,7 @@ function setupEventListeners() {
     window.addEventListener('resize', handleWindowResize);
 
     // Viewer toggle - usa pointer events per mobile
-    const viewerToggle = document.getElementById('viewer-toggle');
-    if (viewerToggle) {
-        viewerToggle.addEventListener('pointerup', (e) => {
-            e.stopPropagation();
-            toggleViewer();
-        });
-    }
-    const viewerClose = document.getElementById('viewer-close');
+    const viewerToggle = document.getElementById('viewer-toggle');\n    if (viewerToggle) {\n        viewerToggle.addEventListener('pointerup', (e) => {\n            e.stopPropagation();\n            const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||\n                document.documentElement.classList.contains('mobileRoot');\n            if (isMobileLayout) {\n                return;\n            }\n            toggleViewer();\n        });\n    }\n    const viewerClose = document.getElementById('viewer-close');
     if (viewerClose) {
         addUniversalEventListener(viewerClose, closeViewer);
     }
@@ -3090,16 +3083,6 @@ function toggleViewer() {
             // Apri viewer: rimuovi hidden
             viewerMobile.removeAttribute('hidden');
             if (toggleBtn) toggleBtn.setAttribute('hidden', '');
-            
-            // Copia contenuto dal viewer desktop al viewer mobile se necessario
-            if (viewerDesktop && viewerDesktop.querySelector('.viewer-content')) {
-                const desktopContent = viewerDesktop.querySelector('.viewer-content');
-                const mobileContent = viewerMobile.querySelector('.viewer-content');
-                if (!mobileContent && desktopContent) {
-                    viewerMobile.innerHTML = desktopContent.outerHTML;
-                }
-            }
-            
             loadViewerData();
         }
     } else {
@@ -4873,5 +4856,10 @@ function handleWindowResize() {
         }
     }
 }
+
+
+
+
+
 
 

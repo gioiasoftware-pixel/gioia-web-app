@@ -158,6 +158,11 @@
     transform: scale(0.98) !important;
 }
 
+/* Nascondi toggle viewer desktop su mobile */
+.mobileRoot .viewer-toggle-btn {
+    display: none !important;
+}
+
 /* Theme Toggle Mobile */
 .mobileRoot .mHeader .ui-themeToggle-mobile {
     display: inline-flex !important;

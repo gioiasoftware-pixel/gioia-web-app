@@ -171,7 +171,7 @@ function setupSidebarOverlay() {
  * Apre il viewer sheet
  * @param {Object} wineData - Dati vino da visualizzare (opzionale)
  */
-function openViewer(wineData = null) {
+function openMobileViewer(wineData = null) {
     setMobileState(MOBILE_STATES.VIEWER_OPEN);
     
     if (wineData) {
@@ -182,7 +182,7 @@ function openViewer(wineData = null) {
 /**
  * Chiude il viewer sheet
  */
-function closeViewer() {
+function closeMobileViewer() {
     setMobileState(MOBILE_STATES.CHAT);
 }
 
@@ -233,7 +233,7 @@ function setupViewerClose() {
     newCloseBtn.addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        closeViewer();
+        closeMobileViewer();
     });
 }
 
@@ -1015,22 +1015,8 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
     
     // Aggiungi al DOM
     scrollContainer.appendChild(messageElement);
-    
-    // Setup bottoni wine card se è HTML con wine card
-    if (isHtml && role === 'ai') {
-        setTimeout(() => {
-            setupWineCardButtonsMobile(messageElement);
-        }, 100);
-    }
-    
-    // IMPORTANTE: Setup listener per pulsanti di movimento integrati nelle wine cards
-    // (stesso sistema di app.js per garantire funzionalità su mobile)
-    if (isHtml && role === 'ai') {
-        setTimeout(() => {
-            setupWineCardMovementButtons(messageElement);
-        }, 100);
-    }
-    
+    // Wine card buttons e pulsanti movimento gestiti dai moduli shared.
+
     // Scroll automatico
     requestAnimationFrame(() => {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
@@ -1479,7 +1465,7 @@ async function openInventoryViewerMobile() {
     }
     
     // 1. PRIMA apri il viewer (mostra elementi nel DOM)
-    openViewer();
+    openMobileViewer();
     viewerMobile.removeAttribute('hidden');
     
     // 2. POI setup e mostra schermata (elementi ora accessibili)
@@ -1518,7 +1504,7 @@ function handleInventoryBack() {
     } else {
         // Se siamo nella lista, chiudi viewer e torna alla chat
         console.log('[INVENTORY] Dalla lista → chiudo viewer e torno alla chat');
-        closeViewer();
+        closeMobileViewer();
     }
 }
 
@@ -2461,4 +2447,7 @@ if (typeof window !== 'undefined') {
         openInventoryViewer: openInventoryViewerMobile
     };
 }
+
+
+
 
