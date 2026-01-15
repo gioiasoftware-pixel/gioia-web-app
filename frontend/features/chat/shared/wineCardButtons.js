@@ -237,6 +237,58 @@ function setupWineCardMovementButtons(messageElement) {
     window.AppDebug?.log(`[WineCardButtons] ✅ Setup completato: ${buttonElements.length} bottoni collegati`, 'success');
 }
 
+async function handleMobileActionEdit(buttonEl) {
+    const wineId = buttonEl.dataset.wineId || buttonEl.getAttribute('data-wine-id');
+    window.AppDebug?.log(`[WineCardButtons] 🖊️ Azione edit (mobile) wineId=${wineId || 'N/A'}`, 'info');
+    const wineCard = buttonEl.closest('.wine-card');
+    if (wineId && window.handleWineCardEdit && typeof window.handleWineCardEdit === 'function') {
+        await window.handleWineCardEdit(wineCard, wineId);
+        return;
+    }
+    window.AppDebug?.log('[WineCardButtons] ⚠️ handleWineCardEdit non disponibile', 'warn');
+}
+
+async function handleMobileActionDetails(buttonEl) {
+    const wineId = buttonEl.dataset.wineId || buttonEl.getAttribute('data-wine-id');
+    window.AppDebug?.log(`[WineCardButtons] 🍔 Azione dettagli (mobile) wineId=${wineId || 'N/A'}`, 'info');
+    const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() ||
+        document.documentElement.classList.contains('mobileRoot');
+    if (!isMobileLayout) {
+        window.AppDebug?.log('[WineCardButtons] ❌ Bottone mobile cliccato su desktop', 'error');
+        return;
+    }
+
+    const viewerPanel = document.getElementById('viewerPanel');
+    const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
+    const listScreen = document.getElementById('inventory-screen-list');
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    const chartScreen = document.getElementById('inventory-screen-chart');
+
+    if (!viewerPanel || !mobileLayout) {
+        window.AppDebug?.log('[WineCardButtons] ❌ viewerPanel o mobileLayout non trovati', 'error');
+        return;
+    }
+
+    if (listScreen) listScreen.classList.add('hidden');
+    if (chartScreen) chartScreen.classList.add('hidden');
+    if (detailsScreen) detailsScreen.classList.remove('hidden');
+
+    viewerPanel.hidden = false;
+    mobileLayout.classList.add('state-viewer');
+
+    if (wineId && window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        try {
+            await window.InventoryMobile.showWineDetails(wineId);
+        } catch (error) {
+            window.AppDebug?.log(`[WineCardButtons] ❌ Errore in showWineDetails: ${error.message}`, 'error');
+        }
+        return;
+    }
+
+    window.AppDebug?.log('[WineCardButtons] ❌ InventoryMobile.showWineDetails non disponibile', 'error');
+}
+
 /**
  * Setup bottoni modifica e dettagli per wine card info su MOBILE
  * Logica completamente separata da desktop per evitare conflitti
@@ -643,9 +695,22 @@ if (typeof window !== 'undefined') {
                     clickedButton.classList.contains('wine-card-button-inventory'); // Bottone hamburger/inventory
                 
                 if (isMobileInfoButton) {
-                    window.AppDebug?.log('[WineCardButtons] ⏭️⏭️⏭️ Click su bottone mobile info (edit/menu), skip delegation completamente (gestito da handler mobile isolato)', 'info');
-                    // NON processare, lascia che il handler mobile diretto gestisca
-                    return; // Esci immediatamente, non inviare messaggi
+                    window.AppDebug?.log('[WineCardButtons] ✅ Click su bottone mobile info (nuovi bottoni), gestione diretta', 'info');
+                    e.stopPropagation();
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+
+                    if (clickedButton.classList.contains('wine-card-action-edit')) {
+                        await handleMobileActionEdit(clickedButton);
+                        return;
+                    }
+                    if (clickedButton.classList.contains('wine-card-action-details')) {
+                        await handleMobileActionDetails(clickedButton);
+                        return;
+                    }
+
+                    // fallback per eventuali bottoni legacy
+                    return;
                 } else {
                     window.AppDebug?.log('[WineCardButtons] ✅ Bottone NON è mobile info, procedo con delegation', 'info');
                 }
