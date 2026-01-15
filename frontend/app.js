@@ -48,6 +48,13 @@ let conversations = [];
 function isMobileView() {
     return window.innerWidth <= 768;
 }
+function updateAppViewportVars() {
+    const vv = window.visualViewport;
+    const height = vv ? vv.height : window.innerHeight;
+    const width = vv ? vv.width : window.innerWidth;
+    document.documentElement.style.setProperty('--app-height', `${Math.round(height)}px`);
+    document.documentElement.style.setProperty('--app-width', `${Math.round(width)}px`);
+}
 
 /**
  * Mostra il layout corretto in base alla dimensione dello schermo
@@ -113,6 +120,7 @@ function switchLayout() {
  * Chiama switchLayout all'avvio e al resize della finestra
  */
 function initLayoutManager() {
+    updateAppViewportVars();
     // Assicurati che i layout esistano prima di procedere
     const mobileLayout = document.getElementById('mobile-layout');
     const desktopLayout = document.getElementById('desktop-layout');
@@ -144,6 +152,7 @@ function initLayoutManager() {
     window.addEventListener('resize', () => {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
+            updateAppViewportVars();
             switchLayout();
             
             // Reset selectors e reinizializza chat
@@ -459,6 +468,16 @@ document.addEventListener("pointerup", (e) => {
 }, { capture: true });
 
 document.addEventListener('DOMContentLoaded', () => {
+    updateAppViewportVars();
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateAppViewportVars);
+        window.visualViewport.addEventListener('scroll', updateAppViewportVars);
+    }
+    window.addEventListener('orientationchange', () => {
+        setTimeout(updateAppViewportVars, 50);
+    });
+    window.addEventListener('pageshow', updateAppViewportVars);
+
     // Inizializza il layout manager PRIMA di tutto
     initLayoutManager();
     
@@ -4886,6 +4905,14 @@ function handleWindowResize() {
         }
     }
 }
+
+
+
+
+
+
+
+
 
 
 
