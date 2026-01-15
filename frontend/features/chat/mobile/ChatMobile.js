@@ -992,6 +992,10 @@ function addChatMessageMobile(role, content, isLoading = false, isError = false,
     
     // Aggiungi contenuto (HTML o testo)
     if (isHtml) {
+        const transformer = window.WineCardTransformer && window.WineCardTransformer.transformForMobile;
+        if (transformer) {
+            content = transformer(content);
+        }
         messageElement.innerHTML = content;
     } else {
         messageElement.textContent = content;
@@ -2461,4 +2465,5 @@ if (typeof window !== 'undefined') {
         openInventoryViewer: openInventoryViewerMobile
     };
 }
+
 
