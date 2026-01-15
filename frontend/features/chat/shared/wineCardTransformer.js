@@ -129,6 +129,11 @@ function createMobileEditButton(wineId) {
         e.stopPropagation();
         e.preventDefault();
         e.stopImmediatePropagation();
+
+        window.AppDebug?.log(
+            `[WineCardTransformer] 🧭 AZIONE: EDIT (mobile) wineId=${wineId}`,
+            'info'
+        );
         
         window.AppDebug?.log(`[WineCardTransformer] 🖊️ Bottone edit cliccato (ID: ${wineId})`, 'info');
         
@@ -174,6 +179,11 @@ function createMobileInventoryButton(wineId) {
         e.stopImmediatePropagation();
         
         window.AppDebug?.log('[WineCardTransformer] ✅ Eventi bloccati PRIMA di altri handler', 'success');
+
+        window.AppDebug?.log(
+            `[WineCardTransformer] 🧭 AZIONE: DETTAGLI (mobile) wineId=${wineId}`,
+            'info'
+        );
         
         // Verifica layout
         const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 

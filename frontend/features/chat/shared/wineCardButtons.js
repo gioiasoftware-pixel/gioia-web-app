@@ -106,6 +106,10 @@ function setupWineCardMovementButtons(messageElement) {
             
             // Se è un pulsante di conferma movimento, processa direttamente
             if (clickMovementType && clickQuantity && clickWineId) {
+                window.AppDebug?.log(
+                    `[WineCardButtons] 🧭 AZIONE: MOVIMENTO (${clickMovementType}) wineId=${clickWineId} qty=${clickQuantity}`,
+                    'info'
+                );
                 console.log('[WineCardButtons] 📤 Processando movimento:', { 
                     movementType: clickMovementType, 
                     quantity: clickQuantity, 
@@ -162,6 +166,10 @@ function setupWineCardMovementButtons(messageElement) {
                     }
                 }
             } else if (clickWineId || clickWineText) {
+                window.AppDebug?.log(
+                    `[WineCardButtons] 🧭 AZIONE: INFO (ricerca) wineId=${clickWineId || 'N/A'} text="${clickWineText || ''}"`,
+                    'info'
+                );
                 // Pulsante normale (ricerca vino)
                 console.log('[WineCardButtons] 🔍 Click pulsante ricerca vino:', clickWineText);
                 
@@ -317,6 +325,11 @@ function setupWineCardInfoButtonsMobile(messageElement) {
             e.stopPropagation();
             e.preventDefault();
             e.stopImmediatePropagation();
+
+            window.AppDebug?.log(
+                `[WineCardButtons] 🧭 AZIONE: EDIT (mobile) wineId=${wineId}`,
+                'info'
+            );
             
             // Marca il bottone per prevenire doppia gestione
             if (editButton.dataset.processing === 'true') {
@@ -358,6 +371,11 @@ function setupWineCardInfoButtonsMobile(messageElement) {
             window.AppDebug?.log(`[WineCardButtons] 🍔🍔🍔 CLICK BOTTONE HAMBURGER - INIZIO (capture)`, 'info');
             window.AppDebug?.log(`[WineCardButtons] WineId: ${wineId}`, 'info');
             window.AppDebug?.log(`[WineCardButtons] Event: ${e.type}, target: ${e.target.tagName}, currentTarget: ${e.currentTarget?.tagName}`, 'info');
+
+            window.AppDebug?.log(
+                `[WineCardButtons] 🧭 AZIONE: DETTAGLI (mobile) wineId=${wineId}`,
+                'info'
+            );
             
             // Verifica layout PRIMA di bloccare eventi
             const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 
