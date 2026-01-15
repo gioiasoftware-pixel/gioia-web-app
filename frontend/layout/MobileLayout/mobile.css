@@ -1691,6 +1691,12 @@
     transform: scale(0.95) !important;
 }
 
+/* Nascondi bottoni legacy quando è attivo il redesign */
+.mobileRoot .wine-card-buttons-mobile,
+.mobileRoot .wine-card-button-mobile {
+    display: none !important;
+}
+
 /* ============================================
    WINE CARD MOBILE - REDESIGN
    ============================================ */

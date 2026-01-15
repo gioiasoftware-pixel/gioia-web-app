@@ -251,6 +251,13 @@ function setupWineCardInfoButtonsMobile(messageElement) {
         window.AppDebug?.log('[WineCardButtons] ⏭️ setupWineCardInfoButtonsMobile: non è mobile, skip', 'warn');
         return; // Solo su mobile
     }
+
+    // Nuovo redesign: i bottoni vengono creati dal WineCardTransformer.
+    // Evita di aggiungere i bottoni "vecchi".
+    if (window.WineCardTransformer) {
+        window.AppDebug?.log('[WineCardButtons] ⏭️ setupWineCardInfoButtonsMobile: redesign attivo, skip bottoni legacy', 'info');
+        return;
+    }
     
     window.AppDebug?.log('[WineCardButtons] 📱 Setup bottoni info MOBILE', 'info');
     
