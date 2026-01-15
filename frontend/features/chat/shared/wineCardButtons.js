@@ -616,7 +616,7 @@ if (typeof window !== 'undefined') {
             
             // ESCLUDI COMPLETAMENTE bottoni mobile info - hanno handler diretti isolati
             // Controlla PRIMA se è un bottone mobile info (edit o menu/hamburger)
-            const clickedButton = e.target.closest?.('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
+            const clickedButton = e.target.closest?.('.wine-card-action-btn, .wine-card-button-mobile, .chat-button, .wines-list-item-button');
             if (clickedButton) {
                 window.AppDebug?.log(`[WineCardButtons] 🎯 Event delegation: bottone trovato, verifica esclusione...`, 'info');
                 window.AppDebug?.log(`[WineCardButtons]   - classe: ${clickedButton.className}`, 'info');
@@ -629,6 +629,8 @@ if (typeof window !== 'undefined') {
                 // Controlla sia per data attributes che per classi
                 const isMobileInfoButton = 
                     (clickedButton.dataset.layout === 'mobile' && clickedButton.dataset.buttonType) ||
+                    clickedButton.classList.contains('wine-card-action-edit') ||
+                    clickedButton.classList.contains('wine-card-action-details') ||
                     clickedButton.classList.contains('wine-card-button-edit') ||
                     clickedButton.classList.contains('wine-card-button-menu') ||
                     clickedButton.classList.contains('wine-card-button-inventory'); // Bottone hamburger/inventory

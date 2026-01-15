@@ -176,16 +176,7 @@ function createMobileEditButton(wineId) {
         e.stopPropagation();
         e.preventDefault();
         e.stopImmediatePropagation();
-        
-        window.AppDebug?.log(`[WineCardTransformer] 🖊️ Bottone edit cliccato (ID: ${wineId})`, 'info');
-        
-        // Chiama funzione modifica se disponibile
-        const wineCard = e.target.closest('.wine-card');
-        if (window.handleWineCardEdit && typeof window.handleWineCardEdit === 'function') {
-            await window.handleWineCardEdit(wineCard, wineId);
-        } else {
-            window.AppDebug?.log('[WineCardTransformer] ⚠️ handleWineCardEdit non disponibile', 'warn');
-        }
+        await handleMobileWineCardEdit(e, wineId);
     }, true); // Capture phase
     
     return btn;
@@ -211,80 +202,65 @@ function createMobileInventoryButton(wineId) {
         </svg>
     `;
     
-    // Handler diretto isolato (capture phase) - NON invia messaggi alla chat
+    // Handler diretto isolato (capture phase)
     btn.addEventListener('click', async (e) => {
-        window.AppDebug?.log(`[WineCardTransformer] 🍔🍔🍔 BOTTONE INVENTORY CLICK - INIZIO (ID: ${wineId})`, 'info');
-        
-        // Blocca completamente la propagazione PER PRIMO (capture phase)
         e.stopPropagation();
         e.preventDefault();
         e.stopImmediatePropagation();
-        
-        window.AppDebug?.log('[WineCardTransformer] ✅ Eventi bloccati PRIMA di altri handler', 'success');
-        
-        // Verifica layout
-        const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() || 
-                             document.documentElement.classList.contains('mobileRoot');
-        
-        if (!isMobileLayout) {
-            window.AppDebug?.log('[WineCardTransformer] ❌ ERRORE: Bottone mobile cliccato su desktop!', 'error');
-            return;
-        }
-        
-        // Prepara schermate
-        const viewerPanel = document.getElementById('viewerPanel');
-        const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
-        const listScreen = document.getElementById('inventory-screen-list');
-        const detailsScreen = document.getElementById('inventory-screen-details');
-        const chartScreen = document.getElementById('inventory-screen-chart');
-        
-        window.AppDebug?.log(`[WineCardTransformer] Elementi trovati: viewerPanel=${!!viewerPanel}, mobileLayout=${!!mobileLayout}`, 'info');
-        
-        if (!viewerPanel || !mobileLayout) {
-            window.AppDebug?.log('[WineCardTransformer] ❌ viewerPanel o mobileLayout non trovati', 'error');
-            return;
-        }
-        
-        // NASCONDI lista e chart PRIMA di aprire viewerPanel
-        if (listScreen) {
-            listScreen.classList.add('hidden');
-            window.AppDebug?.log('[WineCardTransformer] ✅ Lista inventario nascosta', 'info');
-        }
-        if (chartScreen) {
-            chartScreen.classList.add('hidden');
-        }
-        
-        // Mostra esplicitamente details screen PRIMA
-        if (detailsScreen) {
-            detailsScreen.classList.remove('hidden');
-            window.AppDebug?.log('[WineCardTransformer] ✅ Schermata dettagli mostrata PRIMA di aprire viewerPanel', 'info');
-        }
-        
-        // POI mostra viewerPanel e attiva state-viewer
-        viewerPanel.hidden = false;
-        mobileLayout.classList.add('state-viewer');
-        window.AppDebug?.log('[WineCardTransformer] ✅ ViewerPanel aperto con schermata dettagli attiva', 'success');
-        
-        // Naviga alla pagina dettagli vino mobile
-        if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
-            // Aspetta un frame per assicurarsi che il viewerPanel sia visibile
-            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-            
-            window.AppDebug?.log(`[WineCardTransformer] 🚀 Chiamata showWineDetails(${wineId})`, 'info');
-            try {
-                await window.InventoryMobile.showWineDetails(wineId);
-                window.AppDebug?.log(`[WineCardTransformer] ✅ showWineDetails(${wineId}) completata`, 'success');
-            } catch (error) {
-                window.AppDebug?.log(`[WineCardTransformer] ❌ Errore in showWineDetails: ${error.message}`, 'error');
-            }
-        } else {
-            window.AppDebug?.log('[WineCardTransformer] ❌ InventoryMobile.showWineDetails non disponibile', 'error');
-        }
-        
-        window.AppDebug?.log(`[WineCardTransformer] 🍔🍔🍔 BOTTONE INVENTORY CLICK - FINE`, 'info');
-    }, true); // IMPORTANTE: Capture phase per intercettare PRIMA
+        await handleMobileWineCardDetails(e, wineId);
+    }, true); // Capture phase
     
     return btn;
+}
+
+async function handleMobileWineCardEdit(event, wineId) {
+    window.AppDebug?.log(`[WineCardTransformer] 🖊️ Bottone edit cliccato (ID: ${wineId})`, 'info');
+    const wineCard = event.target.closest('.wine-card');
+    if (window.handleWineCardEdit && typeof window.handleWineCardEdit === 'function') {
+        await window.handleWineCardEdit(wineCard, wineId);
+        return;
+    }
+    window.AppDebug?.log('[WineCardTransformer] ⚠️ handleWineCardEdit non disponibile', 'warn');
+}
+
+async function handleMobileWineCardDetails(_event, wineId) {
+    window.AppDebug?.log(`[WineCardTransformer] 🍔 Bottone dettagli cliccato (ID: ${wineId})`, 'info');
+    const isMobileLayout = window.LayoutBoundary?.isMobileNamespace() ||
+        document.documentElement.classList.contains('mobileRoot');
+    if (!isMobileLayout) {
+        window.AppDebug?.log('[WineCardTransformer] ❌ Bottone mobile cliccato su desktop', 'error');
+        return;
+    }
+
+    const viewerPanel = document.getElementById('viewerPanel');
+    const mobileLayout = document.getElementById('mobile-layout') || document.querySelector('.mobileRoot');
+    const listScreen = document.getElementById('inventory-screen-list');
+    const detailsScreen = document.getElementById('inventory-screen-details');
+    const chartScreen = document.getElementById('inventory-screen-chart');
+
+    if (!viewerPanel || !mobileLayout) {
+        window.AppDebug?.log('[WineCardTransformer] ❌ viewerPanel o mobileLayout non trovati', 'error');
+        return;
+    }
+
+    if (listScreen) listScreen.classList.add('hidden');
+    if (chartScreen) chartScreen.classList.add('hidden');
+    if (detailsScreen) detailsScreen.classList.remove('hidden');
+
+    viewerPanel.hidden = false;
+    mobileLayout.classList.add('state-viewer');
+
+    if (window.InventoryMobile && typeof window.InventoryMobile.showWineDetails === 'function') {
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+        try {
+            await window.InventoryMobile.showWineDetails(wineId);
+        } catch (error) {
+            window.AppDebug?.log(`[WineCardTransformer] ❌ Errore in showWineDetails: ${error.message}`, 'error');
+        }
+        return;
+    }
+
+    window.AppDebug?.log('[WineCardTransformer] ❌ InventoryMobile.showWineDetails non disponibile', 'error');
 }
 
 /**
