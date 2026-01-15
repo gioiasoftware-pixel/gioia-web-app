@@ -85,7 +85,7 @@ function switchLayout() {
         window.LayoutBoundary.cleanup();
     }
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // Mostra mobile, nascondi desktop
         mobileLayout.style.display = 'grid'; // mApp usa grid
         desktopLayout.style.display = 'none';
@@ -172,7 +172,7 @@ function initChatForCurrentLayout() {
         window.ChatSelectors.reset();
     }
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // Cleanup desktop se presente
         if (typeof window.ChatDesktop !== 'undefined' && window.ChatDesktop.cleanup) {
             window.ChatDesktop.cleanup();
@@ -801,7 +801,20 @@ function setupEventListeners() {
     window.addEventListener('resize', handleWindowResize);
 
     // Viewer toggle - usa pointer events per mobile
-    const viewerToggle = document.getElementById('viewer-toggle');\n    if (viewerToggle) {\n        viewerToggle.addEventListener('pointerup', (e) => {\n            e.stopPropagation();\n            const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||\n                document.documentElement.classList.contains('mobileRoot');\n            if (isMobileLayout) {\n                return;\n            }\n            toggleViewer();\n        });\n    }\n    const viewerClose = document.getElementById('viewer-close');
+    const viewerToggle = document.getElementById('viewer-toggle');
+    if (viewerToggle) {
+        viewerToggle.addEventListener('pointerup', (e) => {
+            e.stopPropagation();
+            const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+                document.documentElement.classList.contains('mobileRoot') ||
+                window.innerWidth <= 768;
+            if (isMobileLayout) {
+                return;
+            }
+            toggleViewer();
+        });
+    }
+    const viewerClose = document.getElementById('viewer-close');
     if (viewerClose) {
         addUniversalEventListener(viewerClose, closeViewer);
     }
@@ -1174,9 +1187,11 @@ function showChatPage() {
 // ============================================
 
 function diagnoseChatScroll() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         return; // Diagnostica solo su desktop
     }
     
@@ -1499,10 +1514,12 @@ function diagnoseChatScroll() {
 
 // Funzione dedicata per attaccare listener sidebar (chiamata sia in setupEventListeners che in showChatPage)
 function attachSidebarToggleListeners() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     let sidebarToggle = null;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         sidebarToggle = document.querySelector('.mHeader #sidebar-toggle');
         console.log('[SIDEBAR] attachSidebarToggleListeners: Cercando in .mHeader:', sidebarToggle);
         if (!sidebarToggle) {
@@ -1680,7 +1697,9 @@ async function sendChatMessage(message, showUserMessage = true) {
 
 async function handleChatSubmit(e) {
     e.preventDefault();
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
     // NUOVA ARCHITETTURA MOBILE: Gestisci sia form desktop che mobile
     const input = isMobile 
@@ -1705,9 +1724,11 @@ async function handleChatSubmit(e) {
 
 function addChatMessage(role, content, isLoading = false, isError = false, buttons = null, isHtml = false) {
     // NUOVA ARCHITETTURA MOBILE: Usa .mScroller su mobile, altrimenti wrapper desktop
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     let scrollWrapper;
-    if (isMobile) {
+    if (isMobileLayout) {
         scrollWrapper = document.getElementById('chatScroll') || document.querySelector('.mScroller');
     } else {
         // Cerca prima il wrapper scrollabile (quello corretto)
@@ -1941,7 +1962,9 @@ function addChatMessage(role, content, isLoading = false, isError = false, butto
                     
                     // Pulsante normale: ricerca vino con ID
                     // Gestisci sia desktop che mobile
-                    const isMobile = window.innerWidth <= 768;
+                    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
                     const inputId = isMobile ? 'chat-input-mobile' : 'chat-input';
                     const formId = isMobile ? 'chat-form-mobile' : 'chat-form';
                     
@@ -3062,9 +3085,11 @@ async function handleWineCardShowInInventory(wineCard, wineId) {
 // ============================================
 
 function toggleViewer() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // NUOVA ARCHITETTURA MOBILE: Usa hidden invece di classi
         const viewerMobile = document.getElementById('viewerPanel');
         const viewerDesktop = document.getElementById('viewer-panel');
@@ -3101,9 +3126,11 @@ function toggleViewer() {
 }
 
 function closeViewer() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // NUOVA ARCHITETTURA MOBILE: Usa hidden
         const viewerMobile = document.getElementById('viewerPanel');
         const toggleBtn = document.getElementById('viewer-toggle');
@@ -3430,7 +3457,9 @@ function renderViewerTable(rows) {
     const mobileCardsContainer = document.getElementById('viewer-mobile-cards');
     const panel = document.getElementById('viewer-panel');
     const isFullscreen = panel && panel.classList.contains('fullscreen');
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
     if (rows.length === 0) {
         const colspan = isFullscreen ? 7 : 6;
@@ -3614,7 +3643,7 @@ function renderViewerTable(rows) {
     tableBody.innerHTML = html;
     
     // Mostra/nascondi tabella o card in base al dispositivo
-    if (isMobile) {
+    if (isMobileLayout) {
         const table = document.getElementById('viewer-table');
         if (table) table.style.display = 'none';
         if (mobileCardsContainer) mobileCardsContainer.style.display = 'flex';
@@ -4721,9 +4750,11 @@ function clearChatMessages(keepWelcome = true) {
 }
 
 function toggleSidebar() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // DELEGA al nuovo codice mobile (ChatMobile.js)
         if (typeof window.ChatMobile !== 'undefined' && window.ChatMobile.toggleSidebar) {
             window.ChatMobile.toggleSidebar();
@@ -4757,9 +4788,11 @@ function toggleSidebar() {
 // NUOVA ARCHITETTURA: Overlay gestito da ChatMobile.js
 // Questa funzione legacy viene chiamata ma delega a ChatMobile se disponibile
 function setupSidebarOverlay() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // Su mobile, ChatMobile.js gestisce già l'overlay in setupSidebarOverlay()
         // Questa funzione legacy viene mantenuta per compatibilità ma non fa nulla
         // perché ChatMobile.init() chiama già setupSidebarOverlay()
@@ -4781,9 +4814,11 @@ function setupSidebarOverlay() {
 
 // Carica stato sidebar al caricamento pagina
 function loadSidebarState() {
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // MOBILE: Gestito da ChatMobile.js
         // Assicurati che sidebar mobile sia SEMPRE chiusa di default
         const sidebarMobile = document.getElementById('chatSidebar');
@@ -4836,9 +4871,11 @@ function closeSidebarOnOverlayClick() {
 // Gestisci resize window per cambiare comportamento mobile/desktop
 function handleWindowResize() {
     const sidebar = document.getElementById('chat-sidebar');
-    const isMobile = window.innerWidth <= 768;
+    const isMobileLayout = (window.LayoutBoundary && window.LayoutBoundary.isMobileNamespace && window.LayoutBoundary.isMobileNamespace()) ||
+        document.documentElement.classList.contains('mobileRoot') ||
+        window.innerWidth <= 768;
     
-    if (isMobile) {
+    if (isMobileLayout) {
         // Passato a mobile: rimuovi collapsed, chiudi sempre sidebar
         sidebar.classList.remove('collapsed');
         sidebar.classList.remove('open'); // Su mobile sempre chiusa di default
@@ -4856,6 +4893,9 @@ function handleWindowResize() {
         }
     }
 }
+
+
+
 
 
 

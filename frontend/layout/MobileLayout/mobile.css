@@ -163,6 +163,11 @@
     display: none !important;
 }
 
+/* Viewer desktop non deve mai apparire su mobile */
+.mobileRoot .viewer-panel {
+    display: none !important;
+}
+
 /* Theme Toggle Mobile */
 .mobileRoot .mHeader .ui-themeToggle-mobile {
     display: inline-flex !important;
