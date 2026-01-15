@@ -121,6 +121,30 @@ function initChatFormSubmitPrevention() {
     }
     
     window.AppDebug?.log('[ChatSelectors] 🚀 Inizializzazione prevenzione refresh Android', 'info');
+
+    const rootElement = document.documentElement;
+    const setKeyboardInset = (height) => {
+        const inset = Math.max(0, Math.round(height));
+        rootElement.style.setProperty('--keyboard-inset', `${inset}px`);
+        rootElement.classList.add('keyboard-open');
+    };
+
+    const clearKeyboardInset = () => {
+        rootElement.style.removeProperty('--keyboard-inset');
+        rootElement.classList.remove('keyboard-open');
+    };
+
+    const estimateKeyboardHeight = () => {
+        const estimated = Math.round(window.innerHeight * 0.4);
+        return Math.min(360, Math.max(240, estimated));
+    };
+
+    const computeKeyboardHeight = () => {
+        if (!window.visualViewport) return null;
+        const vvp = window.visualViewport;
+        const diff = window.innerHeight - (vvp.height + vvp.offsetTop);
+        return diff > 0 ? diff : 0;
+    };
     
     // Trova il form chat mobile
     const chatForm = document.getElementById('chat-form-mobile');
@@ -169,60 +193,31 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
             // FIX: Con overlays-content, la tastiera sovrappone il contenuto
-            // Aggiungiamo padding-bottom al body per spingere l'input sopra la tastiera
-            const adjustBodyForKeyboard = () => {
+            // Applichiamo un offset per spingere il composer sopra la tastiera
+            const adjustKeyboardInset = () => {
                 if (!chatInput || document.activeElement !== chatInput) return;
                 
-                if (window.visualViewport) {
-                    const vvp = window.visualViewport;
-                    const windowHeight = window.innerHeight;
-                    const viewportHeight = vvp.height;
-                    const keyboardHeight = windowHeight - viewportHeight;
-                    
-                    if (keyboardHeight > 100) {
-                        // Tastiera è aperta (differenza > 100px)
-                        // Aggiungi padding-bottom al body per spingere l'input sopra la tastiera
-                        const body = document.body;
-                        const html = document.documentElement;
-                        const paddingBottom = keyboardHeight + 20; // 20px di padding extra
-                        
-                        body.style.paddingBottom = `${paddingBottom}px`;
-                        html.style.paddingBottom = `${paddingBottom}px`;
-                        
-                        window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom ${paddingBottom}px al body (tastiera: ${keyboardHeight}px)`, 'info');
-                        
-                        // Scrolla l'input in view
-                        setTimeout(() => {
-                            chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                            window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
-                        }, 100);
-                    }
-                } else {
-                    // Fallback: stima altezza tastiera (circa 300px su Android)
-                    const estimatedKeyboardHeight = 300;
-                    const body = document.body;
-                    const html = document.documentElement;
-                    
-                    body.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
-                    html.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
-                    
-                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom stimato ${estimatedKeyboardHeight + 20}px (fallback)`, 'info');
-                    
-                    // Scrolla l'input in view
-                    setTimeout(() => {
-                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                        window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view (fallback)', 'info');
-                    }, 100);
-                }
+                const computedHeight = computeKeyboardHeight();
+                const keyboardHeight = computedHeight && computedHeight > 80 ? computedHeight : estimateKeyboardHeight();
+                const inset = keyboardHeight + 12;
+
+                setKeyboardInset(inset);
+                window.AppDebug?.log(`[ChatSelectors] 📏 Impostato keyboard inset ${inset}px (tastiera: ${keyboardHeight}px)`, 'info');
+                
+                // Scrolla l'input in view
+                setTimeout(() => {
+                    chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                    window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
+                }, 100);
             };
             
             // Aggiusta immediatamente
-            adjustBodyForKeyboard();
+            adjustKeyboardInset();
             
             // Aggiusta anche dopo che la tastiera si è aperta (delay per Android)
-            setTimeout(adjustBodyForKeyboard, 200);
-            setTimeout(adjustBodyForKeyboard, 400);
-            setTimeout(adjustBodyForKeyboard, 600);
+            setTimeout(adjustKeyboardInset, 200);
+            setTimeout(adjustKeyboardInset, 400);
+            setTimeout(adjustKeyboardInset, 600);
         }, { passive: true });
         
         chatInput.addEventListener('blur', (e) => {
@@ -244,26 +239,15 @@ function initChatFormSubmitPrevention() {
             setTimeout(() => {
                 // Verifica che la tastiera sia effettivamente chiusa
                 if (window.visualViewport) {
-                    const vvp = window.visualViewport;
-                    const windowHeight = window.innerHeight;
-                    const viewportHeight = vvp.height;
-                    const keyboardHeight = windowHeight - viewportHeight;
+                    const keyboardHeight = computeKeyboardHeight();
                     
-                    if (keyboardHeight < 50) {
-                        // Tastiera è chiusa (differenza < 50px)
-                        const body = document.body;
-                        const html = document.documentElement;
-                        body.style.paddingBottom = '';
-                        html.style.paddingBottom = '';
-                        window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (tastiera chiusa)', 'info');
+                    if (keyboardHeight !== null && keyboardHeight < 50) {
+                        clearKeyboardInset();
+                        window.AppDebug?.log('[ChatSelectors] 📏 Rimosso keyboard inset (tastiera chiusa)', 'info');
                     }
                 } else {
-                    // Fallback: rimuovi sempre dopo blur
-                    const body = document.body;
-                    const html = document.documentElement;
-                    body.style.paddingBottom = '';
-                    html.style.paddingBottom = '';
-                    window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (fallback)', 'info');
+                    clearKeyboardInset();
+                    window.AppDebug?.log('[ChatSelectors] 📏 Rimosso keyboard inset (fallback)', 'info');
                 }
             }, 300); // Delay per permettere alla tastiera di chiudersi
         }, { passive: true });
@@ -327,29 +311,16 @@ function initChatFormSubmitPrevention() {
             const vvp = window.visualViewport;
             window.AppDebug?.log(`[ChatSelectors] 👁️ Visual Viewport resize: ${vvp.width}x${vvp.height} (scale: ${vvp.scale})`, 'info');
             
-            // FIX: Quando la tastiera si apre (viewport si riduce), aggiusta padding-bottom
-            // Con overlays-content, la tastiera sovrappone il contenuto
-            // Aggiungiamo padding-bottom dinamico per spingere l'input sopra la tastiera
+            // FIX: Quando la tastiera si apre, aggiorna inset per il composer
             if (chatInput && document.activeElement === chatInput) {
-                const windowHeight = window.innerHeight;
-                const viewportHeight = vvp.height;
-                const keyboardHeight = windowHeight - viewportHeight;
-                
-                if (keyboardHeight > 100) {
-                    // Tastiera è aperta (differenza > 100px)
-                    const body = document.body;
-                    const html = document.documentElement;
-                    const paddingBottom = keyboardHeight + 20; // 20px di padding extra
-                    
-                    body.style.paddingBottom = `${paddingBottom}px`;
-                    html.style.paddingBottom = `${paddingBottom}px`;
-                    
-                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiustato padding-bottom a ${paddingBottom}px (tastiera: ${keyboardHeight}px)`, 'info');
-                    
-                    // Scrolla l'input in view
-                    setTimeout(() => {
-                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                    }, 50);
+                const keyboardHeight = computeKeyboardHeight();
+                if (keyboardHeight !== null && keyboardHeight > 80) {
+                    const inset = keyboardHeight + 12;
+                    setKeyboardInset(inset);
+                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiornato keyboard inset ${inset}px (tastiera: ${keyboardHeight}px)`, 'info');
+                } else if (keyboardHeight !== null && keyboardHeight < 50) {
+                    clearKeyboardInset();
+                    window.AppDebug?.log('[ChatSelectors] 📏 Rimosso keyboard inset (resize)', 'info');
                 }
             }
         }, { passive: true });
