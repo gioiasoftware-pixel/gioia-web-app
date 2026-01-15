@@ -542,11 +542,50 @@ function setupWineCardInfoButtons(messageElement) {
 
 // Export per uso globale
 if (typeof window !== 'undefined') {
+    function describeMobileButton(btn) {
+        const label = btn.getAttribute('aria-label') || btn.getAttribute('title') || btn.textContent?.trim() || '';
+        const icon = btn.classList.contains('wine-card-button-edit')
+            ? 'matita'
+            : (btn.classList.contains('wine-card-button-menu') || btn.classList.contains('wine-card-button-inventory'))
+                ? 'hamburger'
+                : 'unknown';
+        return `type=${btn.dataset.buttonType || 'n/a'} class=${btn.className} label="${label}" icon=${icon}`;
+    }
+
+    function logWineCardButtonsSnapshot(reason = 'manual') {
+        const isMobile = window.LayoutBoundary?.isMobileNamespace?.() ||
+            document.documentElement.classList.contains('mobileRoot');
+        if (!isMobile) {
+            return;
+        }
+        const cards = document.querySelectorAll('.wine-card');
+        window.AppDebug?.log(
+            `[WineCardButtons] 📋 Snapshot (${reason}) wineCards=${cards.length}`,
+            'info'
+        );
+        cards.forEach((card, idx) => {
+            const wineId = card.getAttribute('data-wine-id') || 'N/A';
+            const title = card.querySelector('.wine-card-title')?.textContent?.trim() || '';
+            const buttons = card.querySelectorAll('.wine-card-button-mobile, .chat-button, .wines-list-item-button');
+            window.AppDebug?.log(
+                `[WineCardButtons]   - Card#${idx + 1} wineId=${wineId} title="${title}" buttons=${buttons.length}`,
+                'info'
+            );
+            buttons.forEach((btn, bIdx) => {
+                window.AppDebug?.log(
+                    `[WineCardButtons]     • Btn#${bIdx + 1} ${describeMobileButton(btn)}`,
+                    'info'
+                );
+            });
+        });
+    }
+
     window.WineCardButtons = {
         setup: setupWineCardMovementButtons,
         setupInfoButtons: setupWineCardInfoButtons,
         setupInfoButtonsMobile: setupWineCardInfoButtonsMobile,
-        setupInfoButtonsDesktop: setupWineCardInfoButtonsDesktop
+        setupInfoButtonsDesktop: setupWineCardInfoButtonsDesktop,
+        logSnapshot: logWineCardButtonsSnapshot
     };
     
     // Auto-setup quando vengono aggiunti messaggi HTML con bottoni
@@ -570,6 +609,7 @@ if (typeof window !== 'undefined') {
                         if (messageElement) {
                             setTimeout(() => {
                                 setupWineCardInfoButtons(messageElement);
+                                logWineCardButtonsSnapshot('observer-message');
                             }, 100);
                         }
                     }
@@ -594,6 +634,7 @@ if (typeof window !== 'undefined') {
                                 setTimeout(() => {
                                     setupWineCardMovementButtons(messageElement);
                                     setupWineCardInfoButtons(messageElement); // Setup anche bottoni info su mobile
+                                    logWineCardButtonsSnapshot('observer-buttons');
                                     messageElement.dataset.wineButtonsSetup = 'true';
                                 }, 150); // Aumentato a 150ms per dare tempo a ChatMobile
                             } else {
@@ -608,6 +649,7 @@ if (typeof window !== 'undefined') {
                                     setTimeout(() => {
                                         setupWineCardMovementButtons(node);
                                         setupWineCardInfoButtons(node); // Setup anche bottoni info su mobile
+                                    logWineCardButtonsSnapshot('observer-node');
                                         node.dataset.wineButtonsSetup = 'true';
                                     }, 150);
                                 }

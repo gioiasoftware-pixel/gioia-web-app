@@ -101,6 +101,7 @@ function transformWineCardsForMobile(htmlContent) {
         `[WineCardTransformer] ✅ Bottoni mobile aggiunti a wine card ${index + 1} (buttons=${totalButtons})`,
         'success'
     );
+    window.WineCardButtons?.logSnapshot?.('transformer-add');
     });
     
     // Ritorna HTML trasformato
