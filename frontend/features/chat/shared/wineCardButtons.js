@@ -258,6 +258,7 @@ function setupWineCardInfoButtonsMobile(messageElement) {
     
     wineCards.forEach((wineCard) => {
         // Evita setup multiplo
+        if (wineCard.dataset.mobileRedesign === 'true') return;
         if (wineCard.dataset.infoButtonsSetup === 'true') return;
         
         const wineId = wineCard.dataset.wineId || wineCard.getAttribute('data-wine-id');

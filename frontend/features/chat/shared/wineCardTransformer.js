@@ -61,42 +61,7 @@ function transformWineCardsForMobile(htmlContent) {
         }
         
         window.AppDebug?.log(`[WineCardTransformer] 🔄 Trasformazione wine card ${index + 1} (ID: ${wineId})`, 'info');
-        
-        // Aggiungi classe mobile-specific per identificazione
-        wineCard.classList.add('wine-card-mobile');
-        
-        // Aggiungi container bottoni mobile se non esiste già
-        const header = wineCard.querySelector('.wine-card-header');
-        if (!header) {
-            window.AppDebug?.log(`[WineCardTransformer] ⚠️ Wine card ${index + 1} senza header, skip bottoni`, 'warn');
-            return;
-        }
-        
-        // Verifica se i bottoni esistono già (per evitare duplicati)
-        if (header.querySelector('.wine-card-buttons-mobile')) {
-            window.AppDebug?.log(`[WineCardTransformer] ⏭️ Wine card ${index + 1} ha già bottoni mobile, skip`, 'info');
-            return;
-        }
-        
-        // Crea container bottoni
-        const buttonsContainer = document.createElement('div');
-        buttonsContainer.className = 'wine-card-buttons-mobile';
-        
-        // Crea bottone edit
-        const editBtn = createMobileEditButton(wineId);
-        // Crea bottone hamburger/inventory
-        const inventoryBtn = createMobileInventoryButton(wineId);
-        
-        buttonsContainer.appendChild(editBtn);
-        buttonsContainer.appendChild(inventoryBtn);
-        
-        // Assicura che header sia position: relative per posizionamento assoluto
-        if (window.getComputedStyle(header).position === 'static') {
-            header.style.position = 'relative';
-        }
-        
-        header.appendChild(buttonsContainer);
-        window.AppDebug?.log(`[WineCardTransformer] ✅ Bottoni mobile aggiunti a wine card ${index + 1}`, 'success');
+        rebuildMobileWineCard(wineCard, wineId);
     });
     
     // Ritorna HTML trasformato
@@ -105,12 +70,94 @@ function transformWineCardsForMobile(htmlContent) {
     return transformedHtml;
 }
 
+function rebuildMobileWineCard(wineCardElement, wineId) {
+    wineCardElement.classList.add('wine-card-mobile', 'wine-card-mobile-redesign');
+    wineCardElement.dataset.mobileRedesign = 'true';
+
+    const title = wineCardElement.querySelector('.wine-card-title')?.textContent?.trim() || '';
+    const producer = wineCardElement.querySelector('.wine-card-producer')?.textContent?.trim() || '';
+    const badge = wineCardElement.querySelector('.wine-card-badge')?.textContent?.trim() || '';
+    const errorMessage = wineCardElement.querySelector('.wine-card-error-message')?.textContent?.trim() || '';
+
+    const fields = Array.from(wineCardElement.querySelectorAll('.wine-card-field')).map((field) => {
+        const label = field.querySelector('.wine-card-field-label')?.textContent?.trim() || '';
+        const value = field.querySelector('.wine-card-field-value')?.textContent?.trim() || '';
+        return { label, value };
+    });
+
+    wineCardElement.innerHTML = '';
+
+    const shell = document.createElement('div');
+    shell.className = 'wine-card-mobile-shell';
+
+    const header = document.createElement('div');
+    header.className = 'wine-card-mobile-header';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'wine-card-mobile-title';
+    titleEl.textContent = title || 'Vino';
+    header.appendChild(titleEl);
+
+    if (producer) {
+        const producerEl = document.createElement('div');
+        producerEl.className = 'wine-card-mobile-producer';
+        producerEl.textContent = producer;
+        header.appendChild(producerEl);
+    }
+
+    if (badge) {
+        const badgeEl = document.createElement('div');
+        badgeEl.className = 'wine-card-mobile-badge';
+        badgeEl.textContent = badge;
+        header.appendChild(badgeEl);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'wine-card-mobile-body';
+
+    if (errorMessage) {
+        const alertEl = document.createElement('div');
+        alertEl.className = 'wine-card-mobile-alert';
+        alertEl.textContent = errorMessage;
+        body.appendChild(alertEl);
+    }
+
+    fields.forEach((field) => {
+        if (!field.label && !field.value) return;
+        const row = document.createElement('div');
+        row.className = 'wine-card-mobile-field';
+        const labelEl = document.createElement('span');
+        labelEl.className = 'wine-card-mobile-label';
+        labelEl.textContent = field.label;
+        const valueEl = document.createElement('span');
+        valueEl.className = 'wine-card-mobile-value';
+        valueEl.textContent = field.value;
+        row.appendChild(labelEl);
+        row.appendChild(valueEl);
+        body.appendChild(row);
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'wine-card-mobile-actions';
+    actions.appendChild(createMobileEditButton(wineId));
+    actions.appendChild(createMobileInventoryButton(wineId));
+
+    shell.appendChild(header);
+    shell.appendChild(body);
+    shell.appendChild(actions);
+    wineCardElement.appendChild(shell);
+
+    window.AppDebug?.log(
+        `[WineCardTransformer] ✅ Wine card mobile ridisegnata (wineId=${wineId})`,
+        'success'
+    );
+}
+
 /**
  * Crea bottone edit per mobile
  */
 function createMobileEditButton(wineId) {
     const btn = document.createElement('button');
-    btn.className = 'wine-card-button-mobile wine-card-button-edit';
+    btn.className = 'wine-card-action-btn wine-card-action-edit';
     btn.setAttribute('data-wine-id', wineId);
     btn.setAttribute('data-layout', 'mobile');
     btn.setAttribute('data-button-type', 'info-edit');
@@ -150,7 +197,7 @@ function createMobileEditButton(wineId) {
  */
 function createMobileInventoryButton(wineId) {
     const btn = document.createElement('button');
-    btn.className = 'wine-card-button-mobile wine-card-button-inventory';
+    btn.className = 'wine-card-action-btn wine-card-action-details';
     btn.setAttribute('data-wine-id', wineId);
     btn.setAttribute('data-layout', 'mobile');
     btn.setAttribute('data-button-type', 'info-details');
@@ -291,31 +338,10 @@ function transformSingleWineCard(wineCardElement) {
     if (!wineId) {
         return;
     }
-    
-    // Aggiungi classe mobile
-    wineCardElement.classList.add('wine-card-mobile');
-    
-    // Aggiungi bottoni se non esistono
-    const header = wineCardElement.querySelector('.wine-card-header');
-    if (!header || header.querySelector('.wine-card-buttons-mobile')) {
+    if (wineCardElement.dataset.mobileRedesign === 'true') {
         return;
     }
-    
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.className = 'wine-card-buttons-mobile';
-    
-    const editBtn = createMobileEditButton(wineId);
-    const inventoryBtn = createMobileInventoryButton(wineId);
-    
-    buttonsContainer.appendChild(editBtn);
-    buttonsContainer.appendChild(inventoryBtn);
-    
-    if (window.getComputedStyle(header).position === 'static') {
-        header.style.position = 'relative';
-    }
-    
-    header.appendChild(buttonsContainer);
-    window.AppDebug?.log(`[WineCardTransformer] ✅ Wine card trasformata dinamicamente (ID: ${wineId})`, 'success');
+    rebuildMobileWineCard(wineCardElement, wineId);
 }
 
 // Export per uso globale
