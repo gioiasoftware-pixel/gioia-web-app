@@ -150,9 +150,6 @@ function initChatFormSubmitPrevention() {
     if (chatInput) {
         window.AppDebug?.log('[ChatSelectors] ✅ Input trovato, aggiungo listener focus/blur/resize', 'success');
         
-        const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
         // Logging focus/blur per tracciare quando si apre la tastiera
         chatInput.addEventListener('focus', (e) => {
             const viewportInfo = {
@@ -171,64 +168,7 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log('[ChatSelectors] 🎯 INPUT FOCUS - Tastiera potrebbe aprirsi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
-            // FIX: Con overlays-content, la tastiera sovrappone il contenuto
-            // Su iOS usiamo solo --app-height (no padding/scroll), su Android applichiamo padding-bottom
-            const adjustBodyForKeyboard = () => {
-                if (!chatInput || document.activeElement !== chatInput) return;
-                if (isIOS) {
-                    return; // iOS: evita doppia compensazione (usa --app-height)
-                }
-                
-                if (window.visualViewport) {
-                    const vvp = window.visualViewport;
-                    const windowHeight = window.innerHeight;
-                    const viewportHeight = vvp.height;
-                    const keyboardHeight = windowHeight - viewportHeight;
-                    
-                    if (keyboardHeight > 100) {
-                        // Tastiera è aperta (differenza > 100px)
-                        // Aggiungi padding-bottom al body per spingere l'input sopra la tastiera
-                        const body = document.body;
-                        const html = document.documentElement;
-                        const paddingBottom = keyboardHeight + 20; // 20px di padding extra
-                        
-                        body.style.paddingBottom = `${paddingBottom}px`;
-                        html.style.paddingBottom = `${paddingBottom}px`;
-                        
-                        window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom ${paddingBottom}px al body (tastiera: ${keyboardHeight}px)`, 'info');
-                        
-                        // Scrolla l'input in view
-                        setTimeout(() => {
-                            chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                            window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
-                        }, 100);
-                    }
-                } else {
-                    // Fallback: stima altezza tastiera (circa 300px su Android)
-                    const estimatedKeyboardHeight = 300;
-                    const body = document.body;
-                    const html = document.documentElement;
-                    
-                    body.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
-                    html.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
-                    
-                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom stimato ${estimatedKeyboardHeight + 20}px (fallback)`, 'info');
-                    
-                    // Scrolla l'input in view
-                    setTimeout(() => {
-                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                        window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view (fallback)', 'info');
-                    }, 100);
-                }
-            };
-            
-            // Aggiusta immediatamente
-            adjustBodyForKeyboard();
-            
-            // Aggiusta anche dopo che la tastiera si è aperta (delay per Android)
-            setTimeout(adjustBodyForKeyboard, 200);
-            setTimeout(adjustBodyForKeyboard, 400);
-            setTimeout(adjustBodyForKeyboard, 600);
+            // Pulizia: nessuna compensazione manuale della tastiera
         }, { passive: true });
         
         chatInput.addEventListener('blur', (e) => {
@@ -246,35 +186,7 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log('[ChatSelectors] 📱 INPUT BLUR - Tastiera potrebbe chiudersi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
-            // FIX: Rimuovi padding-bottom quando la tastiera si chiude
-            setTimeout(() => {
-                if (isIOS) {
-                    return; // iOS: nessun padding-bottom da rimuovere
-                }
-                // Verifica che la tastiera sia effettivamente chiusa
-                if (window.visualViewport) {
-                    const vvp = window.visualViewport;
-                    const windowHeight = window.innerHeight;
-                    const viewportHeight = vvp.height;
-                    const keyboardHeight = windowHeight - viewportHeight;
-                    
-                    if (keyboardHeight < 50) {
-                        // Tastiera è chiusa (differenza < 50px)
-                        const body = document.body;
-                        const html = document.documentElement;
-                        body.style.paddingBottom = '';
-                        html.style.paddingBottom = '';
-                        window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (tastiera chiusa)', 'info');
-                    }
-                } else {
-                    // Fallback: rimuovi sempre dopo blur
-                    const body = document.body;
-                    const html = document.documentElement;
-                    body.style.paddingBottom = '';
-                    html.style.paddingBottom = '';
-                    window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (fallback)', 'info');
-                }
-            }, 300); // Delay per permettere alla tastiera di chiudersi
+            // Pulizia: nessuna gestione padding-bottom su blur
         }, { passive: true });
         
         chatInput.addEventListener('keydown', (e) => {
@@ -336,34 +248,7 @@ function initChatFormSubmitPrevention() {
             const vvp = window.visualViewport;
             window.AppDebug?.log(`[ChatSelectors] 👁️ Visual Viewport resize: ${vvp.width}x${vvp.height} (scale: ${vvp.scale})`, 'info');
             
-            // FIX: Quando la tastiera si apre (viewport si riduce), aggiusta padding-bottom
-            // Con overlays-content, la tastiera sovrappone il contenuto
-            // Aggiungiamo padding-bottom dinamico per spingere l'input sopra la tastiera
-            if (isIOS) {
-                return; // iOS: evita doppia compensazione con --app-height
-            }
-            if (chatInput && document.activeElement === chatInput) {
-                const windowHeight = window.innerHeight;
-                const viewportHeight = vvp.height;
-                const keyboardHeight = windowHeight - viewportHeight;
-                
-                if (keyboardHeight > 100) {
-                    // Tastiera è aperta (differenza > 100px)
-                    const body = document.body;
-                    const html = document.documentElement;
-                    const paddingBottom = keyboardHeight + 20; // 20px di padding extra
-                    
-                    body.style.paddingBottom = `${paddingBottom}px`;
-                    html.style.paddingBottom = `${paddingBottom}px`;
-                    
-                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiustato padding-bottom a ${paddingBottom}px (tastiera: ${keyboardHeight}px)`, 'info');
-                    
-                    // Scrolla l'input in view
-                    setTimeout(() => {
-                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
-                    }, 50);
-                }
-            }
+            // Pulizia: nessuna gestione padding-bottom/scroll qui
         }, { passive: true });
         
         window.visualViewport.addEventListener('scroll', () => {
