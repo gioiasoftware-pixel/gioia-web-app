@@ -24,7 +24,8 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # Email admin (da configurazione o default)
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "gio.ia.software@gmail.com")
+DEFAULT_ADMIN_EMAIL = "gio.ia.software@gmail.com"
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL)
 ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "")
 
 
@@ -44,6 +45,8 @@ def normalize_email(email: str) -> str:
 
 def get_admin_emails() -> list[str]:
     emails = []
+    # Always include default admin to avoid misconfigured env blocking access.
+    emails.append(DEFAULT_ADMIN_EMAIL)
     if ADMIN_EMAIL:
         emails.append(ADMIN_EMAIL)
     if ADMIN_EMAILS:
