@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 DEFAULT_ADMIN_EMAIL = "gio.ia.software@gmail.com"
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", DEFAULT_ADMIN_EMAIL)
 ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "")
+ADMIN_USER_IDS = os.getenv("ADMIN_USER_IDS", "")
 
 
 def normalize_email(email: str) -> str:
@@ -52,6 +53,20 @@ def get_admin_emails() -> list[str]:
     if ADMIN_EMAILS:
         emails.extend([e.strip() for e in ADMIN_EMAILS.split(",") if e.strip()])
     return emails
+
+
+def get_admin_user_ids() -> set[int]:
+    ids: set[int] = set()
+    if ADMIN_USER_IDS:
+        for raw in ADMIN_USER_IDS.split(","):
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                ids.add(int(raw))
+            except ValueError:
+                logger.warning(f"[ADMIN] ADMIN_USER_IDS contiene valore non valido: {raw}")
+    return ids
 
 
 def is_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
@@ -81,11 +96,16 @@ def is_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
     admin_emails_norm = {normalize_email(e) for e in admin_emails}
     user_email = user.email.strip().lower()
     user_email_norm = normalize_email(user_email)
+    admin_user_ids = get_admin_user_ids()
     
     # Log per debug
     logger.debug(f"[ADMIN] is_admin_user: user_id={user.id}, user_email={user_email}, admin_emails={admin_emails}")
     
     # Verifica corrispondenza
+    if user.id in admin_user_ids:
+        logger.debug(f"[ADMIN] is_admin_user: accesso consentito per user_id={user.id} (ADMIN_USER_IDS)")
+        return current_user
+
     if user_email_norm not in admin_emails_norm:
         logger.warning(f"[ADMIN] is_admin_user: accesso negato per user_id={user.id}, email={user_email}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accesso negato: solo admin")
