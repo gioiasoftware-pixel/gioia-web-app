@@ -169,9 +169,14 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
             // FIX: Con overlays-content, la tastiera sovrappone il contenuto
-            // Aggiungiamo padding-bottom al body per spingere l'input sopra la tastiera
+            // Su iOS usiamo solo --app-height (no padding/scroll), su Android applichiamo padding-bottom
+            const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             const adjustBodyForKeyboard = () => {
                 if (!chatInput || document.activeElement !== chatInput) return;
+                if (isIOS) {
+                    return; // iOS: evita doppia compensazione (usa --app-height)
+                }
                 
                 if (window.visualViewport) {
                     const vvp = window.visualViewport;
@@ -242,6 +247,11 @@ function initChatFormSubmitPrevention() {
             
             // FIX: Rimuovi padding-bottom quando la tastiera si chiude
             setTimeout(() => {
+                const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (isIOS) {
+                    return; // iOS: nessun padding-bottom da rimuovere
+                }
                 // Verifica che la tastiera sia effettivamente chiusa
                 if (window.visualViewport) {
                     const vvp = window.visualViewport;
