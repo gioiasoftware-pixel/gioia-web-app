@@ -25,6 +25,30 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 # Email admin (da configurazione o default)
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "gio.ia.software@gmail.com")
+ADMIN_EMAILS = os.getenv("ADMIN_EMAILS", "")
+
+
+def normalize_email(email: str) -> str:
+    """
+    Normalizza email per confronto admin.
+    Per Gmail/Googlemail rimuove punti e tag '+' nella parte locale.
+    """
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return email
+    local, domain = email.split("@", 1)
+    if domain in {"gmail.com", "googlemail.com"}:
+        local = local.split("+", 1)[0].replace(".", "")
+    return f"{local}@{domain}"
+
+
+def get_admin_emails() -> list[str]:
+    emails = []
+    if ADMIN_EMAIL:
+        emails.append(ADMIN_EMAIL)
+    if ADMIN_EMAILS:
+        emails.extend([e.strip() for e in ADMIN_EMAILS.split(",") if e.strip()])
+    return emails
 
 
 def is_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
@@ -50,14 +74,16 @@ def is_admin_user(current_user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accesso negato: email non valida")
     
     # Normalizza email per confronto
-    admin_email = (ADMIN_EMAIL or "").strip().lower()
+    admin_emails = get_admin_emails()
+    admin_emails_norm = {normalize_email(e) for e in admin_emails}
     user_email = user.email.strip().lower()
+    user_email_norm = normalize_email(user_email)
     
     # Log per debug
-    logger.debug(f"[ADMIN] is_admin_user: user_id={user.id}, user_email={user_email}, admin_email={admin_email}")
+    logger.debug(f"[ADMIN] is_admin_user: user_id={user.id}, user_email={user_email}, admin_emails={admin_emails}")
     
     # Verifica corrispondenza
-    if user_email != admin_email:
+    if user_email_norm not in admin_emails_norm:
         logger.warning(f"[ADMIN] is_admin_user: accesso negato per user_id={user.id}, email={user_email}")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accesso negato: solo admin")
     
