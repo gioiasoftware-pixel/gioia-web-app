@@ -150,7 +150,9 @@ function initChatFormSubmitPrevention() {
     if (chatInput) {
         window.AppDebug?.log('[ChatSelectors] ✅ Input trovato, aggiungo listener focus/blur/resize', 'success');
         
-        const isAndroid = /Android/i.test(navigator.userAgent);
+        const ua = navigator.userAgent || '';
+        const isIOS = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/i.test(ua) && !isIOS;
 
         // Logging focus/blur per tracciare quando si apre la tastiera
         chatInput.addEventListener('focus', (e) => {
@@ -171,6 +173,9 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
             if (!isAndroid) {
+                // Assicura che non restino padding dal passato
+                document.body.style.paddingBottom = '';
+                document.documentElement.style.paddingBottom = '';
                 return;
             }
 
