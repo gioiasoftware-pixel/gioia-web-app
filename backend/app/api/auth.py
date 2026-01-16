@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Depends, Body
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 import logging
+import os
 
 from app.core.auth import (
     create_access_token,
@@ -42,6 +43,8 @@ class LoginResponse(BaseModel):
     telegram_id: Optional[int]
     business_name: Optional[str] = None
     onboarding_completed: bool
+    is_admin: bool = False
+    control_panel_url: Optional[str] = None
 
 
 class UserInfo(BaseModel):
@@ -52,6 +55,25 @@ class UserInfo(BaseModel):
     username: Optional[str]
     first_name: Optional[str]
     onboarding_completed: bool
+
+
+def normalize_email(email: str) -> str:
+    email = (email or "").strip().lower()
+    if "@" not in email:
+        return email
+    local, domain = email.split("@", 1)
+    if domain in {"gmail.com", "googlemail.com"}:
+        local = local.split("+", 1)[0].replace(".", "")
+    return f"{local}@{domain}"
+
+
+def is_admin_email(email: str) -> bool:
+    default_admin = "gio.ia.software@gmail.com"
+    admin_email = os.getenv("ADMIN_EMAIL", default_admin)
+    admin_emails = os.getenv("ADMIN_EMAILS", "")
+    emails = [default_admin, admin_email] + [e.strip() for e in admin_emails.split(",") if e.strip()]
+    emails_norm = {normalize_email(e) for e in emails}
+    return normalize_email(email) in emails_norm
 
 
 @router.post("/signup", response_model=LoginResponse)
@@ -208,13 +230,16 @@ async def login(login_request: LoginRequest):
     
     logger.info(f"[AUTH] Login effettuato: email={email}, user_id={user.id}, telegram_id={user.telegram_id}, remember_me={remember_me}")
     
+    control_panel_url = os.getenv("CONTROL_PANEL_URL", "https://controlpaneladmingioia-production.up.railway.app")
     return LoginResponse(
         access_token=token,
         token_type="bearer",
         user_id=user.id,
         telegram_id=user.telegram_id,
         business_name=user.business_name,
-        onboarding_completed=user.onboarding_completed
+        onboarding_completed=user.onboarding_completed,
+        is_admin=is_admin_email(user.email),
+        control_panel_url=control_panel_url
     )
 
 

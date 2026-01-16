@@ -973,7 +973,15 @@ async function handleLogin(e) {
         
         localStorage.setItem('auth_token', authToken);
         currentUser = data;
-        
+
+        if (data.is_admin) {
+            const controlPanelUrl = data.control_panel_url || 'https://controlpaneladmingioia-production.up.railway.app/admin/dashboard';
+            const url = new URL(controlPanelUrl);
+            url.searchParams.set('token', authToken);
+            window.location.href = url.toString();
+            return;
+        }
+
         try {
             showChatPage();
             console.log('[LOGIN] showChatPage completata');
@@ -4905,6 +4913,7 @@ function handleWindowResize() {
         }
     }
 }
+
 
 
 
