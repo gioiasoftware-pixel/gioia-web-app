@@ -332,6 +332,13 @@
     box-sizing: border-box;
 }
 
+/* iOS zoom fix: font-size < 16px causa zoom automatico */
+@supports (-webkit-touch-callout: none) {
+    .mobileRoot .mComposer .chat-input {
+        font-size: 16px !important;
+    }
+}
+
 .mobileRoot .mComposer .chat-send-btn {
     width: 44px;
     height: 44px;
