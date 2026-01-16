@@ -150,6 +150,9 @@ function initChatFormSubmitPrevention() {
     if (chatInput) {
         window.AppDebug?.log('[ChatSelectors] ✅ Input trovato, aggiungo listener focus/blur/resize', 'success');
         
+        const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
+            (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
         // Logging focus/blur per tracciare quando si apre la tastiera
         chatInput.addEventListener('focus', (e) => {
             const viewportInfo = {
@@ -170,8 +173,6 @@ function initChatFormSubmitPrevention() {
             
             // FIX: Con overlays-content, la tastiera sovrappone il contenuto
             // Su iOS usiamo solo --app-height (no padding/scroll), su Android applichiamo padding-bottom
-            const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             const adjustBodyForKeyboard = () => {
                 if (!chatInput || document.activeElement !== chatInput) return;
                 if (isIOS) {
@@ -247,8 +248,6 @@ function initChatFormSubmitPrevention() {
             
             // FIX: Rimuovi padding-bottom quando la tastiera si chiude
             setTimeout(() => {
-                const isIOS = /iPad|iPhone|iPod/i.test(navigator.userAgent) ||
-                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                 if (isIOS) {
                     return; // iOS: nessun padding-bottom da rimuovere
                 }
@@ -340,6 +339,9 @@ function initChatFormSubmitPrevention() {
             // FIX: Quando la tastiera si apre (viewport si riduce), aggiusta padding-bottom
             // Con overlays-content, la tastiera sovrappone il contenuto
             // Aggiungiamo padding-bottom dinamico per spingere l'input sopra la tastiera
+            if (isIOS) {
+                return; // iOS: evita doppia compensazione con --app-height
+            }
             if (chatInput && document.activeElement === chatInput) {
                 const windowHeight = window.innerHeight;
                 const viewportHeight = vvp.height;
