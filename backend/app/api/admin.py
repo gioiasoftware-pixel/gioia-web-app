@@ -17,6 +17,7 @@ from app.core.database import AsyncSessionLocal, User, db_manager
 from app.core.auth import get_current_user, create_spectator_token
 from app.core.processor_client import processor_client
 from app.core.config import get_settings
+from app.services.app_settings import get_app_setting, set_app_setting
 
 logger = logging.getLogger(__name__)
 
@@ -158,6 +159,10 @@ class DashboardKPIResponse(BaseModel):
     active_jobs: int = 0
     errors_24h: int = 0
     files_uploaded_7d: int = 0
+
+
+class DebugLoggingStatus(BaseModel):
+    enabled: bool
 
 
 def get_user_table_name(user_id: int, business_name: str, table_type: str) -> str:
@@ -1308,3 +1313,28 @@ async def create_table_row(
             logger.error(f"Errore creazione riga in {full_table_name}: {e}", exc_info=True)
             await session.rollback()
             raise HTTPException(status_code=500, detail=f"Errore creazione: {str(e)}")
+
+
+@router.get("/debug-logging", response_model=DebugLoggingStatus)
+async def get_debug_logging_status_admin(
+    admin_user: dict = Depends(is_admin_user)
+):
+    """
+    Stato logging frontend (debug overlay) per admin.
+    """
+    async with AsyncSessionLocal() as session:
+        value = await get_app_setting(session, "debug_logging_enabled")
+    return {"enabled": value == "true"}
+
+
+@router.put("/debug-logging", response_model=DebugLoggingStatus)
+async def set_debug_logging_status_admin(
+    payload: DebugLoggingStatus = Body(...),
+    admin_user: dict = Depends(is_admin_user)
+):
+    """
+    Aggiorna stato logging frontend (debug overlay).
+    """
+    async with AsyncSessionLocal() as session:
+        await set_app_setting(session, "debug_logging_enabled", "true" if payload.enabled else "false")
+    return {"enabled": payload.enabled}
