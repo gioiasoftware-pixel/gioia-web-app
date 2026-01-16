@@ -217,7 +217,7 @@ class WineCardHelper:
         types_distribution: Dict[str, int],
         low_stock_wines: List,
         out_of_stock_wines: List,
-        badge: Optional[str] = "📊 Report"
+        badge: Optional[str] = "📈 Statistiche"
     ) -> str:
         """
         Genera una wine card dedicata per report inventario.
@@ -240,8 +240,8 @@ class WineCardHelper:
         html += '<div class="wine-card-header">'
         if badge:
             html += f'<div class="wine-card-badge">{WineCardHelper.escape_html(badge)}</div>'
-        html += '<div><h3 class="wine-card-title">📦 Report Inventario Completo</h3>'
-        html += '<div class="wine-card-producer">Report generato automaticamente</div>'
+        html += '<div><h3 class="wine-card-title">📦 Statistiche Inventario</h3>'
+        html += '<div class="wine-card-producer">Statistiche generate automaticamente</div>'
         html += '</div>'
         html += '</div>'  # Chiude wine-card-header
         
