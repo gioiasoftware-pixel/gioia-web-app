@@ -8,6 +8,18 @@
 (function() {
     'use strict';
     
+    const HARD_DISABLED = window.APP_DEBUG_DISABLED === true;
+    if (HARD_DISABLED) {
+        // Hard-disable AppDebug entirely (no overlay, no interception).
+        window.AppDebug = {
+            log() {},
+            clear() {},
+            setEnabled() {},
+            isInitialized() { return false; }
+        };
+        return;
+    }
+
     let overlayHost = null;
     let shadowRoot = null;
     let logContainer = null;

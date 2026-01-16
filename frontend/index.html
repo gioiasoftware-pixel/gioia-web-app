@@ -733,6 +733,8 @@
     <script>
         // Configurazione API URL - usa stesso dominio quando servito da backend
         window.API_BASE_URL = window.location.origin;
+        // Hard-disable AppDebug overlay/logging (prevents enable via chat/control panel)
+        window.APP_DEBUG_DISABLED = true;
     </script>
     <!-- Debug Overlay: finestra log permanente (carica presto per essere disponibile ovunque) -->
     <script src="/static/features/debug/debugOverlay.js"></script>
