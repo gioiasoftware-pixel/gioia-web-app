@@ -150,6 +150,8 @@ function initChatFormSubmitPrevention() {
     if (chatInput) {
         window.AppDebug?.log('[ChatSelectors] ✅ Input trovato, aggiungo listener focus/blur/resize', 'success');
         
+        const isAndroid = /Android/i.test(navigator.userAgent);
+
         // Logging focus/blur per tracciare quando si apre la tastiera
         chatInput.addEventListener('focus', (e) => {
             const viewportInfo = {
@@ -168,7 +170,55 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log('[ChatSelectors] 🎯 INPUT FOCUS - Tastiera potrebbe aprirsi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
-            // Pulizia: nessuna compensazione manuale della tastiera
+            if (!isAndroid) {
+                return;
+            }
+
+            const adjustBodyForKeyboard = () => {
+                if (!chatInput || document.activeElement !== chatInput) return;
+
+                if (window.visualViewport) {
+                    const vvp = window.visualViewport;
+                    const windowHeight = window.innerHeight;
+                    const viewportHeight = vvp.height;
+                    const keyboardHeight = windowHeight - viewportHeight;
+
+                    if (keyboardHeight > 100) {
+                        const body = document.body;
+                        const html = document.documentElement;
+                        const paddingBottom = keyboardHeight + 20;
+
+                        body.style.paddingBottom = `${paddingBottom}px`;
+                        html.style.paddingBottom = `${paddingBottom}px`;
+
+                        window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom ${paddingBottom}px al body (tastiera: ${keyboardHeight}px)`, 'info');
+
+                        setTimeout(() => {
+                            chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                            window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view', 'info');
+                        }, 100);
+                    }
+                } else {
+                    const estimatedKeyboardHeight = 300;
+                    const body = document.body;
+                    const html = document.documentElement;
+
+                    body.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
+                    html.style.paddingBottom = `${estimatedKeyboardHeight + 20}px`;
+
+                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiunto padding-bottom stimato ${estimatedKeyboardHeight + 20}px (fallback)`, 'info');
+
+                    setTimeout(() => {
+                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                        window.AppDebug?.log('[ChatSelectors] 📜 Scrollato input in view (fallback)', 'info');
+                    }, 100);
+                }
+            };
+
+            adjustBodyForKeyboard();
+            setTimeout(adjustBodyForKeyboard, 200);
+            setTimeout(adjustBodyForKeyboard, 400);
+            setTimeout(adjustBodyForKeyboard, 600);
         }, { passive: true });
         
         chatInput.addEventListener('blur', (e) => {
@@ -186,7 +236,32 @@ function initChatFormSubmitPrevention() {
             window.AppDebug?.log('[ChatSelectors] 📱 INPUT BLUR - Tastiera potrebbe chiudersi', 'info');
             window.AppDebug?.log(`[ChatSelectors] Viewport info: ${JSON.stringify(viewportInfo)}`, 'info');
             
-            // Pulizia: nessuna gestione padding-bottom su blur
+            if (!isAndroid) {
+                return;
+            }
+
+            setTimeout(() => {
+                if (window.visualViewport) {
+                    const vvp = window.visualViewport;
+                    const windowHeight = window.innerHeight;
+                    const viewportHeight = vvp.height;
+                    const keyboardHeight = windowHeight - viewportHeight;
+
+                    if (keyboardHeight < 50) {
+                        const body = document.body;
+                        const html = document.documentElement;
+                        body.style.paddingBottom = '';
+                        html.style.paddingBottom = '';
+                        window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (tastiera chiusa)', 'info');
+                    }
+                } else {
+                    const body = document.body;
+                    const html = document.documentElement;
+                    body.style.paddingBottom = '';
+                    html.style.paddingBottom = '';
+                    window.AppDebug?.log('[ChatSelectors] 📏 Rimosso padding-bottom (fallback)', 'info');
+                }
+            }, 300);
         }, { passive: true });
         
         chatInput.addEventListener('keydown', (e) => {
@@ -248,7 +323,29 @@ function initChatFormSubmitPrevention() {
             const vvp = window.visualViewport;
             window.AppDebug?.log(`[ChatSelectors] 👁️ Visual Viewport resize: ${vvp.width}x${vvp.height} (scale: ${vvp.scale})`, 'info');
             
-            // Pulizia: nessuna gestione padding-bottom/scroll qui
+            if (!isAndroid) {
+                return;
+            }
+            if (chatInput && document.activeElement === chatInput) {
+                const windowHeight = window.innerHeight;
+                const viewportHeight = vvp.height;
+                const keyboardHeight = windowHeight - viewportHeight;
+
+                if (keyboardHeight > 100) {
+                    const body = document.body;
+                    const html = document.documentElement;
+                    const paddingBottom = keyboardHeight + 20;
+
+                    body.style.paddingBottom = `${paddingBottom}px`;
+                    html.style.paddingBottom = `${paddingBottom}px`;
+
+                    window.AppDebug?.log(`[ChatSelectors] 📏 Aggiustato padding-bottom a ${paddingBottom}px (tastiera: ${keyboardHeight}px)`, 'info');
+
+                    setTimeout(() => {
+                        chatInput.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+                    }, 50);
+                }
+            }
         }, { passive: true });
         
         window.visualViewport.addEventListener('scroll', () => {
