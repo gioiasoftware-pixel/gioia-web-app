@@ -235,14 +235,14 @@ INFORMAZIONI UTENTE:
                     "is_html": True
                 }
             
-            # 2a-bis. Richieste di report inventario
+            # 2a-bis. Richieste di statistiche inventario
             if self._is_report_request(user_message):
-                logger.info(f"[AI_SERVICE] Richiesta report inventario rilevata, genero report card")
+                logger.info(f"[AI_SERVICE] Richiesta statistiche inventario rilevata, genero card statistiche")
                 report_response = await self._build_report_card_response(user_id)
                 return {
                     "message": report_response,
                     "metadata": {
-                        "type": "inventory_report",
+                        "type": "inventory_stats",
                         "model": None
                     },
                     "buttons": None,
@@ -918,17 +918,18 @@ INFORMAZIONI UTENTE:
     
     def _is_report_request(self, prompt: str) -> bool:
         """
-        Riconosce richieste di report inventario.
-        Pattern: report, riepilogo, statistiche inventario, ecc.
+        Riconosce richieste di statistiche/informazioni generiche inventario.
+        NON deve intercettare richieste di report movimenti.
         """
         p = prompt.lower().strip()
         report_keywords = [
-            "report", "riepilogo", "statistiche inventario", "report inventario",
-            "report di oggi", "report oggi", "report completo", "report completo inventario",
-            "statistiche complete", "riepilogo inventario"
+            "statistiche", "statistica inventario", "statistiche inventario",
+            "info inventario", "informazioni inventario", "riepilogo inventario",
+            "quanti vini", "totale vini", "totale bottiglie",
+            "inventario completo", "inventario generale"
         ]
         return any(keyword in p for keyword in report_keywords)
-    
+
     def _is_inventory_list_request(self, prompt: str) -> bool:
         """
         Riconosce richieste tipo: che vini ho? elenco/lista inventario, mostra inventario, ecc.
@@ -1335,7 +1336,7 @@ INFORMAZIONI UTENTE:
             # Genera card HTML
             movements_html = MovementsCardHelper.generate_movements_period_card_html(
                 movements_data=movements_data,
-                badge="📊 Movimenti"
+                badge="Statistiche"
             )
             
             return movements_html
@@ -1346,7 +1347,7 @@ INFORMAZIONI UTENTE:
     
     async def _build_report_card_response(self, user_id: int) -> str:
         """
-        Genera report inventario completo come wine card HTML.
+        Genera card statistiche inventario come wine card HTML.
         """
         try:
             from app.services.agents.wine_card_helper import WineCardHelper
@@ -1372,7 +1373,7 @@ INFORMAZIONI UTENTE:
             # Vini esauriti (0)
             out_of_stock = [w for w in wines if (w.quantity or 0) == 0]
             
-            # Genera report card HTML
+            # Genera card statistiche HTML
             report_html = WineCardHelper.generate_report_card_html(
                 total_wines=total_wines,
                 total_bottles=total_bottles,
@@ -1380,14 +1381,14 @@ INFORMAZIONI UTENTE:
                 types_distribution=types_count,
                 low_stock_wines=low_stock,
                 out_of_stock_wines=out_of_stock,
-                badge="📊 Report"
+                badge="Statistiche"
             )
             
             return report_html
         
         except Exception as e:
-            logger.error(f"[AI_SERVICE] Errore generazione report card: {e}", exc_info=True)
-            return '<div class="wine-card"><div class="wine-card-body"><p>Errore durante la generazione del report.</p></div></div>'
+            logger.error(f"[AI_SERVICE] Errore generazione card statistiche: {e}", exc_info=True)
+            return '<div class="wine-card"><div class="wine-card-body"><p>Errore durante la generazione delle statistiche.</p></div></div>'
     
     # ========== CASCADING RETRY SEARCH ==========
     
@@ -2761,4 +2762,8 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
 
 # Istanza globale
 ai_service = AIService()
+
+
+
+
 
