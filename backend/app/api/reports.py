@@ -6,6 +6,7 @@ from fastapi.responses import Response
 
 from app.core.auth import get_current_user
 from app.services.movements_service import get_movements_for_period
+from app.core.processor_client import processor_client
 
 router = APIRouter(prefix="/api/reports", tags=["reports"])
 
@@ -86,6 +87,33 @@ async def download_movements_pdf(
         period_description = start.strftime("%d/%m/%Y")
     else:
         period_description = f"{start.strftime('%d/%m/%Y')} - {end.strftime('%d/%m/%Y')}"
+
+    # Prova PDF con stesso stile del report giornaliero (processor)
+    if start == end:
+        pdf_data = await processor_client.get_daily_report_pdf(
+            user_id=user_id,
+            report_date=start.isoformat()
+        )
+        if pdf_data:
+            filename = f"report_movimenti_{start.isoformat()}_{end.isoformat()}.pdf"
+            return Response(
+                content=pdf_data,
+                media_type="application/pdf",
+                headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            )
+
+    pdf_data = await processor_client.get_movements_report_pdf_range(
+        user_id=user_id,
+        start_date=start.isoformat(),
+        end_date=end.isoformat()
+    )
+    if pdf_data:
+        filename = f"report_movimenti_{start.isoformat()}_{end.isoformat()}.pdf"
+        return Response(
+            content=pdf_data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
 
     movements_data = await get_movements_for_period(
         user_id=user_id,

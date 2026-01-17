@@ -433,6 +433,50 @@ class ProcessorClient:
             logger.error(f"[PROCESSOR_CLIENT] Errore get_daily_report_pdf: {e}", exc_info=True)
             return None
 
+    async def get_movements_report_pdf_range(
+        self,
+        user_id: int,
+        start_date: str,
+        end_date: str
+    ) -> Optional[bytes]:
+        """
+        Recupera PDF report movimenti per un range di date.
+
+        Args:
+            user_id: ID utente
+            start_date: Data inizio (YYYY-MM-DD)
+            end_date: Data fine (YYYY-MM-DD)
+        """
+        try:
+            url = f"{self.base_url}/api/reports/movements/{user_id}"
+            url += f"?start_date={start_date}&end_date={end_date}"
+
+            timeout = aiohttp.ClientTimeout(total=30.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    if response.status == 404:
+                        logger.debug(
+                            f"[PROCESSOR_CLIENT] Report movimenti range non trovato per user_id={user_id}, "
+                            f"start_date={start_date}, end_date={end_date}"
+                        )
+                        return None
+                    response.raise_for_status()
+                    pdf_data = await response.read()
+                    logger.info(
+                        f"[PROCESSOR_CLIENT] PDF movimenti range recuperato: {len(pdf_data)} bytes "
+                        f"per user_id={user_id}, start_date={start_date}, end_date={end_date}"
+                    )
+                    return pdf_data
+        except aiohttp.ClientResponseError as e:
+            if e.status == 404:
+                logger.debug(f"[PROCESSOR_CLIENT] Report movimenti range non trovato: {e}")
+                return None
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_movements_report_pdf_range: HTTP {e.status} - {e.message}")
+            return None
+        except Exception as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_movements_report_pdf_range: {e}", exc_info=True)
+            return None
+
 
 # Istanza globale del client
 processor_client = ProcessorClient()
