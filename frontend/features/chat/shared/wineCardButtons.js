@@ -802,6 +802,10 @@ if (typeof window !== 'undefined') {
                 if (!hasValidToken) {
                     window.AppDebug?.log('[WineCardButtons] Token non disponibile, provo con cookie', 'warn');
                 }
+                window.AppDebug?.log(
+                    `[WineCardButtons] PDF download debug: hasToken=${!!hasValidToken}, tokenLen=${token?.length || 0}, apiUrl=${apiUrl}`,
+                    'info'
+                );
 
                 if (!startDate || !endDate) {
                     window.AppDebug?.log('[WineCardButtons] Date periodo non disponibili per download PDF', 'error');
@@ -814,6 +818,10 @@ if (typeof window !== 'undefined') {
 
                 try {
                     const headers = hasValidToken ? { 'Authorization': `Bearer ${token}` } : {};
+                    window.AppDebug?.log(
+                        `[WineCardButtons] PDF download request: url=${url}, authHeader=${hasValidToken ? 'yes' : 'no'}, credentials=include`,
+                        'info'
+                    );
                     const response = await fetch(url, {
                         headers,
                         credentials: 'include'
@@ -821,6 +829,10 @@ if (typeof window !== 'undefined') {
 
                     if (!response.ok) {
                         const errorText = await response.text().catch(() => '');
+                        window.AppDebug?.log(
+                            `[WineCardButtons] PDF download failed: status=${response.status}, body=${errorText?.substring(0, 120) || 'n/a'}`,
+                            'error'
+                        );
                         throw new Error(`Errore download PDF: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
                     }
 
