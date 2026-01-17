@@ -777,6 +777,38 @@ if (typeof window !== 'undefined') {
                 const wineText = button.dataset.wineText || button.getAttribute('data-wine-text');
                 const movementType = button.dataset.movementType || button.getAttribute('data-movement-type');
                 const quantity = button.dataset.quantity || button.getAttribute('data-quantity');
+                const chatMessage = button.dataset.chatMessage || button.getAttribute('data-chat-message');
+                const chatLabel = button.dataset.chatLabel || button.getAttribute('data-chat-label');
+
+                // Fallback: gestione bottoni overview inventario anche senza setup
+                if (chatMessage) {
+                    const displayLabel = chatLabel || chatMessage;
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    try {
+                        if (!window.ChatAPI || !window.ChatAPI.sendMessage) {
+                            throw new Error('ChatAPI.sendMessage non disponibile');
+                        }
+
+                        const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                        const response = await window.ChatAPI.sendMessage(chatMessage, conversationId);
+
+                        if (response && response.message) {
+                            const addMessage = isMobile
+                                ? window.ChatMobile?.addMessage
+                                : window.ChatDesktop?.addMessage;
+                            if (addMessage) {
+                                addMessage('user', displayLabel);
+                                addMessage('ai', response.message, false, false, null, response.is_html);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('[WineCardButtons] Errore invio messaggio custom (delegation):', error);
+                        window.AppDebug?.log(`[WineCardButtons] Errore invio messaggio custom (delegation): ${error.message}`, 'error');
+                    }
+                    return;
+                }
                 
                 // Verifica che sia un bottone wine card (ha almeno wineId o wineText)
                 if (wineId || wineText) {
