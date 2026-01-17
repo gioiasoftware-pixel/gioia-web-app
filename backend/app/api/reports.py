@@ -166,6 +166,15 @@ async def download_inventory_stats_pdf(
     if not user_id:
         raise HTTPException(status_code=401, detail="Utente non autenticato.")
 
+    pdf_data = await processor_client.get_inventory_stats_pdf(user_id=user_id)
+    if pdf_data:
+        filename = "report_statistiche_inventario.pdf"
+        return Response(
+            content=pdf_data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+
     # Calcola statistiche inventario
     from app.core.database import db_manager
     wines = await db_manager.get_user_wines(user_id)

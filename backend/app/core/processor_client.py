@@ -477,6 +477,36 @@ class ProcessorClient:
             logger.error(f"[PROCESSOR_CLIENT] Errore get_movements_report_pdf_range: {e}", exc_info=True)
             return None
 
+    async def get_inventory_stats_pdf(
+        self,
+        user_id: int
+    ) -> Optional[bytes]:
+        """
+        Recupera PDF statistiche inventario per un utente.
+        """
+        try:
+            url = f"{self.base_url}/api/reports/inventory/{user_id}"
+
+            timeout = aiohttp.ClientTimeout(total=30.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(url) as response:
+                    if response.status == 404:
+                        logger.debug(f"[PROCESSOR_CLIENT] Report inventario non trovato per user_id={user_id}")
+                        return None
+                    response.raise_for_status()
+                    pdf_data = await response.read()
+                    logger.info(f"[PROCESSOR_CLIENT] PDF inventario recuperato: {len(pdf_data)} bytes per user_id={user_id}")
+                    return pdf_data
+        except aiohttp.ClientResponseError as e:
+            if e.status == 404:
+                logger.debug(f"[PROCESSOR_CLIENT] Report inventario non trovato: {e}")
+                return None
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_inventory_stats_pdf: HTTP {e.status} - {e.message}")
+            return None
+        except Exception as e:
+            logger.error(f"[PROCESSOR_CLIENT] Errore get_inventory_stats_pdf: {e}", exc_info=True)
+            return None
+
 
 # Istanza globale del client
 processor_client = ProcessorClient()
