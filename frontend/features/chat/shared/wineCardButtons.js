@@ -793,6 +793,31 @@ if (typeof window !== 'undefined') {
                     .toString()
                     .replace(/^Bearer\s+/i, '')
                     .trim();
+                const tokenSources = {
+                    windowAuthToken: typeof window !== 'undefined' && !!window.authToken,
+                    globalAuthToken: typeof authToken !== 'undefined' && !!authToken,
+                    localAuthToken: !!localStorage.getItem('authToken'),
+                    localAuthTokenAlt: !!localStorage.getItem('auth_token'),
+                    sessionAuthToken: !!sessionStorage.getItem('authToken'),
+                    sessionAuthTokenAlt: !!sessionStorage.getItem('auth_token')
+                };
+                const storageKeys = [];
+                try {
+                    for (let i = 0; i < localStorage.length; i++) {
+                        const key = localStorage.key(i);
+                        if (key && (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token'))) {
+                            storageKeys.push(`local:${key}`);
+                        }
+                    }
+                    for (let i = 0; i < sessionStorage.length; i++) {
+                        const key = sessionStorage.key(i);
+                        if (key && (key.toLowerCase().includes('auth') || key.toLowerCase().includes('token'))) {
+                            storageKeys.push(`session:${key}`);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('[WineCardButtons] Errore lettura storage keys:', err);
+                }
 
                 if (!apiUrl) {
                     window.AppDebug?.log('[WineCardButtons] API_BASE_URL non disponibile per download PDF', 'error');
@@ -806,6 +831,13 @@ if (typeof window !== 'undefined') {
                     `[WineCardButtons] PDF download debug: hasToken=${!!hasValidToken}, tokenLen=${token?.length || 0}, apiUrl=${apiUrl}`,
                     'info'
                 );
+                console.log('[WineCardButtons] PDF download debug', {
+                    hasToken: !!hasValidToken,
+                    tokenLen: token?.length || 0,
+                    apiUrl,
+                    tokenSources,
+                    storageKeys
+                });
 
                 if (!startDate || !endDate) {
                     window.AppDebug?.log('[WineCardButtons] Date periodo non disponibili per download PDF', 'error');
@@ -822,6 +854,12 @@ if (typeof window !== 'undefined') {
                         `[WineCardButtons] PDF download request: url=${url}, authHeader=${hasValidToken ? 'yes' : 'no'}, credentials=include`,
                         'info'
                     );
+                    console.log('[WineCardButtons] PDF download request', {
+                        url,
+                        authHeader: hasValidToken,
+                        credentials: 'include',
+                        headersKeys: Object.keys(headers)
+                    });
                     const response = await fetch(url, {
                         headers,
                         credentials: 'include'
@@ -833,6 +871,10 @@ if (typeof window !== 'undefined') {
                             `[WineCardButtons] PDF download failed: status=${response.status}, body=${errorText?.substring(0, 120) || 'n/a'}`,
                             'error'
                         );
+                        console.error('[WineCardButtons] PDF download failed', {
+                            status: response.status,
+                            body: errorText?.substring(0, 200) || 'n/a'
+                        });
                         throw new Error(`Errore download PDF: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
                     }
 
