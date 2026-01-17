@@ -70,7 +70,7 @@ async def download_movements_pdf(
     period_label: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user)
 ):
-    user_id = current_user.get("id")
+    user_id = current_user.get("user_id") or current_user.get("id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Utente non autenticato.")
 
