@@ -156,3 +156,58 @@ async def download_movements_pdf(
         media_type="application/pdf",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+
+@router.get("/inventory/pdf")
+async def download_inventory_stats_pdf(
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = current_user.get("user_id") or current_user.get("id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Utente non autenticato.")
+
+    # Calcola statistiche inventario
+    from app.core.database import db_manager
+    wines = await db_manager.get_user_wines(user_id)
+    if not wines:
+        raise HTTPException(status_code=404, detail="Inventario vuoto.")
+
+    total_wines = len(wines)
+    total_bottles = sum(w.quantity or 0 for w in wines)
+    total_value = sum((w.selling_price or 0) * (w.quantity or 0) for w in wines)
+
+    types_count = {}
+    for wine in wines:
+        wine_type = wine.wine_type or "Altro"
+        types_count[wine_type] = types_count.get(wine_type, 0) + 1
+
+    low_stock = [w for w in wines if (w.quantity or 0) < 5 and (w.quantity or 0) > 0]
+    out_of_stock = [w for w in wines if (w.quantity or 0) == 0]
+
+    lines = [
+        "Report Statistiche Inventario",
+        "",
+        f"Vini totali: {total_wines}",
+        f"Bottiglie totali: {total_bottles}",
+        f"Valore stimato: {total_value:.2f}",
+        "",
+        "Distribuzione per tipo:"
+    ]
+
+    for wine_type, count in sorted(types_count.items(), key=lambda x: x[1], reverse=True):
+        lines.append(f"- {wine_type}: {count}")
+
+    lines += [
+        "",
+        f"Vini a bassa scorta (<5): {len(low_stock)}",
+        f"Vini esauriti (0): {len(out_of_stock)}"
+    ]
+
+    pdf_bytes = _build_simple_pdf(lines)
+    filename = "report_statistiche_inventario.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename=\"{filename}\"'}
+    )

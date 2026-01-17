@@ -893,6 +893,63 @@ if (typeof window !== 'undefined') {
                 }
                 return;
             }
+
+            const statsDownloadButton = e.target.closest?.('[data-inventory-stats-download]');
+            if (statsDownloadButton) {
+                e.stopPropagation();
+                e.preventDefault();
+
+                const rawToken =
+                    (typeof window !== 'undefined' && window.authToken) ||
+                    (typeof authToken !== 'undefined' ? authToken : null) ||
+                    localStorage.getItem('authToken') ||
+                    localStorage.getItem('auth_token') ||
+                    sessionStorage.getItem('authToken') ||
+                    sessionStorage.getItem('auth_token');
+                const apiUrl = (typeof window !== 'undefined' && window.API_BASE_URL) ||
+                    (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : null);
+                const token = (rawToken || '')
+                    .toString()
+                    .replace(/^Bearer\s+/i, '')
+                    .trim();
+
+                if (!apiUrl) {
+                    window.AppDebug?.log('[WineCardButtons] API_BASE_URL non disponibile per download PDF', 'error');
+                    return;
+                }
+                const hasValidToken = token && token !== 'null' && token !== 'undefined';
+                if (!hasValidToken) {
+                    window.AppDebug?.log('[WineCardButtons] Token non disponibile, provo con cookie', 'warn');
+                }
+
+                const url = `${apiUrl}/api/reports/inventory/pdf`;
+                try {
+                    const headers = hasValidToken ? { 'Authorization': `Bearer ${token}` } : {};
+                    const response = await fetch(url, {
+                        headers,
+                        credentials: 'include'
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        throw new Error(`Errore download PDF: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
+                    }
+
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = 'report_statistiche_inventario.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(blobUrl);
+                } catch (error) {
+                    console.error('[WineCardButtons] Errore download PDF stats:', error);
+                    window.AppDebug?.log(`[WineCardButtons] Errore download PDF stats: ${error.message}`, 'error');
+                }
+                return;
+            }
             
             // Cerca se il click è su un bottone wine card
             const button = e.target.closest?.('.chat-button, .wines-list-item-button');

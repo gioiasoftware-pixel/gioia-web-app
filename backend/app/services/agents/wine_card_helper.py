@@ -267,6 +267,9 @@ class WineCardHelper:
         html += '<div><h3 class="wine-card-title">📦 Statistiche Inventario</h3>'
         html += '<div class="wine-card-producer">Statistiche generate automaticamente</div>'
         html += '</div>'
+        html += '<div class="movements-header-actions">'
+        html += '<button class="movements-download-btn" data-inventory-stats-download="true">Scarica PDF</button>'
+        html += '</div>'
         html += '</div>'  # Chiude wine-card-header
         
         # Body con statistiche
