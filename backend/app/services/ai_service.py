@@ -1435,6 +1435,34 @@ INFORMAZIONI UTENTE:
             logger.error(f"[INVENTORY_LIST] Errore costruzione lista: {e}", exc_info=True)
             return self._generate_error_message_html("Errore nel recupero dell'inventario. Riprova.")
     
+    def _build_movements_period_prompt_card(self) -> str:
+        """
+        Card con scelta periodo per movimenti.
+        """
+        html = '<div class="wine-card report-card movements-period-card">'
+        html += '<div class="wine-card-header">'
+        html += '<div class="wine-card-badge">Movimenti</div>'
+        html += '<div><h3 class="wine-card-title">Seleziona il periodo</h3>'
+        html += '<div class="wine-card-producer">Scegli un periodo rapido o scrivi una data</div>'
+        html += '</div>'
+        html += '</div>'
+
+        html += '<div class="wine-card-body">'
+        html += '<div class="chat-buttons">'
+        html += '<button class="chat-button" data-chat-message="oggi" data-chat-label="Oggi">Oggi</button>'
+        html += '<button class="chat-button" data-chat-message="ieri" data-chat-label="Ieri">Ieri</button>'
+        html += '<button class="chat-button" data-chat-message="ultimi 7 giorni" data-chat-label="Ultimi 7 giorni">Ultimi 7 giorni</button>'
+        html += '<button class="chat-button" data-chat-message="ultimi 30 giorni" data-chat-label="Ultimi 30 giorni">Ultimi 30 giorni</button>'
+        html += '</div>'
+        html += '<div class="wine-card-field">'
+        html += '<span class="wine-card-field-label">Oppure una data specifica</span>'
+        html += '<span class="wine-card-field-value">Esempio: 01/01/2024</span>'
+        html += '</div>'
+        html += '</div>'
+
+        html += '</div>'
+        return html
+
     async def _build_movements_response(self, user_id: int, period: Optional[str], user_message: str) -> str:
         """
         Genera risposta HTML con movimenti per periodo.
@@ -1448,7 +1476,7 @@ INFORMAZIONI UTENTE:
                 start_date, end_date, period_desc = parse_period(user_message)
                 if start_date is None:
                     # Periodo non riconosciuto, chiedi all'utente
-                    return '<div class="wine-card"><div class="wine-card-body"><p>Per quale periodo vuoi vedere i movimenti?<br>Puoi chiedere per: oggi, ieri, ultimi 7 giorni, ultimi 30 giorni, o una data specifica (es: 01/01/2024)</p></div></div>'
+                    return self._build_movements_period_prompt_card()
             else:
                 # Converti period in descrizione e date
                 period_map = {
