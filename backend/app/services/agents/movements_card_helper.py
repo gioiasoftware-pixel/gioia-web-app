@@ -31,11 +31,17 @@ class MovementsCardHelper:
         total_consumi = movements_data.get("total_consumi", 0)
         total_rifornimenti = movements_data.get("total_rifornimenti", 0)
         period_description = movements_data.get("period_description", "")
+        start_date = movements_data.get("start_date", "")
+        end_date = movements_data.get("end_date", "")
         
         if not wines:
             return f'<div class="wine-card"><div class="wine-card-body"><p>Nessun movimento trovato per {period_description}.</p></div></div>'
         
-        html = '<div class="wine-card movements-period-card">'
+        html = '<div class="wine-card movements-period-card"'
+        html += f' data-start-date="{WineCardHelper.escape_html(start_date)}"'
+        html += f' data-end-date="{WineCardHelper.escape_html(end_date)}"'
+        html += f' data-period-label="{WineCardHelper.escape_html(period_description)}"'
+        html += '>'
         
         # Header con icona e badge
         html += '<div class="wine-card-header movements-header">'
@@ -44,6 +50,15 @@ class MovementsCardHelper:
         html += f'<div class="movements-header-title-section">'
         html += f'<h3 class="wine-card-title movements-title">Movimenti - {WineCardHelper.escape_html(period_description)}</h3>'
         html += f'<div class="wine-card-producer movements-subtitle">Riepilogo completo dei movimenti</div>'
+        html += '</div>'
+        html += '<div class="movements-header-actions">'
+        html += (
+            '<button class="movements-download-btn" data-movements-download="true" '
+            f'data-start-date="{WineCardHelper.escape_html(start_date)}" '
+            f'data-end-date="{WineCardHelper.escape_html(end_date)}" '
+            f'data-period-label="{WineCardHelper.escape_html(period_description)}">'
+            'Scarica PDF</button>'
+        )
         html += '</div>'
         html += '</div>'
         html += f'<div class="wine-card-badge movements-badge">{WineCardHelper.escape_html(badge)}</div>'

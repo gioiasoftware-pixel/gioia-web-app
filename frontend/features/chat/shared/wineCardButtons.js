@@ -769,6 +769,63 @@ if (typeof window !== 'undefined') {
             } else {
                 window.AppDebug?.log(`[WineCardButtons] ⚠️ Nessun bottone wine card trovato nel click`, 'info');
             }
+
+            const downloadButton = e.target.closest?.('[data-movements-download]');
+            if (downloadButton) {
+                e.stopPropagation();
+                e.preventDefault();
+
+                const card = downloadButton.closest('.movements-period-card');
+                const startDate = downloadButton.dataset.startDate || card?.dataset?.startDate;
+                const endDate = downloadButton.dataset.endDate || card?.dataset?.endDate;
+                const periodLabel = downloadButton.dataset.periodLabel || card?.dataset?.periodLabel || 'periodo';
+
+                const token = (typeof window !== 'undefined' && window.authToken) ||
+                    (typeof authToken !== 'undefined' ? authToken : null);
+                const apiUrl = (typeof window !== 'undefined' && window.API_BASE_URL) ||
+                    (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : null);
+
+                if (!token || !apiUrl) {
+                    window.AppDebug?.log('[WineCardButtons] Token o API_BASE_URL non disponibili per download PDF', 'error');
+                    return;
+                }
+
+                if (!startDate || !endDate) {
+                    window.AppDebug?.log('[WineCardButtons] Date periodo non disponibili per download PDF', 'error');
+                    return;
+                }
+
+                const safeLabel = periodLabel.replace(/[^a-z0-9_-]+/gi, '_');
+                const filename = `report_movimenti_${safeLabel}.pdf`;
+                const url = `${apiUrl}/api/reports/movements/pdf?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}&period_label=${encodeURIComponent(periodLabel)}`;
+
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => '');
+                        throw new Error(`Errore download PDF: ${response.status} ${errorText ? `- ${errorText.substring(0, 100)}` : ''}`);
+                    }
+
+                    const blob = await response.blob();
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = blobUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    URL.revokeObjectURL(blobUrl);
+                } catch (error) {
+                    console.error('[WineCardButtons] Errore download PDF:', error);
+                    window.AppDebug?.log(`[WineCardButtons] Errore download PDF: ${error.message}`, 'error');
+                }
+                return;
+            }
             
             // Cerca se il click è su un bottone wine card
             const button = e.target.closest?.('.chat-button, .wines-list-item-button');
