@@ -773,6 +773,8 @@ if (typeof window !== 'undefined') {
             // Cerca se il click è su un bottone wine card
             const button = e.target.closest?.('.chat-button, .wines-list-item-button');
             if (button && (button.classList.contains('wines-list-item-button') || button.classList.contains('chat-button'))) {
+                const isMobile = window.LayoutBoundary?.isMobileNamespace() ||
+                    document.documentElement.classList.contains('mobileRoot');
                 const wineId = button.dataset.wineId || button.getAttribute('data-wine-id');
                 const wineText = button.dataset.wineText || button.getAttribute('data-wine-text');
                 const movementType = button.dataset.movementType || button.getAttribute('data-movement-type');
