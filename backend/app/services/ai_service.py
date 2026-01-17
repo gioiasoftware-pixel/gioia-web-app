@@ -1033,7 +1033,10 @@ INFORMAZIONI UTENTE:
         if not last_assistant:
             return False
 
-        return ("per quale periodo" in last_assistant and "movimenti" in last_assistant)
+        has_legacy_prompt = "per quale periodo" in last_assistant and "movimenti" in last_assistant
+        has_card_prompt = "movements-period-card" in last_assistant
+        has_card_copy = ("seleziona il periodo" in last_assistant and "movimenti" in last_assistant)
+        return has_legacy_prompt or has_card_prompt or has_card_copy
 
     def _is_inventory_overview_request(self, prompt: str) -> bool:
         """
@@ -2942,6 +2945,8 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
 
 # Istanza globale
 ai_service = AIService()
+
+
 
 
 
