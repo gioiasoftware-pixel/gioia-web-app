@@ -256,6 +256,17 @@ INFORMAZIONI UTENTE:
                     "is_html": True
                 }
             
+            # 2a-bis. Follow-up periodo movimenti (es: "ultimi 30 giorni")
+            if self._is_followup_movement_period(conversation_history, user_message):
+                logger.info("[AI_SERVICE] Follow-up periodo movimenti rilevato")
+                movements_response = await self._build_movements_response(user_id, None, user_message)
+                return {
+                    "message": movements_response,
+                    "metadata": {"type": "movement_summary", "period": None},
+                    "buttons": None,
+                    "is_html": True
+                }
+
             # 2b. Richieste generiche inventario (mostra selezione)
             if self._is_inventory_overview_request(user_message):
                 logger.info("[AI_SERVICE] Richiesta inventario generica, mostro selezione")
@@ -964,6 +975,65 @@ INFORMAZIONI UTENTE:
         if "[inventory_movements]" in p:
             return "movements"
         return None
+
+    def _is_movement_period_only_request(self, prompt: str) -> bool:
+        """
+        Riconosce richieste di periodo senza keyword movimenti.
+        Esempi: "oggi", "ieri", "ultimi 30 giorni".
+        """
+        p = prompt.lower().strip()
+        patterns = [
+            r"\boggi\b",
+            r"\bieri\b",
+            r"\bultimi\s+7\s+giorni\b",
+            r"\bultime\s+7\s+giorni\b",
+            r"\bultima\s+settimana\b",
+            r"\bultimi\s+30\s+giorni\b",
+            r"\bultime\s+30\s+giorni\b",
+            r"\bultimo\s+mese\b",
+            r"\b7\s+giorni\b",
+            r"\b30\s+giorni\b",
+            r"\d{1,2}/\d{1,2}/\d{4}",
+            r"\d{4}-\d{1,2}-\d{1,2}",
+            r"\d{1,2}-\d{1,2}-\d{4}",
+        ]
+        return any(re.search(pt, p) for pt in patterns)
+
+    def _is_followup_movement_period(
+        self,
+        conversation_history: Optional[List[Dict[str, str]]],
+        prompt: str
+    ) -> bool:
+        """
+        Riconosce il follow-up dopo che l'assistente ha chiesto il periodo movimenti.
+        """
+        if not conversation_history:
+            return False
+
+        p = prompt.lower().strip()
+
+        # Se e' gia' un comando esplicito, non e' follow-up
+        if self._get_inventory_overview_command(p):
+            return False
+
+        # Se include keyword movimenti, verra' gestito dal parser principale
+        is_movement, _ = self._is_movement_summary_request(p)
+        if is_movement:
+            return False
+
+        if not self._is_movement_period_only_request(p):
+            return False
+
+        last_assistant = None
+        for msg in reversed(conversation_history):
+            if msg.get("role") == "assistant" and msg.get("content"):
+                last_assistant = msg.get("content").lower()
+                break
+
+        if not last_assistant:
+            return False
+
+        return ("per quale periodo" in last_assistant and "movimenti" in last_assistant)
 
     def _is_inventory_overview_request(self, prompt: str) -> bool:
         """
@@ -2844,6 +2914,8 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
 
 # Istanza globale
 ai_service = AIService()
+
+
 
 
 
