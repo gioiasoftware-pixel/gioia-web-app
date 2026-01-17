@@ -220,24 +220,10 @@ INFORMAZIONI UTENTE:
             
             # 2. Rilevamento richieste specifiche PRIMA di function calling (bypass AI quando possibile)
             
-            # 2a. Richieste esplicite di elenco inventario
-            if self._is_inventory_list_request(user_message):
-                logger.info(f"[AI_SERVICE] Richiesta lista inventario rilevata, bypass AI")
-                inventory_response = await self._build_inventory_list_response(user_id, limit=50)
-                # _build_inventory_list_response ora restituisce sempre HTML
-                return {
-                    "message": inventory_response,
-                    "metadata": {
-                        "type": "inventory_list",
-                        "model": None
-                    },
-                    "buttons": None,
-                    "is_html": True
-                }
-            
-            # 2a-bis. Richieste di statistiche inventario
-            if self._is_report_request(user_message):
-                logger.info(f"[AI_SERVICE] Richiesta statistiche inventario rilevata, genero card statistiche")
+            # 2a. Comandi espliciti da card inventario (bottoni)
+            overview_command = self._get_inventory_overview_command(user_message)
+            if overview_command == "stats":
+                logger.info("[AI_SERVICE] Comando inventario: stats")
                 report_response = await self._build_report_card_response(user_id)
                 return {
                     "message": report_response,
@@ -248,8 +234,43 @@ INFORMAZIONI UTENTE:
                     "buttons": None,
                     "is_html": True
                 }
+            if overview_command == "list":
+                logger.info("[AI_SERVICE] Comando inventario: list")
+                inventory_response = await self._build_inventory_list_response(user_id, limit=50)
+                return {
+                    "message": inventory_response,
+                    "metadata": {
+                        "type": "inventory_list",
+                        "model": None
+                    },
+                    "buttons": None,
+                    "is_html": True
+                }
+            if overview_command == "movements":
+                logger.info("[AI_SERVICE] Comando inventario: movements")
+                movements_response = await self._build_movements_response(user_id, None, "movimenti")
+                return {
+                    "message": movements_response,
+                    "metadata": {"type": "movement_summary", "period": None},
+                    "buttons": None,
+                    "is_html": True
+                }
             
-            # 2b. Richieste di riepilogo movimenti
+            # 2b. Richieste generiche inventario (mostra selezione)
+            if self._is_inventory_overview_request(user_message):
+                logger.info("[AI_SERVICE] Richiesta inventario generica, mostro selezione")
+                overview_html = self._build_inventory_overview_card_response()
+                return {
+                    "message": overview_html,
+                    "metadata": {
+                        "type": "inventory_overview",
+                        "model": None
+                    },
+                    "buttons": None,
+                    "is_html": True
+                }
+
+            # 2c. Richieste di riepilogo movimenti
             is_movement_request, period = self._is_movement_summary_request(user_message)
             if is_movement_request:
                 logger.info(f"[AI_SERVICE] Richiesta movimenti rilevata: period={period}")
@@ -918,17 +939,72 @@ INFORMAZIONI UTENTE:
     
     def _is_report_request(self, prompt: str) -> bool:
         """
-        Riconosce richieste di statistiche/informazioni generiche inventario.
+        Riconosce richieste generiche su tutto l'inventario (statistiche/report/info).
         NON deve intercettare richieste di report movimenti.
         """
         p = prompt.lower().strip()
         report_keywords = [
             "statistiche", "statistica inventario", "statistiche inventario",
+            "report", "report inventario", "report completo", "report completo inventario",
             "info inventario", "informazioni inventario", "riepilogo inventario",
             "quanti vini", "totale vini", "totale bottiglie",
             "inventario completo", "inventario generale"
         ]
         return any(keyword in p for keyword in report_keywords)
+
+    def _get_inventory_overview_command(self, prompt: str) -> Optional[str]:
+        """
+        Riconosce comandi speciali dei bottoni overview inventario.
+        """
+        p = prompt.lower().strip()
+        if "[inventory_stats]" in p:
+            return "stats"
+        if "[inventory_list]" in p:
+            return "list"
+        if "[inventory_movements]" in p:
+            return "movements"
+        return None
+
+    def _is_inventory_overview_request(self, prompt: str) -> bool:
+        """
+        Riconosce richieste generiche su tutto l'inventario.
+        Mostra una card di selezione con diversi tipi di info.
+        """
+        p = prompt.lower().strip()
+
+        # Se e' un comando esplicito, non e' una richiesta generica
+        if self._get_inventory_overview_command(p):
+            return False
+
+        # Se riguarda movimenti, lascia gestire al parser movimenti
+        is_movement, _ = self._is_movement_summary_request(p)
+        if is_movement:
+            return False
+
+        # Se contiene filtri specifici, non e' una richiesta generica
+        filter_keywords = [
+            'italia', 'italiano', 'francia', 'francese', 'spagna', 'spagnolo', 'germania', 'tedesco',
+            'toscana', 'piemonte', 'veneto', 'sicilia', 'puglia', 'lombardia', 'trentino', 'emilia',
+            'rosso', 'bianco', 'spumante', 'rosato', 'dolce', 'secco',
+            'prezzo', 'annata', 'produttore', 'cantina', 'azienda', 'vitigno', 'uva', 'region', 'country'
+        ]
+        if any(kw in p for kw in filter_keywords):
+            return False
+
+        patterns = [
+            r"\bstatistiche\b",
+            r"\breport\b",
+            r"\binventario\b",
+            r"\bmostra\s+i\s+vini\b",
+            r"\bmostrami\s+i\s+vini\b",
+            r"\bmostra\s+tutti\s+i\s+vini\b",
+            r"\belenco\s+vini\b",
+            r"\blista\s+vini\b",
+            r"\binventario\s+completo\b",
+            r"\binfo\s+inventario\b",
+            r"\binformazioni\s+inventario\b",
+        ]
+        return any(re.search(pt, p) for pt in patterns)
 
     def _is_inventory_list_request(self, prompt: str) -> bool:
         """
@@ -1345,6 +1421,12 @@ INFORMAZIONI UTENTE:
             logger.error(f"[AI_SERVICE] Errore generazione movimenti card: {e}", exc_info=True)
             return '<div class="wine-card"><div class="wine-card-body"><p>Errore durante il recupero dei movimenti.</p></div></div>'
     
+    def _build_inventory_overview_card_response(self) -> str:
+        """
+        Genera la card di selezione per richieste generiche inventario.
+        """
+        from app.services.agents.wine_card_helper import WineCardHelper
+        return WineCardHelper.generate_inventory_overview_card_html()
     async def _build_report_card_response(self, user_id: int) -> str:
         """
         Genera card statistiche inventario come wine card HTML.
@@ -2762,6 +2844,12 @@ Rispondi sempre in italiano in modo chiaro e professionale."""
 
 # Istanza globale
 ai_service = AIService()
+
+
+
+
+
+
 
 
 

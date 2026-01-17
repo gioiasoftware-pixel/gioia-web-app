@@ -210,6 +210,30 @@ class WineCardHelper:
         return html
     
     @staticmethod
+    def generate_inventory_overview_card_html() -> str:
+        """
+        Genera una card di selezione per richieste generiche di inventario.
+        """
+        html = '<div class="wine-card report-card inventory-overview-card">'
+        html += '<div class="wine-card-header">'
+        html += '<div class="wine-card-badge">Inventario</div>'
+        html += '<div><h3 class="wine-card-title">Scegli il tipo di info</h3>'
+        html += '<div class="wine-card-producer">Seleziona la card informativa che ti serve</div>'
+        html += '</div>'
+        html += '</div>'
+
+        html += '<div class="wine-card-body">'
+        html += '<div class="chat-buttons">'
+        html += '<button class="chat-button" data-chat-message="[inventory_stats]" data-chat-label="Statistiche inventario">Statistiche inventario</button>'
+        html += '<button class="chat-button" data-chat-message="[inventory_list]" data-chat-label="Lista completa vini">Lista completa vini</button>'
+        html += '<button class="chat-button" data-chat-message="[inventory_movements]" data-chat-label="Report movimenti">Report movimenti</button>'
+        html += '</div>'
+        html += '</div>'
+
+        html += '</div>'
+        return html
+
+    @staticmethod
     def generate_report_card_html(
         total_wines: int,
         total_bottles: int,
@@ -217,7 +241,7 @@ class WineCardHelper:
         types_distribution: Dict[str, int],
         low_stock_wines: List,
         out_of_stock_wines: List,
-        badge: Optional[str] = "📈 Statistiche"
+        badge: Optional[str] = "Statistiche"
     ) -> str:
         """
         Genera una wine card dedicata per report inventario.
@@ -304,4 +328,6 @@ class WineCardHelper:
         html += '</div>'  # Chiude wine-card
         
         return html
+
+
 
