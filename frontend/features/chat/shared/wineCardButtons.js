@@ -780,8 +780,13 @@ if (typeof window !== 'undefined') {
                 const endDate = downloadButton.dataset.endDate || card?.dataset?.endDate;
                 const periodLabel = downloadButton.dataset.periodLabel || card?.dataset?.periodLabel || 'periodo';
 
-                const token = (typeof window !== 'undefined' && window.authToken) ||
-                    (typeof authToken !== 'undefined' ? authToken : null);
+                const token =
+                    (typeof window !== 'undefined' && window.authToken) ||
+                    (typeof authToken !== 'undefined' ? authToken : null) ||
+                    localStorage.getItem('authToken') ||
+                    localStorage.getItem('auth_token') ||
+                    sessionStorage.getItem('authToken') ||
+                    sessionStorage.getItem('auth_token');
                 const apiUrl = (typeof window !== 'undefined' && window.API_BASE_URL) ||
                     (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : null);
 
