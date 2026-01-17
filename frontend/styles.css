@@ -2322,7 +2322,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         background-color: var(--color-white);
         border-radius: 8px;
         width: 90%;
-        max-width: 900px;
+        max-width: 1200px;
         max-height: 90vh;
         display: flex;
         flex-direction: column;
@@ -2407,8 +2407,8 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
 
     .viewer-movements-layout {
         display: grid;
-        grid-template-columns: 260px 1fr 260px;
-        gap: 20px;
+        grid-template-columns: 240px minmax(560px, 1fr) 240px;
+        gap: 24px;
         align-items: start;
     }
 
@@ -2494,6 +2494,7 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
         position: relative;
         height: 400px;
         width: 100%;
+        min-width: 520px;
     }
 
     #viewer-movements-chart-container .loading,
