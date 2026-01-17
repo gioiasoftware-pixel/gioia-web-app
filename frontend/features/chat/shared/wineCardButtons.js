@@ -780,7 +780,7 @@ if (typeof window !== 'undefined') {
                 const endDate = downloadButton.dataset.endDate || card?.dataset?.endDate;
                 const periodLabel = downloadButton.dataset.periodLabel || card?.dataset?.periodLabel || 'periodo';
 
-                const token =
+                const rawToken =
                     (typeof window !== 'undefined' && window.authToken) ||
                     (typeof authToken !== 'undefined' ? authToken : null) ||
                     localStorage.getItem('authToken') ||
@@ -789,10 +789,18 @@ if (typeof window !== 'undefined') {
                     sessionStorage.getItem('auth_token');
                 const apiUrl = (typeof window !== 'undefined' && window.API_BASE_URL) ||
                     (typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : null);
+                const token = (rawToken || '')
+                    .toString()
+                    .replace(/^Bearer\s+/i, '')
+                    .trim();
 
-                if (!token || !apiUrl) {
-                    window.AppDebug?.log('[WineCardButtons] Token o API_BASE_URL non disponibili per download PDF', 'error');
+                if (!apiUrl) {
+                    window.AppDebug?.log('[WineCardButtons] API_BASE_URL non disponibile per download PDF', 'error');
                     return;
+                }
+                const hasValidToken = token && token !== 'null' && token !== 'undefined';
+                if (!hasValidToken) {
+                    window.AppDebug?.log('[WineCardButtons] Token non disponibile, provo con cookie', 'warn');
                 }
 
                 if (!startDate || !endDate) {
@@ -805,10 +813,10 @@ if (typeof window !== 'undefined') {
                 const url = `${apiUrl}/api/reports/movements/pdf?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}&period_label=${encodeURIComponent(periodLabel)}`;
 
                 try {
+                    const headers = hasValidToken ? { 'Authorization': `Bearer ${token}` } : {};
                     const response = await fetch(url, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
+                        headers,
+                        credentials: 'include'
                     });
 
                     if (!response.ok) {
