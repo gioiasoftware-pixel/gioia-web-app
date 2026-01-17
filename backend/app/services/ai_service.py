@@ -1446,7 +1446,7 @@ INFORMAZIONI UTENTE:
         html += '<div class="wine-card-header">'
         html += '<div class="wine-card-badge">Movimenti</div>'
         html += '<div><h3 class="wine-card-title">Seleziona il periodo</h3>'
-        html += '<div class="wine-card-producer">Scegli un periodo rapido o scrivi una data</div>'
+        html += '<div class="wine-card-producer">Scegli un periodo rapido o imposta una data</div>'
         html += '</div>'
         html += '</div>'
 
@@ -1457,9 +1457,25 @@ INFORMAZIONI UTENTE:
         html += '<button class="chat-button" data-chat-message="ultimi 7 giorni" data-chat-label="Ultimi 7 giorni">Ultimi 7 giorni</button>'
         html += '<button class="chat-button" data-chat-message="ultimi 30 giorni" data-chat-label="Ultimi 30 giorni">Ultimi 30 giorni</button>'
         html += '</div>'
-        html += '<div class="wine-card-field">'
+
+        html += '<div class="wine-card-field movements-date-picker">'
         html += '<span class="wine-card-field-label">Oppure una data specifica</span>'
-        html += '<span class="wine-card-field-value">Esempio: 01/01/2024</span>'
+        html += '<div class="chat-buttons">'
+        html += '<select class="chat-select" data-chat-date-part="day">'
+        html += '<option value="">Giorno</option>'
+        html += ''.join([f'<option value="{d:02d}">{d:02d}</option>' for d in range(1, 32)])
+        html += '</select>'
+        html += '<select class="chat-select" data-chat-date-part="month">'
+        html += '<option value="">Mese</option>'
+        html += ''.join([f'<option value="{m:02d}">{m:02d}</option>' for m in range(1, 13)])
+        html += '</select>'
+        html += '<select class="chat-select" data-chat-date-part="year">'
+        html += '<option value="">Anno</option>'
+        html += ''.join([f'<option value="{y}">{y}</option>' for y in range(2020, 2031)])
+        html += '</select>'
+        html += '<button class="chat-button" data-chat-date-picker="true" data-chat-label="Data specifica">Conferma</button>'
+        html += '</div>'
+        html += '<div class="wine-card-field-value">Esempio: 01/01/2024</div>'
         html += '</div>'
         html += '</div>'
 

@@ -781,6 +781,46 @@ if (typeof window !== 'undefined') {
                 const quantity = button.dataset.quantity || button.getAttribute('data-quantity');
                 const chatMessage = button.dataset.chatMessage || button.getAttribute('data-chat-message');
                 const chatLabel = button.dataset.chatLabel || button.getAttribute('data-chat-label');
+                const datePickerAction = button.dataset.chatDatePicker || button.getAttribute('data-chat-date-picker');
+
+                if (datePickerAction) {
+                    const card = button.closest('.movements-period-card') || button.closest('.wine-card');
+                    const day = card?.querySelector('[data-chat-date-part="day"]')?.value;
+                    const month = card?.querySelector('[data-chat-date-part="month"]')?.value;
+                    const year = card?.querySelector('[data-chat-date-part="year"]')?.value;
+
+                    if (!day || !month || !year) {
+                        window.AppDebug?.log('[WineCardButtons] Seleziona giorno, mese e anno prima di confermare', 'warn');
+                        return;
+                    }
+
+                    const formattedDate = `${day}/${month}/${year}`;
+                    e.stopPropagation();
+                    e.preventDefault();
+
+                    try {
+                        if (!window.ChatAPI || !window.ChatAPI.sendMessage) {
+                            throw new Error('ChatAPI.sendMessage non disponibile');
+                        }
+
+                        const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                        const response = await window.ChatAPI.sendMessage(formattedDate, conversationId);
+
+                        if (response && response.message) {
+                            const addMessage = isMobile
+                                ? window.ChatMobile?.addMessage
+                                : window.ChatDesktop?.addMessage;
+                            if (addMessage) {
+                                addMessage('user', `Data: ${formattedDate}`);
+                                addMessage('ai', response.message, false, false, null, response.is_html);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('[WineCardButtons] Errore invio data specifica:', error);
+                        window.AppDebug?.log(`[WineCardButtons] Errore invio data specifica: ${error.message}`, 'error');
+                    }
+                    return;
+                }
 
                 // Fallback: gestione bottoni overview inventario anche senza setup
                 if (chatMessage) {
