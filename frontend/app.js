@@ -281,7 +281,8 @@ function addUniversalEventListener(element, handler, options = {}) {
         const elementIsScrollable = isScrollable();
         const eventType = e.type;
         const now = Date.now();
-        const state = getTouchState();
+        const state = getTouchState();
+
         
         // Se è un evento touchstart
         if (eventType === 'touchstart') {
@@ -4101,6 +4102,93 @@ function handleViewerDownloadCSV() {
 let currentMovementsChart = null;
 let currentMovementsWineName = null;
 let currentMovementsPreset = 'week';
+function formatMovementsDate(value) {
+    if (!value) return '-';
+    try {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleString('it-IT', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (e) {
+        return value;
+    }
+}
+
+function renderMovementsList(container, movements = []) {
+    if (!container) return;
+    if (!movements || movements.length === 0) {
+        container.innerHTML = '<div class="viewer-movements-panel-content">Nessun movimento disponibile</div>';
+        return;
+    }
+
+    const sorted = [...movements].sort((a, b) => {
+        const da = new Date(a.at || a.date || 0).getTime();
+        const db = new Date(b.at || b.date || 0).getTime();
+        return db - da;
+    });
+
+    const items = sorted.map((mov) => {
+        const type = (mov.type || '').toLowerCase();
+        const isConsumo = type.includes('consumo');
+        const badgeClass = isConsumo ? 'consumption' : 'replenishment';
+        const badgeText = isConsumo ? 'Consumo' : 'Rifornimento';
+        const qty = Math.abs(parseInt(mov.quantity_change || mov.quantity || mov.delta || 0, 10));
+        const dateText = formatMovementsDate(mov.at || mov.date);
+        return (
+            '<div class="viewer-movements-item">' +
+                '<div class="viewer-movements-item-header">' +
+                    `<span>${qty} bott.</span>` +
+                    `<span class="viewer-movements-badge ${badgeClass}">${badgeText}</span>` +
+                '</div>' +
+                '<div class="viewer-movements-item-meta">' +
+                    `<span>${dateText}</span>` +
+                    `<span>Stock: ${mov.quantity_after ?? '-'}</span>` +
+                '</div>' +
+            '</div>'
+        );
+    }).join('');
+
+    container.innerHTML = `<div class="viewer-movements-panel-content">${items}</div>`;
+}
+
+function findWineInfoByName(name) {
+    if (!viewerData || !viewerData.rows || !name) return null;
+    const target = name.trim().toLowerCase();
+    return viewerData.rows.find(w => (w.name || '').toLowerCase().trim() === target) ||
+        viewerData.rows.find(w => (w.name || '').toLowerCase().includes(target)) || null;
+}
+
+function renderWineInfo(container, wineName) {
+    if (!container) return;
+    const wine = findWineInfoByName(wineName);
+    if (!wine) {
+        container.innerHTML = '<div class="viewer-movements-panel-content">Dettagli vino non disponibili</div>';
+        return;
+    }
+
+    const rows = [
+        ['Vino', wine.name || '-'],
+        ['Cantina', wine.winery || '-'],
+        ['Annata', wine.vintage || '-'],
+        ['Tipo', wine.type || '-'],
+        ['Quantità', `${wine.qty ?? 0} bott.`],
+        ['Prezzo', wine.price ? `€${Number(wine.price).toFixed(2)}` : '-'],
+        ['Fornitore', wine.supplier || '-']
+    ];
+
+    const html = rows.map(([label, value]) => (
+        '<div class="viewer-movements-item">' +
+            `<div class="viewer-movements-item-header"><span>${label}</span><span>${value}</span></div>` +
+        '</div>'
+    )).join('');
+
+    container.innerHTML = `<div class="viewer-movements-panel-content">${html}</div>`;
+}
 
 function showMovementsChart(wineName) {
     if (!authToken) {
@@ -4112,6 +4200,8 @@ function showMovementsChart(wineName) {
     const modalTitle = document.getElementById('viewer-movements-modal-wine-name');
     const chartContainer = document.getElementById('viewer-movements-chart-container');
     const controlsContainer = document.getElementById('viewer-movements-modal-controls');
+    const listContainer = document.getElementById('viewer-movements-list');
+    const infoContainer = document.getElementById('viewer-movements-info');
     
     if (!modal || !modalTitle || !chartContainer) {
         console.error('[VIEWER] Elementi modal non trovati:', { modal: !!modal, modalTitle: !!modalTitle, chartContainer: !!chartContainer });
@@ -4131,6 +4221,12 @@ function showMovementsChart(wineName) {
     
     // Salva nome vino corrente
     currentMovementsWineName = wineName;
+    if (listContainer) {
+        listContainer.innerHTML = '<div class="viewer-movements-panel-title">Movimenti</div><div class="viewer-movements-panel-content">Caricamento...</div>';
+    }
+    if (infoContainer) {
+        renderWineInfo(infoContainer, wineName);
+    }
     
     // Setup controlli periodo (solo su desktop)
     const isDesktop = !isMobileView();
@@ -4205,6 +4301,10 @@ function loadAndRenderMovementsChart(wineName, preset) {
     })
     .then(data => {
         console.log('[VIEWER] Dati ricevuti:', data);
+        const listContainer = document.getElementById('viewer-movements-list');
+        const infoContainer = document.getElementById('viewer-movements-info');
+        renderMovementsList(listContainer, data.movements || []);
+        renderWineInfo(infoContainer, wineName);
         // Distruggi grafico precedente
         if (currentMovementsChart) {
             currentMovementsChart.destroy();
@@ -4913,6 +5013,7 @@ function handleWindowResize() {
         }
     }
 }
+
 
 
 
