@@ -37,6 +37,13 @@ function initChatDesktop() {
             }
         });
     }
+
+    window.addEventListener('chat:conversation-changed', (event) => {
+        const conversationId = event?.detail?.conversationId;
+        if (!conversationId) return;
+        ensureConversationSidebarItem(conversationId);
+        setActiveConversationSidebarItem(conversationId);
+    });
     
     console.log('[ChatDesktop] Inizializzato');
 }
@@ -71,6 +78,13 @@ async function handleChatSubmitDesktop(e) {
         if (response && response.message) {
             addChatMessageDesktop('ai', response.message, false, false, null, response.is_html);
         }
+
+        const conversationId = response?.conversation_id;
+        if (conversationId !== undefined && conversationId !== null) {
+            window.currentConversationId = conversationId;
+            ensureConversationSidebarItem(conversationId);
+            setActiveConversationSidebarItem(conversationId);
+        }
     } catch (error) {
         console.error('[ChatDesktop] Errore invio messaggio:', error);
         addChatMessageDesktop('ai', 'Errore invio messaggio', false, true);
@@ -102,6 +116,59 @@ function addChatMessageDesktop(role, content, isLoading = false, isError = false
             }
     
     return messageElement;
+}
+
+function ensureConversationSidebarItem(conversationId, title = 'Nuova chat') {
+    const selectors = window.ChatSelectors?.get();
+    const sidebarList = selectors?.sidebarList();
+    if (!sidebarList) return;
+
+    const existingItem = sidebarList.querySelector?.(`[data-conversation-id="${conversationId}"]`);
+    if (existingItem) return;
+
+    const item = document.createElement('div');
+    item.className = 'chat-sidebar-item';
+    item.dataset.conversationId = String(conversationId);
+    item.setAttribute('data-conversation-id', String(conversationId));
+
+    const content = document.createElement('div');
+    const titleEl = document.createElement('div');
+    titleEl.className = 'chat-sidebar-item-title';
+    titleEl.textContent = title;
+
+    const timeWrapper = document.createElement('div');
+    timeWrapper.className = 'chat-sidebar-item-time-wrapper';
+
+    const timeEl = document.createElement('span');
+    timeEl.className = 'chat-sidebar-item-time';
+    timeEl.textContent = new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+    timeWrapper.appendChild(timeEl);
+    content.appendChild(titleEl);
+    content.appendChild(timeWrapper);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'chat-sidebar-item-delete';
+    deleteButton.setAttribute('type', 'button');
+    deleteButton.setAttribute('title', 'Elimina chat');
+    deleteButton.setAttribute('data-conversation-id', String(conversationId));
+    deleteButton.textContent = '×';
+
+    item.appendChild(content);
+    item.appendChild(deleteButton);
+
+    sidebarList.prepend(item);
+}
+
+function setActiveConversationSidebarItem(conversationId) {
+    const selectors = window.ChatSelectors?.get();
+    const sidebarList = selectors?.sidebarList();
+    if (!sidebarList) return;
+
+    sidebarList.querySelectorAll?.('.chat-sidebar-item').forEach((item) => {
+        const isActive = item.getAttribute('data-conversation-id') === String(conversationId);
+        item.classList.toggle('active', isActive);
+    });
 }
 
 // Export per uso globale

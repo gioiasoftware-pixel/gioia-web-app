@@ -277,6 +277,49 @@ body.dark-theme {
     min-width: 0; /* Permette al flex item di ridursi sotto la sua dimensione minima del contenuto */
 }
 
+@media (max-width: 1024px) and (pointer: coarse) {
+    .chat-sidebar {
+        width: 240px;
+    }
+
+    .chat-header {
+        padding: 12px 16px;
+    }
+
+    .chat-header-left .logo-container {
+        width: 96px;
+        height: 96px;
+    }
+
+    .chat-header-right .btn,
+    .chat-header-right .btn-icon,
+    .sidebar-toggle-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .chat-sidebar-item {
+        padding: 14px 16px;
+    }
+
+    .chat-sidebar-item-title {
+        font-size: 15px;
+    }
+
+    .chat-input-container {
+        padding: 12px 16px;
+    }
+
+    .chat-input {
+        font-size: 16px;
+    }
+
+    .chat-send-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
 /* Spectator Mode Banner - Ridotto per non coprire contenuto */
 .spectator-banner {
     background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
@@ -512,6 +555,8 @@ body.dark-theme .sidebar-toggle-btn.clicked {
     justify-content: space-between;
     gap: 8px;
     position: relative;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(154, 24, 46, 0.12);
 }
 
 .chat-sidebar-item:hover {
@@ -548,6 +593,8 @@ body.dark-theme .sidebar-toggle-btn.clicked {
     transition: background-color 0.2s ease, color 0.2s ease, transform 0.1s ease;
     opacity: 0.6;
     margin-left: 4px;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(154, 24, 46, 0.12);
 }
 
 .chat-sidebar-item:hover .chat-sidebar-item-delete {

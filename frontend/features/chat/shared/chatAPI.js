@@ -71,6 +71,20 @@ async function sendChatMessage(message, conversationId = null) {
         hasMetadata: !!result.metadata,
         conversationId: result.conversation_id
     });
+
+    if (typeof window !== 'undefined' && result?.conversation_id !== undefined && result?.conversation_id !== null) {
+        const previousConversationId = window.currentConversationId;
+        window.currentConversationId = result.conversation_id;
+
+        if (previousConversationId !== result.conversation_id) {
+            window.dispatchEvent(new CustomEvent('chat:conversation-changed', {
+                detail: {
+                    conversationId: result.conversation_id,
+                    source: 'chat:message'
+                }
+            }));
+        }
+    }
     
     return result;
 }
