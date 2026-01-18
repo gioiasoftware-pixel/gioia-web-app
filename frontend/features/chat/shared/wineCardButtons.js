@@ -9,6 +9,32 @@
  * 
  * @param {HTMLElement} messageElement - Elemento messaggio contenente i bottoni
  */
+function resolveConversationIdFromContext(targetEl) {
+    if (!targetEl) return window.currentConversationId || null;
+
+    const directId = targetEl.dataset?.conversationId || targetEl.getAttribute?.('data-conversation-id');
+    if (directId) {
+        const parsed = Number(directId);
+        return Number.isFinite(parsed) ? parsed : directId;
+    }
+
+    const messageEl = targetEl.closest?.('.chat-message');
+    const messageId = messageEl?.dataset?.conversationId || messageEl?.getAttribute?.('data-conversation-id');
+    if (messageId) {
+        const parsed = Number(messageId);
+        return Number.isFinite(parsed) ? parsed : messageId;
+    }
+
+    const activeItem = document.querySelector?.('.chat-sidebar-item.active[data-conversation-id]');
+    const activeId = activeItem?.getAttribute?.('data-conversation-id');
+    if (activeId) {
+        const parsed = Number(activeId);
+        return Number.isFinite(parsed) ? parsed : activeId;
+    }
+
+    return window.currentConversationId || null;
+}
+
 function setupWineCardMovementButtons(messageElement) {
     window.AppDebug?.log('[WineCardButtons] 🚀 Setup avviato (setupWineCardMovementButtons chiamata)', 'info');
     
@@ -127,7 +153,7 @@ function setupWineCardMovementButtons(messageElement) {
                         throw new Error('ChatAPI.sendMessage non disponibile');
                     }
 
-                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                const conversationId = resolveConversationIdFromContext(newBtn);
                     window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
 
                     window.AppDebug?.log('[WineCardButtons] Invio messaggio custom...', 'info');
@@ -178,7 +204,7 @@ function setupWineCardMovementButtons(messageElement) {
                     }
                     
                     // Recupera conversationId da variabili globali
-                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    const conversationId = resolveConversationIdFromContext(newBtn);
                     window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
                     
                     window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio...', 'info');
@@ -228,7 +254,7 @@ function setupWineCardMovementButtons(messageElement) {
                     }
                     
                     // Recupera conversationId da variabili globali
-                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    const conversationId = resolveConversationIdFromContext(newBtn);
                     window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
                     
                     window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio ricerca...', 'info');
@@ -500,7 +526,7 @@ function setupWineCardInfoButtonsMobile(messageElement) {
                 // Fallback: invia messaggio chat per modifica
                 const searchMessage = `[wine_id:${wineId}]`;
                 if (window.ChatAPI && window.ChatAPI.sendMessage) {
-                    const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                    const conversationId = resolveConversationIdFromContext(editButton);
                     try {
                         const response = await window.ChatAPI.sendMessage(`Modifica vino ${searchMessage}`, conversationId);
                         if (response && response.message) {
@@ -1017,7 +1043,7 @@ if (typeof window !== 'undefined') {
                             throw new Error('ChatAPI.sendMessage non disponibile');
                         }
 
-                        const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                        const conversationId = resolveConversationIdFromContext(button);
                         const response = await window.ChatAPI.sendMessage(formattedDate, conversationId);
 
                         if (response && response.message) {
@@ -1047,7 +1073,7 @@ if (typeof window !== 'undefined') {
                             throw new Error('ChatAPI.sendMessage non disponibile');
                         }
 
-                        const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                        const conversationId = resolveConversationIdFromContext(button);
                         const response = await window.ChatAPI.sendMessage(chatMessage, conversationId);
 
                         if (response && response.message) {
@@ -1115,7 +1141,7 @@ if (typeof window !== 'undefined') {
                             }
                             
                             // Recupera conversationId da variabili globali
-                            const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                            const conversationId = resolveConversationIdFromContext(button);
                             window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
                             
                             window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio...', 'info');
@@ -1168,7 +1194,7 @@ if (typeof window !== 'undefined') {
                             }
                             
                             // Recupera conversationId da variabili globali
-                            const conversationId = (typeof window !== 'undefined' && window.currentConversationId) || null;
+                            const conversationId = resolveConversationIdFromContext(button);
                             window.AppDebug?.log(`[WineCardButtons] Conversation ID: ${conversationId || 'N/A'}`, 'info');
                             
                             window.AppDebug?.log('[WineCardButtons] ✅ ChatAPI disponibile, invio messaggio ricerca...', 'info');
