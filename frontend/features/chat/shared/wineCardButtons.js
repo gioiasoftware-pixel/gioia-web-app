@@ -789,11 +789,16 @@ if (typeof window !== 'undefined') {
             const interactiveTarget = e.target.closest?.('.wine-card-action-btn, .wine-card-button-mobile, .chat-button, .wines-list-item-button, [data-movements-download], [data-inventory-stats-download]');
             if (interactiveTarget) {
                 const now = Date.now();
-                if (e.type === 'pointerup') {
-                    interactiveTarget.dataset.lastPointerUp = String(now);
+                const lastTapEventAt = Number(interactiveTarget.dataset.lastTapEventAt || 0);
+
+                if (e.type === 'pointerup' || e.type === 'touchend') {
+                    if (lastTapEventAt && now - lastTapEventAt < 150) {
+                        return;
+                    }
+                    interactiveTarget.dataset.lastTapEventAt = String(now);
+                    interactiveTarget.dataset.lastTapEventType = e.type;
                 } else if (e.type === 'click') {
-                    const lastPointerUp = Number(interactiveTarget.dataset.lastPointerUp || 0);
-                    if (lastPointerUp && now - lastPointerUp < 500) {
+                    if (lastTapEventAt && now - lastTapEventAt < 700) {
                         return;
                     }
                 }
@@ -1203,6 +1208,7 @@ if (typeof window !== 'undefined') {
         // USA CAPTURE PHASE per intercettare PRIMA degli handler diretti
         document.addEventListener('click', delegatedHandler, true);
         document.addEventListener('pointerup', delegatedHandler, true);
+        document.addEventListener('touchend', delegatedHandler, true);
     }
     
     // Avvia observer quando DOM è pronto

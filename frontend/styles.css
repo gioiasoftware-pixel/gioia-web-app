@@ -1912,10 +1912,12 @@ body.dark-theme .chat-sidebar-item.active .chat-sidebar-item-delete:hover {
     user-select: none;
 }
 
-.chat-button:hover {
-    background-color: #c42d2d;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(196, 45, 45, 0.3);
+@media (hover: hover) and (pointer: fine) {
+    .chat-button:hover {
+        background-color: #c42d2d;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(196, 45, 45, 0.3);
+    }
 }
 
 .chat-button:active {
@@ -3908,10 +3910,12 @@ body.dark-theme .wine-card-badge.error-badge {
     user-select: none;
 }
 
-.wines-list-item-button:hover {
-    background-color: rgba(154, 24, 46, 0.9);
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(154, 24, 46, 0.2);
+@media (hover: hover) and (pointer: fine) {
+    .wines-list-item-button:hover {
+        background-color: rgba(154, 24, 46, 0.9);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(154, 24, 46, 0.2);
+    }
 }
 
 .wines-list-item-button:active {
